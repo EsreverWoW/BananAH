@@ -2,6 +2,7 @@ local _, InternalInterface = ...
 
 local FixItemType = InternalInterface.Utility.FixItemType
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
+local L = InternalInterface.Localization.L
 
 -- Custom renderers
 local function ItemSelectorRenderer(name, parent)
@@ -111,7 +112,7 @@ function InternalInterface.UI.ItemSelector(name, parent)
 	
 	local showHiddenLabel = UI.CreateFrame("Text", filterFrame:GetName() .. ".ShowHiddenLabel", filterFrame)
 	showHiddenLabel:SetFontSize(11)
-	showHiddenLabel:SetText("Show hidden") -- LOCALIZE
+	showHiddenLabel:SetText(L["PostingPanel/checkShowHidden"])
 	showHiddenLabel:SetPoint("BOTTOMRIGHT", showHiddenCheckbox, "BOTTOMLEFT", -2, 2)
 	bItemSelector.showHiddenCheckbox = showHiddenCheckbox
 	
@@ -135,7 +136,7 @@ function InternalInterface.UI.ItemSelector(name, parent)
 	
 	local hideItemLabel = UI.CreateFrame("Text", filterFrame:GetName() .. ".HideItemLabel", filterFrame)
 	hideItemLabel:SetFontSize(11)
-	hideItemLabel:SetText("Hide this item") -- LOCALIZE
+	hideItemLabel:SetText(L["PostingPanel/checkHideItem"])
 	hideItemLabel:SetPoint("BOTTOMRIGHT", hideItemCheckbox, "BOTTOMLEFT", -2, 2)
 	bItemSelector.hideItemLabel = hideItemLabel
 

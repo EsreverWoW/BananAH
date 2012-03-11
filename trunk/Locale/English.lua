@@ -6,6 +6,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["General/fullScanStarted"] = "Scan started",
 	["General/fullScanError"] = "Can't issue a full scan right now, try again later.",
 	["General/slashRegisterError"] = "Failed to register slash commands",
+
 	["General/scanMessage"] = "%s scan: %d total auctions%s%s%s.",
 	["General/scanTypeFull"] = "Full",
 	["General/scanTypePartial"] = "Partial",
@@ -22,6 +23,10 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["PostingPanel/labelDurationFormat"] = "%d hours",
 	["PostingPanel/buttonUndercut"] = "Set to undercut",
 	["PostingPanel/buttonPost"] = "Post",
+	
+	["PostingPanel/checkShowHidden"] = "Show hidden",
+	["PostingPanel/checkHideItem"] = "Hide this item",
+
 	["PostingPanel/columnSeller"] = "Seller",
 	["PostingPanel/columnStack"] = "Units",
 	["PostingPanel/columnBid"] = "Bid",
@@ -35,6 +40,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["PostingPanel/lastUpdateDateFallback"] = "Never",
 	["PostingPanel/buttonBid"] = "Bid",
 	["PostingPanel/buttonBuy"] = "Buy",
+
 	["PostingPanel/itemScanStarted"] = "Scan started",
 	["PostingPanel/itemScanError"] = "Can't issue an item scan right now, try again later.",
 }--@end-do-not-package@
