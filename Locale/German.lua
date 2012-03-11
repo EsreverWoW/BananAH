@@ -5,5 +5,5 @@ InternalInterface.Localization.RegisterLocale("German",
 {
 }
 --@end-do-not-package@
---@localization(locale="deDE", format="lua_table")
+--@localization(locale="deDE", format="lua_table")@
 )
