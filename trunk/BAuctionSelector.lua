@@ -54,9 +54,9 @@ local function SetItem(self, item)
 	end
 	
 	if (lastUpdate or 0) <= 0 then
-		self.refreshText:SetText(L["lastUpdateMessage"] .. L["lastUpdateDateFallback"])
+		self.refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. L["PostingPanel/lastUpdateDateFallback"])
 	else
-		self.refreshText:SetText(L["lastUpdateMessage"] .. os.date(L["lastUpdateDateFormat"], lastUpdate))
+		self.refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. os.date(L["PostingPanel/lastUpdateDateFormat"], lastUpdate))
 	end
 	
 	return self.item
@@ -74,14 +74,14 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 	bAuctionSelector:SetRowMargin(0)
 	bAuctionSelector:SetUnselectedRowBackgroundColor(0.2, 0.2, 0.2, 0.25)
 	bAuctionSelector:SetSelectedRowBackgroundColor(0.6, 0.6, 0.6, 0.25)
-	bAuctionSelector:AddColumn(L["columnSeller"], 100, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
-	bAuctionSelector:AddColumn(L["columnStack"], 70, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
-	bAuctionSelector:AddColumn(L["columnBid"], 120, "MoneyRenderer", true, "bidPrice")
-	bAuctionSelector:AddColumn(L["columnBuy"], 120, "MoneyRenderer", true, "buyoutPrice")
-	bAuctionSelector:AddColumn(L["columnBidPerUnit"], 120, "MoneyRenderer", true, "bidUnitPrice")
-	local defaultOrderColumn = bAuctionSelector:AddColumn(L["columnBuyPerUnit"], 120, "MoneyRenderer", true, "buyoutUnitPrice")
-	bAuctionSelector:AddColumn(L["columnMinExpire"], 120, "Text", true, "minExpireTime", { Alignment = "right", Formatter = "date" })
-	bAuctionSelector:AddColumn(L["columnMaxExpire"], 120, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = "date" })
+	bAuctionSelector:AddColumn(L["PostingPanel/columnSeller"], 100, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
+	bAuctionSelector:AddColumn(L["PostingPanel/columnStack"], 70, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
+	bAuctionSelector:AddColumn(L["PostingPanel/columnBid"], 120, "MoneyRenderer", true, "bidPrice")
+	bAuctionSelector:AddColumn(L["PostingPanel/columnBuy"], 120, "MoneyRenderer", true, "buyoutPrice")
+	bAuctionSelector:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, "MoneyRenderer", true, "bidUnitPrice")
+	local defaultOrderColumn = bAuctionSelector:AddColumn(L["PostingPanel/columnBuyPerUnit"], 120, "MoneyRenderer", true, "buyoutUnitPrice")
+	bAuctionSelector:AddColumn(L["PostingPanel/columnMinExpire"], 120, "Text", true, "minExpireTime", { Alignment = "right", Formatter = "date" })
+	bAuctionSelector:AddColumn(L["PostingPanel/columnMaxExpire"], 120, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = "date" })
 	bAuctionSelector:AddColumn("", 0, "AuctionSelectorRenderer")
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 	
@@ -93,7 +93,7 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 
 	local buyButton = UI.CreateFrame("RiftButton", bAuctionSelector:GetName() .. ".BuyButton", controlFrame)
 	buyButton:SetPoint("CENTERRIGHT", controlFrame, "CENTERRIGHT", 0, 0)
-	buyButton:SetText(L["buttonBuy"])
+	buyButton:SetText(L["PostingPanel/buttonBuy"])
 	buyButton:SetEnabled(false)
 	-- function buyButton.Event:LeftDown()
 		-- if not self:GetEnabled() then return end
@@ -132,7 +132,7 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 
 	local bidButton = UI.CreateFrame("RiftButton", bAuctionSelector:GetName() .. ".BidButton", controlFrame)
 	bidButton:SetPoint("CENTERRIGHT", buyButton, "CENTERLEFT", 10, 0)
-	bidButton:SetText(L["buttonBid"])
+	bidButton:SetText(L["PostingPanel/buttonBid"])
 	bidButton:SetEnabled(false)
 	-- function bidButton.Event:LeftDown()
 		-- if not self:GetEnabled() then return end
@@ -191,15 +191,15 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 		if not ok then return end
 		
 		if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemDetail.name }) then
-			print(L["itemScanError"])
+			print(L["PostingPanel/itemScanError"])
 		else
-			print(L["itemScanStarted"])
+			print(L["PostingPanel/itemScanStarted"])
 		end				
 	end
 	bAuctionSelector.refreshButton = refreshButton
 
 	local refreshText = UI.CreateFrame("Text", refreshPanel:GetName() .. ".RefreshLabel", refreshPanel:GetContent())
-	refreshText:SetText(L["lastUpdateMessage"] .. L["lastUpdateDateFallback"])
+	refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. L["PostingPanel/lastUpdateDateFallback"])
 	refreshText:SetPoint("TOPLEFT", refreshPanel:GetContent(), "TOPLEFT", 30, 1)
 	refreshText:SetPoint("BOTTOMLEFT", refreshPanel:GetContent(), "BOTTOMLEFT", 30, -1)
 	bAuctionSelector.refreshText = refreshText
