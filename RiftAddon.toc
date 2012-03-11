@@ -1,0 +1,46 @@
+Identifier = "BananAH"
+Name =
+{
+	English = "BananAH",
+	French = "BananAH",
+	German = "BananAH",
+}
+NameShort = "BananAH"
+Description =
+{
+	English = "Basic AH addon.",
+}
+Author = "Baanano"
+Version = "0.1.1"
+Email = "baanano.rift@gmail.com"
+Environment = "1.7"
+Embed =
+{
+	LibBInterface = true,
+}
+
+Dependencies =
+{
+	LibBInterface = {"required", "before"},
+}
+SavedVariables =
+{
+	BananAHAuctionTable = "shard",
+	BananAHPostingParameters = "shard",
+	BananAHSettings = "shard",
+}
+RunOnStartup =
+{
+	"Init.lua",
+	"LocalizationService.lua",
+	"Locale/English.lua",
+	"Locale/French.lua",
+	"Locale/German.lua",
+	"Locale/Korean.lua",
+	"Locale/Russian.lua",
+	"AHMonitoringService.lua",
+	"AHPostingService.lua",
+	"BItemSelector.lua",
+	"BAuctionSelector.lua",
+	"Main.lua",
+}
