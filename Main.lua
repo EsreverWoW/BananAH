@@ -164,9 +164,9 @@ local function InitializeLayout()
 	function refreshButton.Event:LeftClick()
 		if not self.enabled then return end
 		if not pcall(Command.Auction.Scan, {type="search"}) then
-			print(L["fullScanError"])
+			print(L["General/fullScanError"])
 		else
-			print(L["fullScanStarted"])
+			print(L["General/fullScanStarted"])
 		end
 	end	
 
@@ -195,7 +195,7 @@ local function InitializeLayout()
 	stackSizeLabel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 340, 100)
 	stackSizeLabel:SetFontColor(1, 1, 0.75, 1)
 	stackSizeLabel:SetFontSize(14)
-	stackSizeLabel:SetText(L["labelStackSize"])
+	stackSizeLabel:SetText(L["PostingPanel/labelStackSize"])
 	stackSizeLabelShadow:SetPoint("CENTER", stackSizeLabel, "CENTER", 2, 2)
 	stackSizeLabelShadow:SetFontColor(0, 0, 0, 0.25)
 	stackSizeLabelShadow:SetFontSize(stackSizeLabel:GetFontSize())
@@ -218,7 +218,7 @@ local function InitializeLayout()
 	stackNumberLabel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 340, 170)
 	stackNumberLabel:SetFontColor(1, 1, 0.75, 1)
 	stackNumberLabel:SetFontSize(14)
-	stackNumberLabel:SetText(L["labelStackNumber"])
+	stackNumberLabel:SetText(L["PostingPanel/labelStackNumber"])
 	stackNumberLabelShadow:SetPoint("CENTER", stackNumberLabel, "CENTER", 2, 2)
 	stackNumberLabelShadow:SetFontColor(0, 0, 0, 0.25)
 	stackNumberLabelShadow:SetFontSize(stackNumberLabel:GetFontSize())
@@ -228,7 +228,7 @@ local function InitializeLayout()
 	stackNumberSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPLEFT", 800, 235)
 	
 	undercutButton:SetPoint("BOTTOMCENTER", postPanel:GetContent(), "TOPRIGHT", -105, 50)
-	undercutButton:SetText(L["buttonUndercut"])
+	undercutButton:SetText(L["PostingPanel/buttonUndercut"])
 	undercutButton:SetEnabled(false)
 	function undercutButton.Event:LeftPress()
 		if self.minBid then
@@ -242,7 +242,7 @@ local function InitializeLayout()
 	bidLabel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -400, 70)
 	bidLabel:SetFontColor(1, 1, 0.75, 1)
 	bidLabel:SetFontSize(14)
-	bidLabel:SetText(L["labelUnitBid"])
+	bidLabel:SetText(L["PostingPanel/labelUnitBid"])
 	bidLabelShadow:SetPoint("CENTER", bidLabel, "CENTER", 2, 2)
 	bidLabelShadow:SetFontColor(0, 0, 0, 0.25)
 	bidLabelShadow:SetFontSize(bidLabel:GetFontSize())
@@ -260,7 +260,7 @@ local function InitializeLayout()
 	buyLabel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -400, 110)
 	buyLabel:SetFontColor(1, 1, 0.75, 1)
 	buyLabel:SetFontSize(14)
-	buyLabel:SetText(L["labelUnitBuy"])
+	buyLabel:SetText(L["PostingPanel/labelUnitBuy"])
 	buyLabelShadow:SetPoint("CENTER", buyLabel, "CENTER", 2, 2)
 	buyLabelShadow:SetFontColor(0, 0, 0, 0.25)
 	buyLabelShadow:SetFontSize(buyLabel:GetFontSize())
@@ -278,7 +278,7 @@ local function InitializeLayout()
 	durationLabel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -400, 150)
 	durationLabel:SetFontColor(1, 1, 0.75, 1)
 	durationLabel:SetFontSize(14)
-	durationLabel:SetText(L["labelDuration"])
+	durationLabel:SetText(L["PostingPanel/labelDuration"])
 	durationLabelShadow:SetPoint("CENTER", durationLabel, "CENTER", 2, 2)
 	durationLabelShadow:SetFontColor(0, 0, 0, 0.25)
 	durationLabelShadow:SetFontSize(durationLabel:GetFontSize())
@@ -290,13 +290,13 @@ local function InitializeLayout()
 	durationSlider:SetPosition(3)
 	function durationSlider.Event:SliderChange()
 		local position = self:GetPosition()
-		durationTimeLabel:SetText(string.format(L["labelDurationFormat"], 6 * 2 ^ position))
+		durationTimeLabel:SetText(string.format(L["PostingPanel/labelDurationFormat"], 6 * 2 ^ position))
 	end
 	durationTimeLabel:SetPoint("TOPRIGHT", postPanel:GetContent(), "TOPRIGHT", -10, 150)
-	durationTimeLabel:SetText(string.format(L["labelDurationFormat"], 48))
+	durationTimeLabel:SetText(string.format(L["PostingPanel/labelDurationFormat"], 48))
 	
 	postButton:SetPoint("TOPCENTER", postPanel:GetContent(), "TOPRIGHT", -105, 185)
-	postButton:SetText(L["buttonPost"])
+	postButton:SetText(L["PostingPanel/buttonPost"])
 	postButton:SetEnabled(false)
 	function postButton.Event:LeftPress()
 		local selectedItems = itemSelector:GetSelectedItems()
@@ -328,11 +328,11 @@ local function InitializeLayout()
 	end
 	
 	local function ReportAuctionData(full, total, new, updated, removed, before)
-		local fullOrPartialMessage = full and L["scanTypeFull"] or L["scanTypePartial"]
-		local newMessage = (new > 0) and string.format(L["scanNewCount"], new) or ""
-		local updatedMessage = (updated > 0) and string.format(L["scanUpdatedCount"], updated) or ""
-		local removedMessage = (removed > 0) and string.format(L["scanRemovedCount"], removed, before) or ""
-		local message = string.format(L["scanMessage"], fullOrPartialMessage, total, newMessage, updatedMessage, removedMessage)
+		local fullOrPartialMessage = full and L["General/scanTypeFull"] or L["General/scanTypePartial"]
+		local newMessage = (new > 0) and string.format(L["General/scanNewCount"], new) or ""
+		local updatedMessage = (updated > 0) and string.format(L["General/scanUpdatedCount"], updated) or ""
+		local removedMessage = (removed > 0) and string.format(L["General/scanRemovedCount"], removed, before) or ""
+		local message = string.format(L["General/scanMessage"], fullOrPartialMessage, total, newMessage, updatedMessage, removedMessage)
 		print(message)
 		
 		local selectedItem = itemSelector:GetSelectedItem()
@@ -373,7 +373,7 @@ local function InitializeLayout()
 	if slashEvent2 then
 		table.insert(slashEvent2, {ShowBananAH, "BananAH", "ShowBananAH2"})
 	elseif not slashEvent1 then
-		print(L["slashRegisterError"])
+		print(L["General/slashRegisterError"])
 	end
 end
 
