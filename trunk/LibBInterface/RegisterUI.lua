@@ -2,6 +2,7 @@ local frameConstructors =
 {
 	BPanel			= Library.LibBInterface.BPanel,
 	BShadowedText	= Library.LibBInterface.BShadowedText,
+	BDropdown       = Library.LibBInterface.BDropdown,
 	BMoneyDisplay	= Library.LibBInterface.BMoneyDisplay,
 	BMoneySelector	= Library.LibBInterface.BMoneySelector,
 	BSlider			= Library.LibBInterface.BSlider,
