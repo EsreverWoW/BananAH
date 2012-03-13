@@ -114,7 +114,7 @@ function InternalInterface.UI.ItemSelector(name, parent)
 	showHiddenLabel:SetFontSize(11)
 	showHiddenLabel:SetText(L["PostingPanel/checkShowHidden"])
 	showHiddenLabel:SetPoint("BOTTOMRIGHT", showHiddenCheckbox, "BOTTOMLEFT", -2, 2)
-	bItemSelector.showHiddenCheckbox = showHiddenCheckbox
+	bItemSelector.showHiddenLabel = showHiddenLabel
 	
 	local hideItemCheckbox = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".HideItemCheckbox", filterFrame)
 	hideItemCheckbox:SetPoint("TOPRIGHT", filterFrame, "TOPRIGHT")
@@ -183,7 +183,7 @@ function InternalInterface.UI.ItemSelector(name, parent)
 		self.hideItemCheckbox:SetChecked(itemInfo and InternalInterface.Settings.Posting.HiddenItems[itemInfo.fixedType] or false)
 		
 		if self.Event.ItemSelected then
-			self.Event.ItemSelected(self, item)
+			self.Event.ItemSelected(self, item, itemInfo)
 		end
 	end
 	

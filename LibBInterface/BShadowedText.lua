@@ -35,6 +35,12 @@ function Library.LibBInterface.BShadowedText(name, parent)
 		self.shadow:SetWordwrap(wordWrap)
 	end
 	
+	local oldSetVisible = label.SetVisible
+	function label:SetVisible(visible)
+		oldSetVisible(self, visible)
+		self.shadow:SetVisible(visible)
+	end
+	
 	function label:SetShadowColor(r, g, b, a)
 		self.shadow:SetFontColor(r, g, b, a)
 	end

@@ -35,6 +35,62 @@ end
 Library.LibBInterface.RegisterGridRenderer("MoneyRenderer", MoneyRenderer)
 
 -- Private
+local function RefreshButtons(bAuctionSelector)
+	local auctionSelected = false
+	local auctionInteraction = Inspect.Interaction("auction")
+	local selectedAuctionCached = false
+	local selectedAuctionBid = false
+	local selectedAuctionBuy = false
+	local highestBidder = false
+	local seller = false
+	local bidPrice = 1
+	
+	local selectedAuctionID, selectedAuctionData = bAuctionSelector:GetSelectedAuction()
+	if selectedAuctionID and selectedAuctionData then 
+		auctionSelected = true
+		selectedAuctionCached = BananAH.GetAuctionCached(selectedAuctionID) or false
+		selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
+		selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
+		local ok, auctionData = pcall(Inspect.Auction.Detail, selectedAuctionID)
+		if ok and auctionData and auctionData.bidder then highestBidder = true end
+		local ok, unitDetail = pcall(Inspect.Unit.Detail, "player")
+		if ok and unitDetail and unitDetail.name == selectedAuctionData.sellerName then seller = true end
+		bidPrice = selectedAuctionData.bidPrice
+	end
+	
+	bAuctionSelector.refreshButton.enabled = auctionInteraction
+	bAuctionSelector.refreshButton:SetTexture("BananAH", auctionInteraction and "Textures/RefreshMiniOff.png" or "Textures/RefreshMiniDisabled.png")
+	bAuctionSelector.bidButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBid and not highestBidder and not seller)
+	bAuctionSelector.buyButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBuyout and not seller)
+
+	if not auctionSelected then
+		bAuctionSelector.noBidLabel:SetText(L["PostingPanel/bidErrorNoAuction"])
+		bAuctionSelector.noBidLabel:SetVisible(true)
+		bAuctionSelector.bidMoneySelector:SetVisible(false)
+	elseif not selectedAuctionCached then
+		bAuctionSelector.noBidLabel:SetText(L["PostingPanel/bidErrorNotCached"])
+		bAuctionSelector.noBidLabel:SetVisible(true)
+		bAuctionSelector.bidMoneySelector:SetVisible(false)
+	elseif not selectedAuctionBid then
+		bAuctionSelector.noBidLabel:SetText(L["PostingPanel/bidErrorBidEqualBuy"])
+		bAuctionSelector.noBidLabel:SetVisible(true)
+		bAuctionSelector.bidMoneySelector:SetVisible(false)
+	elseif seller then
+		bAuctionSelector.noBidLabel:SetText(L["PostingPanel/bidErrorSeller"])
+		bAuctionSelector.noBidLabel:SetVisible(true)
+		bAuctionSelector.bidMoneySelector:SetVisible(false)
+	elseif highestBidder then
+		bAuctionSelector.noBidLabel:SetText(L["PostingPanel/bidErrorHighestBidder"])
+		bAuctionSelector.noBidLabel:SetVisible(true)
+		bAuctionSelector.bidMoneySelector:SetVisible(false)
+	elseif not auctionInteraction then
+		bAuctionSelector.noBidLabel:SetText(L["PostingPanel/bidErrorNoAuctionHouse"])
+	else
+		bAuctionSelector.bidMoneySelector:SetValue(bidPrice + 1)
+		bAuctionSelector.bidMoneySelector:SetVisible(true)
+		bAuctionSelector.noBidLabel:SetVisible(false)
+	end
+end
 
 -- Public
 local function GetItem(self)
@@ -58,6 +114,8 @@ local function SetItem(self, item)
 	else
 		self.refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. os.date(L["PostingPanel/lastUpdateDateFormat"], lastUpdate))
 	end
+	
+	RefreshButtons(self)
 	
 	return self.item
 end
@@ -85,84 +143,92 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 	bAuctionSelector:AddColumn("", 0, "AuctionSelectorRenderer")
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 	
+	function bAuctionSelector.Event:SelectionChanged(auctionID, auctionData)
+		RefreshButtons(bAuctionSelector)
+		if self.Event.AuctionSelected then
+			self.Event.AuctionSelected(self, auctionID, auctionData)
+		end		
+	end
+	
 	local controlFrame = UI.CreateFrame("Frame", name .. ".ControlFrame", bAuctionSelector.externalPanel:GetContent())
 	local paddingLeft, _, paddingRight, paddingBottom = bAuctionSelector:GetPadding()
 	controlFrame:SetPoint("TOPLEFT", bAuctionSelector.externalPanel:GetContent(), "BOTTOMLEFT", paddingLeft + 2, 2 - paddingBottom)
 	controlFrame:SetPoint("BOTTOMRIGHT", bAuctionSelector.externalPanel:GetContent(), "BOTTOMRIGHT", -paddingRight - 2, -2)
 	bAuctionSelector.controlFrame = controlFrame
 
-	local buyButton = UI.CreateFrame("RiftButton", bAuctionSelector:GetName() .. ".BuyButton", controlFrame)
+	local buyButton = UI.CreateFrame("RiftButton", name .. ".BuyButton", controlFrame)
 	buyButton:SetPoint("CENTERRIGHT", controlFrame, "CENTERRIGHT", 0, 0)
 	buyButton:SetText(L["PostingPanel/buttonBuy"])
 	buyButton:SetEnabled(false)
-	-- function buyButton.Event:LeftDown()
-		-- if not self:GetEnabled() then return end
-		-- local auctionSelector = self:GetParent():GetParent()
-		-- local auctionID = auctionSelector:GetSelectedAuction()
-		-- if auctionID then
-			-- local auctionData = Inspect.Auction.Detail(auctionID)
-			-- if auctionData and auctionData.buyout then
-				-- Command.Auction.Bid(auctionID, auctionData.buyout)
-			-- end
-		-- end
-	-- end
-	-- function buyButton.Event:LeftUp()
-		-- if not self:GetEnabled() then return end
-		-- local itemSelector = self:GetParent():GetParent():GetParent().itemSelector
-		-- if itemSelector then
-			-- local items = itemSelector:GetSelectedItems()
-			-- if items and #items > 0 then
-				-- local itemDetail = Inspect.Item.Detail(items[1])
-				-- Command.Auction.Scan({ type = "search", index = 0, text = itemDetail.name })
-			-- end
-		-- end
-	-- end
-	-- function buyButton.Event:LeftUpoutside()
-		-- if not self:GetEnabled() then return end
-		-- local itemSelector = self:GetParent():GetParent():GetParent().itemSelector
-		-- if itemSelector then
-			-- local items = itemSelector:GetSelectedItems()
-			-- if items and #items > 0 then
-				-- local itemDetail = Inspect.Item.Detail(items[1])
-				-- Command.Auction.Scan({ type = "search", index = 0, text = itemDetail.name })
-			-- end
-		-- end
-	-- end	
+	function buyButton.Event:LeftDown()
+		if not self:GetEnabled() then return end
+		local auctionID, auctionData = bAuctionSelector:GetSelectedAuction()
+		if auctionID then
+			Command.Auction.Bid(auctionID, auctionData.buyoutPrice)
+		end
+	end
+	function buyButton.Event:LeftUp()
+		if not self:GetEnabled() then return end
+		local item = bAuctionSelector:GetItem()
+		if not item then return end
+		local ok, itemDetail = pcall(Inspect.Item.Detail, item)
+		if not ok then return end
+		pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemDetail.name })
+	end
+	function buyButton.Event:LeftUpoutside()
+		if not self:GetEnabled() then return end
+		local item = bAuctionSelector:GetItem()
+		if not item then return end
+		local ok, itemDetail = pcall(Inspect.Item.Detail, item)
+		if not ok then return end
+		pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemDetail.name })
+	end	
 	bAuctionSelector.buyButton = buyButton
 
-	local bidButton = UI.CreateFrame("RiftButton", bAuctionSelector:GetName() .. ".BidButton", controlFrame)
+	local bidButton = UI.CreateFrame("RiftButton", name .. ".BidButton", controlFrame)
 	bidButton:SetPoint("CENTERRIGHT", buyButton, "CENTERLEFT", 10, 0)
 	bidButton:SetText(L["PostingPanel/buttonBid"])
 	bidButton:SetEnabled(false)
-	-- function bidButton.Event:LeftDown()
-		-- if not self:GetEnabled() then return end
-		-- local auctionSelector = self:GetParent():GetParent()
-		-- local auctionID = auctionSelector:GetSelectedAuction()
-		-- if auctionID then
-			-- local auctionData = Inspect.Auction.Detail(auctionID)
-			-- if auctionData and not auctionData.bidder then
-				-- Command.Auction.Bid(auctionID, auctionData.bid + 1)
-			-- end
-		-- end
-	-- end
-	-- function bidButton.Event:LeftUp()
-		-- if not self:GetEnabled() then return end
-		-- Command.Auction.Scan({type = "bids"})
-	-- end
-	-- function bidButton.Event:LeftUpoutside()
-		-- if not self:GetEnabled() then return end
-		-- Command.Auction.Scan({type = "bids"})
-	-- end	
+	function bidButton.Event:LeftDown()
+		if not self:GetEnabled() then return end
+		local auctionID = bAuctionSelector:GetSelectedAuction()
+		if auctionID then
+			Command.Auction.Bid(auctionID, bAuctionSelector.bidMoneySelector:GetValue())
+		end
+	end
+	function bidButton.Event:LeftUp()
+		if not self:GetEnabled() then return end
+		pcall(Command.Auction.Scan, { type = "bids" })
+	end
+	function bidButton.Event:LeftUpoutside()
+		if not self:GetEnabled() then return end
+		pcall(Command.Auction.Scan, { type = "bids" })
+	end	
 	bAuctionSelector.bidButton = bidButton
+	
+	local bidMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".BidMoneySelector", controlFrame)
+	bidMoneySelector:SetPoint("TOPRIGHT", bidButton, "TOPLEFT", -5, 2)
+	bidMoneySelector:SetPoint("BOTTOMLEFT", bidButton, "BOTTOMLEFT", -230, -2)
+	bidMoneySelector:SetVisible(false)
+	bAuctionSelector.bidMoneySelector = bidMoneySelector
+	
+	local noBidLabel = UI.CreateFrame("BShadowedText", name .. ".NoBidLabel", controlFrame)
+	noBidLabel:SetFontColor(1, 0.5, 0, 1)
+	noBidLabel:SetShadowColor(0.05, 0, 0.1, 1)
+	noBidLabel:SetShadowOffset(2, 2)
+	noBidLabel:SetFontSize(14)
+	noBidLabel:SetText("")
+	noBidLabel:SetPoint("CENTER", bidButton, "CENTERLEFT", -115, 0)
+	bAuctionSelector.noBidLabel = noBidLabel
 
-	local refreshPanel = UI.CreateFrame("BPanel", bAuctionSelector:GetName() .. ".RefreshPanel", controlFrame)
+	local refreshPanel = UI.CreateFrame("BPanel", name .. ".RefreshPanel", controlFrame)
 	refreshPanel:SetPoint("BOTTOMLEFT", controlFrame, "BOTTOMLEFT", 0, -2)
-	refreshPanel:SetPoint("TOPRIGHT", bidButton, "TOPLEFT", -2, 2)
+	refreshPanel:SetPoint("TOPRIGHT", bidButton, "TOPLEFT", -235, 2)
 	refreshPanel:SetInvertedBorder(true)
-	refreshPanel:GetContent():SetBackgroundColor(0.1, 0, 0, 0.75)
+	refreshPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
 	bAuctionSelector.refreshPanel = refreshPanel
 
-	local refreshButton = UI.CreateFrame("Texture", refreshPanel:GetName() .. ".RefreshButton", refreshPanel:GetContent())
+	local refreshButton = UI.CreateFrame("Texture", name .. ".RefreshButton", refreshPanel:GetContent())
 	refreshButton:SetTexture("BananAH", "Textures/RefreshMiniDisabled.png")
 	refreshButton:SetPoint("TOPLEFT", refreshPanel:GetContent(), "TOPLEFT", 2, 1)
 	refreshButton:SetPoint("BOTTOMRIGHT", refreshPanel:GetContent(), "BOTTOMLEFT", 22, -1)
@@ -198,7 +264,7 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 	end
 	bAuctionSelector.refreshButton = refreshButton
 
-	local refreshText = UI.CreateFrame("Text", refreshPanel:GetName() .. ".RefreshLabel", refreshPanel:GetContent())
+	local refreshText = UI.CreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())
 	refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. L["PostingPanel/lastUpdateDateFallback"])
 	refreshText:SetPoint("TOPLEFT", refreshPanel:GetContent(), "TOPLEFT", 30, 1)
 	refreshText:SetPoint("BOTTOMLEFT", refreshPanel:GetContent(), "BOTTOMLEFT", 30, -1)
@@ -211,51 +277,17 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 	Library.LibBInterface.BEventHandler(bAuctionSelector, { "AuctionSelected" })
 	
 	-- Late initialization
-	local function RefreshButtons()
-		local auctionInteraction = Inspect.Interaction("auction")
-		local selectedAuctionCached = false
-		local selectedAuctionBid = false
-		local selectedAuctionBuy = false
-		
-		local selectedAuctionID, selectedAuctionData = bAuctionSelector:GetSelectedAuction()
-		if selectedAuctionID and selectedAuctionData then 
-			selectedAuctionCached = BananAH.GetAuctionCached(selectedAuctionID) or false
-			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
-			selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
-		end
-		
-		refreshButton.enabled = auctionInteraction
-		refreshButton:SetTexture("BananAH", auctionInteraction and "Textures/RefreshMiniOff.png" or "Textures/RefreshMiniDisabled.png")
-		bidButton:SetEnabled(auctionInteraction and selectedAuctionCached and selectedAuctionBid)		
-		buyButton:SetEnabled(auctionInteraction and selectedAuctionCached and selectedAuctionBuyout)		
-	end
-	
 	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
-			RefreshButtons()
+			RefreshButtons(bAuctionSelector)
 		end
 	end
 	table.insert(Event.Interaction, { OnInteractionChanged, "BananAH", "AuctionSelector.OnInteractionChanged" })
 	
-	function bAuctionSelector.Event:SelectionChanged(auctionID, auctionData)
-		RefreshButtons()
+	local function OnAuctionData(full, total, new, updated, removed, before)
+		bAuctionSelector:SetItem(bAuctionSelector:GetItem())
 	end
-
-	-- function bAuctionSelector.Event:AuctionSelected(auctionID, auctionData)
-		-- if Inspect.Interaction("auction") and auctionID and auctionData and BananAH.GetAuctionCached(auctionID) then
-			-- bidButton:SetEnabled(true)
-			-- if auctionData.buyoutPrice and auctionData.buyoutPrice > 0 then
-				-- buyButton:SetEnabled(true)
-				-- bidButton:SetEnabled(auctionData.bidPrice < auctionData.buyoutPrice)
-			-- else
-				-- buyButton:SetEnabled(false)
-				-- bidButton:SetEnabled(true)
-			-- end
-		-- else
-			-- buyButton:SetEnabled(false)
-			-- bidButton:SetEnabled(false)
-		-- end
-	-- end	
+	table.insert(Event.BananAH.AuctionData, { OnAuctionData, "BananAH", "AuctionSelector.OnAuctionData" })
 	
 	return bAuctionSelector
 end
