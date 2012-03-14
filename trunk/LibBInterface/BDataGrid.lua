@@ -211,6 +211,7 @@ local function ApplyOrderAndFilter(self)
 		local value = key and filteredData[key] or nil
 		SetRowContent(self, row, key, value)
 		row.dataKey = key
+		row.dataValue = value
 		row.dataIndex = rowIndex + rowOffset
 		if key == self.lastSelectedKey then
 			if self.selectedRowBackgroundColor then

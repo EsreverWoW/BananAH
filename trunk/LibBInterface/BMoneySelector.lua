@@ -22,6 +22,20 @@ local function ResetMoneySelector(self)
 end
 
 -- Public
+local function GetEnabled(self)
+	return self.enabled or false
+end
+
+local function SetEnabled(self, enabled)
+	self.enabled = enabled or nil
+	if not enabled then
+		self.silverInput:SetKeyFocus(false)
+		self.goldInput:SetKeyFocus(false)
+		self.platinumInput:SetKeyFocus(false)
+	end
+	return self.enabled
+end
+
 local function GetValue(self)
 	self.value = self.value or 0
 	return self.value
@@ -61,6 +75,7 @@ function Library.LibBInterface.BMoneySelector(name, parent)
 		ResetMoneySelector(bMoneySelector)
 	end	
 	function silverInput.Event:KeyFocusGain()
+		if not bMoneySelector.enabled then self:SetKeyFocus(false) end
 		self:SetSelection(0, string.len(self:GetText()))
 	end
 	function silverPanel.contentFrame.Event:LeftClick()
@@ -93,6 +108,7 @@ function Library.LibBInterface.BMoneySelector(name, parent)
 		ResetMoneySelector(bMoneySelector)
 	end		
 	function goldInput.Event:KeyFocusGain()
+		if not bMoneySelector.enabled then self:SetKeyFocus(false) end
 		self:SetSelection(0, string.len(self:GetText()))
 	end
 	function goldPanel.contentFrame.Event:LeftClick()
@@ -124,6 +140,7 @@ function Library.LibBInterface.BMoneySelector(name, parent)
 		ResetMoneySelector(bMoneySelector)
 	end		
 	function platinumInput.Event:KeyFocusGain()
+		if not bMoneySelector.enabled then self:SetKeyFocus(false) end
 		self:SetSelection(0, string.len(self:GetText()))
 	end
 	function platinumPanel.contentFrame.Event:LeftClick()
@@ -136,9 +153,12 @@ function Library.LibBInterface.BMoneySelector(name, parent)
 	bMoneySelector.secretLabel = secretLabel
 	
 	-- Variables
+	bMoneySelector.enabled = true
 	bMoneySelector.value = 0
 	
 	-- Public
+	bMoneySelector.GetEnabled = GetEnabled
+	bMoneySelector.SetEnabled = SetEnabled
 	bMoneySelector.GetValue = GetValue
 	bMoneySelector.SetValue = SetValue
 	Library.LibBInterface.BEventHandler(bMoneySelector, { "ValueChanged" })

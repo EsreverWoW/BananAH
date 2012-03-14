@@ -66,17 +66,17 @@ local function PostingQueueCoroutine()
 				break
 			end
 
-			if #higherItems > 0 then -- Need to split an item
-				local item = higherItems[1].itemID
-				Command.Item.Split(item, searchStackSize)
-				waitingUpdate = true
-				break
-			end
-
 			if #lowerItems > 1 then -- Need to join two items
 				local firstItemSlot = lowerItems[1].slotID
 				local secondItemSlot = lowerItems[2].slotID
 				Command.Item.Move(firstItemSlot, secondItemSlot)
+				waitingUpdate = true
+				break
+			end
+
+			if #higherItems > 0 then -- Need to split an item
+				local item = higherItems[1].itemID
+				Command.Item.Split(item, searchStackSize)
 				waitingUpdate = true
 				break
 			end
@@ -104,7 +104,7 @@ local function PostItem(item, stackSize, amount, unitBidPrice, unitBuyoutPrice, 
 	local itemType = FixItemType(itemDetail.type)
 	local postTable = { itemType = itemType, stackSize = stackSize, amount = amount, unitBidPrice = unitBidPrice, unitBuyoutPrice = unitBuyoutPrice, duration = duration }
 	table.insert(postingQueue, postTable)
-	return true
+	return itemType
 end
 
 local postingCoroutine = coroutine.create(PostingQueueCoroutine)
