@@ -92,6 +92,22 @@ local function RefreshButtons(bAuctionSelector)
 	end
 end
 
+local function AuctionRightClick(self)
+	local playerName = Inspect.Unit.Detail("player").name
+	local data = self.dataValue
+	local sellerName = data and data.sellerName or nil
+	local bid = data and data.bidUnitPrice or nil
+	local buy = data and data.buyoutUnitPrice or 0
+	if playerName and sellerName and bid and self.postSelector then
+		if playerName ~= sellerName then
+			bid = bid - 1
+			buy = buy - 1
+		end	
+		self.postSelector:SetPrices(bid, buy)
+	end
+	self.Event.LeftClick(self)
+end
+
 -- Public
 local function GetItem(self)
 	return self.item
@@ -105,6 +121,10 @@ local function SetItem(self, item)
 		local auctions = nil
 		auctions, lastUpdate = BananAH.GetActiveAuctionData(item)
 		self:SetData(auctions)
+		for index, row in ipairs(self.rows) do
+			row.postSelector = self.postSelector
+			row.Event.RightClick = AuctionRightClick
+		end
 	else
 		self:SetData(nil)
 	end

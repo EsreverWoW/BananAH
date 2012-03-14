@@ -5,15 +5,6 @@ local VALUE_BORDER = 1.5
 local BORDER_HEIGHT = 8
 
 -- Private
-local function SetSelectedIndex(self, index)
-	self.selectedIndex = index
-	local value = self:GetSelectedValue()
-	if self.Event.SelectionChanged then
-		self.Event.SelectionChanged(self, self.selectedIndex, value)
-	end		
-	self.selectedText:SetText(value or "")
-end
-
 local function SetValueFrame(self, index, value)
 	self.valueFrames = self.valueFrames or {}
 	local valueFrame = self.valueFrames[index]
@@ -29,7 +20,7 @@ local function SetValueFrame(self, index, value)
 			valueFrame:SetBackgroundColor(0, 0, 0, 1)
 		end
 		function valueFrame.Event.LeftClick(valueFrame)
-			SetSelectedIndex(self, valueFrame.index)
+			self:SetSelectedIndex(valueFrame.index)
 			self.dropdownPanel:SetVisible(false)
 		end
 		
@@ -76,26 +67,39 @@ end
 local function SetValues(self, values)
 	self.values = values or {}
 	
-	for index, value in ipairs(values) do
+	for index, value in ipairs(self.values) do
 		SetValueFrame(self, index, value)
 	end
 	
 	self.valueFrames = self.valueFrames or {}
-	for index = #values + 1, #self.valueFrames do
+	for index = #self.values + 1, #self.valueFrames do
 		SetValueFrame(self, index, nil)
 	end
 	
-	self.dropdownPanel:SetHeight(#values * (VALUE_HEIGHT + VALUE_MARGIN * 2 + VALUE_BORDER * 2) + BORDER_HEIGHT)
+	self.dropdownPanel:SetHeight(#self.values * (VALUE_HEIGHT + VALUE_MARGIN * 2 + VALUE_BORDER * 2) + BORDER_HEIGHT)
 	
-	self:SetEnabled(#values > 0)
-	SetSelectedIndex(self, #values > 0 and 1 or nil)
+	self:SetEnabled(#self.values > 0)
+	self:SetSelectedIndex(#self.values > 0 and 1 or nil)
 	
 	return self.values	
 end
 
 local function GetSelectedValue(self)
 	local value = self:GetValues()[self.selectedIndex or 0]
-	return value	
+	return self.selectedIndex, value
+end
+
+local function GetSelectedIndex(self)
+	return self.selectedIndex
+end
+
+local function SetSelectedIndex(self, index)
+	self.selectedIndex = index
+	local _, value = self:GetSelectedValue()
+	self.selectedText:SetText(value or "")
+	if self.Event.SelectionChanged then
+		self.Event.SelectionChanged(self, self.selectedIndex, value)
+	end		
 end
 
 function Library.LibBInterface.BDropdown(name, parent)
@@ -134,7 +138,7 @@ function Library.LibBInterface.BDropdown(name, parent)
 	dropdownPanel:SetHeight(BORDER_HEIGHT)
 	dropdownPanel:SetLayer(bDropdown:GetLayer() + 50)
 	dropdownPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
-	dropdownPanel.borderFrame:SetAlpha(1) -- HACK
+	dropdownPanel.borderFrame:SetAlpha(1)
 	dropdownPanel:SetVisible(false)
 	bDropdown.dropdownPanel = dropdownPanel
 	
@@ -144,6 +148,8 @@ function Library.LibBInterface.BDropdown(name, parent)
 	bDropdown.GetValues = GetValues
 	bDropdown.SetValues = SetValues
 	bDropdown.GetSelectedValue = GetSelectedValue
+	bDropdown.GetSelectedIndex = GetSelectedIndex
+	bDropdown.SetSelectedIndex = SetSelectedIndex
 	Library.LibBInterface.BEventHandler(bDropdown, { "SelectionChanged" })
 	
 	return bDropdown

@@ -28,6 +28,8 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["PostingPanel/labelDurationFormat"] = "%d hours",
 	["PostingPanel/buttonUndercut"] = "Set to undercut",
 	["PostingPanel/buttonPost"] = "Post",
+	["PostingPanel/pricingModelError"] = "Using fallback pricing model...",
+	["PostingPanel/postErrorBidHigherBuy"] = "Error: Bid price higher than buyout price.",
 	
 	["PostingPanel/checkShowHidden"] = "Show hidden",
 	["PostingPanel/checkHideItem"] = "Hide this item",
@@ -51,9 +53,13 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["PostingPanel/bidErrorSeller"] = "You're the seller",
 	["PostingPanel/bidErrorHighestBidder"] = "You're the highest bidder",
 	["PostingPanel/bidErrorNotCached"] = "Need scan refresh",
-
 	["PostingPanel/itemScanStarted"] = "Scan started",
 	["PostingPanel/itemScanError"] = "Can't issue an item scan right now, try again later.",
+	
+	-- Bundled Pricing Models
+	["PricingModel/fallbackName"] = "Vendor", -- NEW
+	["PricingModel/fixedName"] = "User defined", -- NEW
+	
 }--@end-do-not-package@
 --@localization(locale="enUS", format="lua_table", handle-subnamespaces="concat", namespace-delimiter="/")@
 )

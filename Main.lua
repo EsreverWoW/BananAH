@@ -59,21 +59,24 @@ local function InitializeLayout()
 	postPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
 	
 	itemSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 5, 5)
-	itemSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "BOTTOMLEFT", 295, -5) -- 370
+	itemSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "BOTTOMLEFT", 295, -5)
 	function itemSelector.Event:ItemSelected(item, itemInfo)
 		postSelector:SetItem(item, itemInfo)
 		auctionSelector:SetItem(item)
 	end	
 	itemSelector:GetParent().itemSelector = itemSelector
 	
-	auctionSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 300, 335)
-	auctionSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "BOTTOMRIGHT", -5, -5)
-	
 	postSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 300, 5)
 	postSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -310, 330)
+	postSelector.itemSelector = itemSelector
+
+	auctionSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 300, 335)
+	auctionSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "BOTTOMRIGHT", -5, -5)
+	auctionSelector.postSelector = postSelector
 	
-	queuePanel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -300, 70)
-	queuePanel:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -5, 330)
+	queuePanel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -300, 5)
+	queuePanel:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -5, 295)
+	queuePanel:SetVisible(false)
 	
 	refreshButton:SetTexture("BananAH", "Textures/RefreshDisabled.png")
 	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -10, 5)
