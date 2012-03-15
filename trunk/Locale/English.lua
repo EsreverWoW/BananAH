@@ -56,9 +56,22 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["PostingPanel/itemScanStarted"] = "Scan started",
 	["PostingPanel/itemScanError"] = "Can't issue an item scan right now, try again later.",
 	
+	["PostingPanel/labelPostingQueueStatus"] = "Queue status:",
+	["PostingPanel/labelPostingQueueStatus0"] = "Busy",
+	["PostingPanel/labelPostingQueueStatus1"] = "Paused",
+	["PostingPanel/labelPostingQueueStatus2"] = "Empty",
+	["PostingPanel/labelPostingQueueStatus3"] = "Req. Auction House",
+	["PostingPanel/labelPostingQueueStatus4"] = "Waiting",
+	["PostingPanel/buttonShowQueue"] = "Show",
+	["PostingPanel/buttonHideQueue"] = "Hide",
+	["PostingPanel/buttonPauseQueue"] = "Pause",
+	["PostingPanel/buttonResumeQueue"] = "Resume",
+	["PostingPanel/buttonCancelQueueAll"] = "Clear",
+	["PostingPanel/buttonCancelQueueSelected"] = "Cancel",
+	
 	-- Bundled Pricing Models
-	["PricingModel/fallbackName"] = "Vendor", -- NEW
-	["PricingModel/fixedName"] = "User defined", -- NEW
+	["PricingModel/fallbackName"] = "Vendor",
+	["PricingModel/fixedName"] = "User defined",
 	
 }--@end-do-not-package@
 --@localization(locale="enUS", format="lua_table", handle-subnamespaces="concat", namespace-delimiter="/")@

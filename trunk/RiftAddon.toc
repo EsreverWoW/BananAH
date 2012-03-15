@@ -44,5 +44,6 @@ RunOnStartup =
 	"BItemSelector.lua",
 	"BAuctionSelector.lua",
 	"BPostSelector.lua",
+	"BQueueManager.lua",
 	"Main.lua",
 }
