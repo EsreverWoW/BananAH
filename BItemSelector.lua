@@ -34,7 +34,7 @@ local function ItemSelectorRenderer(name, parent)
 		self.itemTextureBackground:SetBackgroundColor(GetRarityColor(value.rarity))
 		self.itemTexture:SetTexture("Rift", value.icon)
 		self.itemNameLabel:SetText(value.name)
-		self.itemStackLabel:SetText("x" .. value.stack)
+		self.itemStackLabel:SetText("x" .. value.adjustedStack)
 		self.itemNameLabel:SetFontColor(GetRarityColor(value.rarity))
 	end
 	
@@ -197,6 +197,16 @@ function InternalInterface.UI.ItemSelector(name, parent)
 			InternalInterface.Settings.Posting.HiddenItems = InternalInterface.Settings.Posting.HiddenItems or {}
 			if InternalInterface.Settings.Posting.HiddenItems[value.fixedType] then return false end
 		end
+
+		local auctionAmount = 0
+		local postingQueue = BananAH.GetPostingQueue()
+		for index, post in ipairs(postingQueue) do
+			if post.itemType == value.fixedType then
+				auctionAmount = auctionAmount + post.amount
+			end
+		end
+		value.adjustedStack = value.stack - auctionAmount
+		if value.adjustedStack <= 0 then return false end
 		
 		return true
 	end
@@ -212,6 +222,7 @@ function InternalInterface.UI.ItemSelector(name, parent)
 	-- Late initialization
 	table.insert(Event.Item.Slot, { function(updates) bItemSelector:ResetItems() end, "BananAH", "ItemSelector.OnItemChangeSlot" })
 	table.insert(Event.Item.Update, { function(updates) bItemSelector:ResetItems() end, "BananAH", "ItemSelector.OnItemChangeUpdate" })
+	table.insert(Event.BananAH.PostingQueueChanged, { function() bItemSelector:ResetItems() end, "BananAH", "ItemSelector.OnPostingQueueChanged" })
 
 	return bItemSelector
 end

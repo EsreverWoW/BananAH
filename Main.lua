@@ -15,7 +15,7 @@ local function InitializeLayout()
 	local itemSelector = InternalInterface.UI.ItemSelector("BananAH.UI.MainWindow.PostPanel.ItemSelector", postPanel:GetContent())
 	local auctionSelector = InternalInterface.UI.AuctionSelector("BananAH.UI.MainWindow.PostPanel.AuctionSelector", postPanel:GetContent())
 	local postSelector = InternalInterface.UI.PostSelector("BananAH.UI.MainWindow.PostPanel.PostSelector", postPanel:GetContent())
-	local queuePanel = UI.CreateFrame("BDataGrid", "BananAH.UI.MainWindow.QueuePanel", postPanel:GetContent())
+	local queueManager = InternalInterface.UI.QueueManager("BananAH.UI.MainWindow.PostPanel.QueueManager", postPanel:GetContent())
 
 	local function ShowBananAH()
 		if UI.Native.Auction:GetLoaded() then
@@ -67,16 +67,16 @@ local function InitializeLayout()
 	itemSelector:GetParent().itemSelector = itemSelector
 	
 	postSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 300, 5)
-	postSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -310, 330)
+	postSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -5, 330) -- -310
 	postSelector.itemSelector = itemSelector
 
 	auctionSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 300, 335)
 	auctionSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "BOTTOMRIGHT", -5, -5)
 	auctionSelector.postSelector = postSelector
 	
-	queuePanel:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -300, 5)
-	queuePanel:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -5, 295)
-	queuePanel:SetVisible(false)
+	queueManager:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -293, 5)
+	queueManager:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -5, 74)
+	queueManager:SetLayer(postSelector:GetLayer() + 1)
 	
 	refreshButton:SetTexture("BananAH", "Textures/RefreshDisabled.png")
 	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -10, 5)

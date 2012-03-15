@@ -4,17 +4,22 @@ local FixItemType = InternalInterface.Utility.FixItemType
 
 -- AH Posting Service
 local postingQueue = {}
+local paused = false -- TODO Get initial state from settings
 local waitingUpdate = false
+local QueueChangedEvent = Utility.Event.Create("BananAH", "PostingQueueChanged")
+local QueueStatusChangedEvent = Utility.Event.Create("BananAH", "PostingQueueStatusChanged")
 
 local function PostingQueueCoroutine()
 	repeat
 		repeat
-			if waitingUpdate or #postingQueue <= 0 or not Inspect.Interaction("auction") or not Inspect.Queue.Status("global") then break end
+			if paused or waitingUpdate or #postingQueue <= 0 or not Inspect.Interaction("auction") or not Inspect.Queue.Status("global") then break end
 			local postTable = postingQueue[1]
 			local itemType = postTable.itemType
 
 			if postTable.amount <= 0 then -- This post is finished
 				table.remove(postingQueue, 1)
+				QueueChangedEvent()
+				QueueStatusChangedEvent()
 				break
 			end
 
@@ -57,12 +62,15 @@ local function PostingQueueCoroutine()
 				local money = coinDetail and coinDetail.stack or 0
 				if money < cost then -- Not enough money to post, abort
 					table.remove(postingQueue, 1)
+					QueueChangedEvent()
+					QueueStatusChangedEvent()
 					break
 				end
 
 				Command.Auction.Post(item, tim, bid, buyout)
 				postingQueue[1].amount = postingQueue[1].amount - searchStackSize
 				waitingUpdate = true
+				QueueStatusChangedEvent()
 				break
 			end
 
@@ -71,6 +79,7 @@ local function PostingQueueCoroutine()
 				local secondItemSlot = lowerItems[2].slotID
 				Command.Item.Move(firstItemSlot, secondItemSlot)
 				waitingUpdate = true
+				QueueStatusChangedEvent()
 				break
 			end
 
@@ -78,11 +87,14 @@ local function PostingQueueCoroutine()
 				local item = higherItems[1].itemID
 				Command.Item.Split(item, searchStackSize)
 				waitingUpdate = true
+				QueueStatusChangedEvent()
 				break
 			end
 
 			-- If execution reach this point, there aren't enough stacks of the item to post, abort
 			table.remove(postingQueue, 1)
+			QueueChangedEvent()
+			QueueStatusChangedEvent()
 		until true
 		coroutine.yield()
 	until false
@@ -102,22 +114,88 @@ local function PostItem(item, stackSize, amount, unitBidPrice, unitBuyoutPrice, 
 	if not ok then return false end
 	
 	local itemType = FixItemType(itemDetail.type)
-	local postTable = { itemType = itemType, stackSize = stackSize, amount = amount, unitBidPrice = unitBidPrice, unitBuyoutPrice = unitBuyoutPrice, duration = duration }
+	local postTable = 
+	{ 
+		itemType = itemType, 
+		stackSize = stackSize, 
+		amount = amount, 
+		unitBidPrice = unitBidPrice, 
+		unitBuyoutPrice = unitBuyoutPrice, 
+		duration = duration,
+	}
 	table.insert(postingQueue, postTable)
+	QueueChangedEvent()
+	QueueStatusChangedEvent()
 	return itemType
 end
 
+local function CancelPostingByIndex(index)
+	if index < 0 or index > #postingQueue then return end
+	table.remove(postingQueue, index)
+	QueueChangedEvent()
+	QueueStatusChangedEvent()
+end
+
+local function GetPostingQueue()
+	return postingQueue -- FIXME Return copy!
+end
+
+local function GetPostingQueueStatus()
+	local status = 0 -- Busy
+	if paused then status = 1 -- Paused
+	elseif #postingQueue <= 0 then status = 2 -- Empty
+	elseif not Inspect.Interaction("auction") then status = 3 -- Not at the AH
+	elseif waitingUpdate or not Inspect.Queue.Status("global") then status = 4 -- Waiting
+	end
+	
+	return status, #postingQueue
+end
+
+local function GetPostingQueuePaused()
+	return paused
+end
+
+local function SetPostingQueuePaused(pause)
+	if pause == paused then return end
+	paused = pause
+	QueueStatusChangedEvent()
+end
+
+
+--
 local postingCoroutine = coroutine.create(PostingQueueCoroutine)
 
 local function OnUpdateBegin()
 	coroutine.resume(postingCoroutine)
 end
-table.insert(Event.System.Update.Begin, { OnUpdateBegin, "BananAH", "OnUpdateBegin" })
+table.insert(Event.System.Update.Begin, { OnUpdateBegin, "BananAH", "AHPostingService.OnUpdateBegin" })
 
 local function OnWaitingUnlock()
 	waitingUpdate = false
+	QueueStatusChangedEvent() -- FIXME Check if previous waitingUpdate was true!
 end
-table.insert(Event.Item.Slot, { OnWaitingUnlock, "BananAH", "OnWaitingUnlockSlot" })
-table.insert(Event.Item.Update, { OnWaitingUnlock, "BananAH", "OnWaitingUnlockUpdate" })
+table.insert(Event.Item.Slot, { OnWaitingUnlock, "BananAH", "AHPostingService.OnWaitingUnlockSlot" })
+table.insert(Event.Item.Update, { OnWaitingUnlock, "BananAH", "AHPostingService.OnWaitingUnlockUpdate" })
 
+local function OnInteractionChanged(interaction, state)
+	if interaction == "auction" then
+		QueueStatusChangedEvent() -- FIXME Check if it has really changed
+	end
+end
+table.insert(Event.Interaction, { OnInteractionChanged, "BananAH", "AHPostingService.OnInteractionChanged" })
+
+local function OnGlobalQueueChanged(queue)
+	if queue == "global" then
+		QueueStatusChangedEvent() -- FIXME Check if it has really changed
+	end
+end
+table.insert(Event.Queue.Status, { OnGlobalQueueChanged, "BananAH", "AHPostingService.OnGlobalQueueChanged" })
+
+
+--
 _G.BananAH.PostItem = PostItem
+_G.BananAH.CancelPostingByIndex = CancelPostingByIndex
+_G.BananAH.GetPostingQueue = GetPostingQueue
+_G.BananAH.GetPostingQueueStatus = GetPostingQueueStatus
+_G.BananAH.GetPostingQueuePaused = GetPostingQueuePaused
+_G.BananAH.SetPostingQueuePaused = SetPostingQueuePaused

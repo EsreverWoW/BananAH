@@ -95,7 +95,7 @@ local function SetItem(self, item, itemInfo)
 		self.itemNameLabel:SetText(itemDetail.name)
 		self.itemNameLabel:SetFontColor(GetRarityColor(itemDetail.rarity))
 		self.itemNameLabel:SetVisible(true)
-		self.itemStackLabel:SetText(string.format(L["PostingPanel/labelItemStack"], itemInfo.stack)) -- Remember: Stack from itemInfo for the filter to be applied!
+		self.itemStackLabel:SetText(string.format(L["PostingPanel/labelItemStack"], itemInfo.adjustedStack)) -- Remember: Stack from itemInfo for the filter to be applied!
 		self.itemStackLabel:SetVisible(false) -- FIXME Stack label not properly updated :_
 		activatePostingControls = #self.pricingModelSelector:GetValues() > 0
 	else
@@ -127,6 +127,7 @@ local function SetItem(self, item, itemInfo)
 		self.bidMoneySelector:SetEnabled(true)
 		self.buyMoneySelector:SetEnabled(true)
 		self.durationSlider:SetPosition(itemConfig and itemConfig.duration or 3) -- TODO Get from config instead of 3
+		print(itemConfig and itemConfig.duration or 0)
 		self.durationSlider:SetEnabled(true)
 		self.postButton:SetEnabled(true)
 	else
@@ -232,7 +233,7 @@ function InternalInterface.UI.PostSelector(name, parent)
 	maxLabelWidth = maxLabelWidth + 15
 	
 	local pricingModelSelector = UI.CreateFrame("BDropdown", name .. ".PricingModelSelector", bPostSelector)
-	pricingModelSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -150, 95)
+	pricingModelSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -450, 95)
 	pricingModelSelector:SetPoint("CENTERLEFT", pricingModelLabel, "CENTERRIGHT", maxLabelWidth - pricingModelLabel:GetWidth(), 1)
 	function pricingModelSelector.Event:SelectionChanged(index)
 		FeedPricingModel(bPostSelector)
@@ -255,14 +256,14 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.priceMatchingLabel = priceMatchingLabel
 	
 	local stackSizeSelector = UI.CreateFrame("BSlider", name .. ".StackSizeSelector", bPostSelector)
-	stackSizeSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -5, 140)
+	stackSizeSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -305, 140)
 	stackSizeSelector:SetPoint("CENTERLEFT", stackSizeLabel, "CENTERRIGHT", maxLabelWidth - stackSizeLabel:GetWidth(), 5)
 	function stackSizeSelector.Event:PositionChanged(stackSize)
 		local itemSelector = bPostSelector.itemSelector
 		if not itemSelector then return end
 		local selectedItem, selectedInfo = itemSelector:GetSelectedItem()
 		if stackSize > 0 and selectedItem then
-			local stacks = selectedInfo.stack
+			local stacks = selectedInfo.adjustedStack -- Remember to use adjustedStack from itemSelector!
 			local maxNumberOfStacks = math.ceil(stacks / stackSize)
 			bPostSelector.stackNumberSelector:SetRange(1, maxNumberOfStacks)
 			bPostSelector.stackNumberSelector:SetPosition(maxNumberOfStacks)
@@ -273,12 +274,12 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.stackSizeSelector = stackSizeSelector
 	
 	local stackNumberSelector = UI.CreateFrame("BSlider", name .. ".StackNumberSelector", bPostSelector)
-	stackNumberSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -5, 180)
+	stackNumberSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -305, 180)
 	stackNumberSelector:SetPoint("CENTERLEFT", stackNumberLabel, "CENTERRIGHT", maxLabelWidth - stackNumberLabel:GetWidth(), 5)
 	bPostSelector.stackNumberSelector = stackNumberSelector
 
 	local bidMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".BidMoneySelector", bPostSelector)
-	bidMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -150, 216)
+	bidMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -450, 216)
 	bidMoneySelector:SetPoint("CENTERLEFT", bidLabel, "CENTERRIGHT", maxLabelWidth - bidLabel:GetWidth(), 0)
 	function bidMoneySelector.Event:ValueChanged(newValue)
 		if not self:GetEnabled() then return end
@@ -318,7 +319,7 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.bindPricesLabel = bindPricesLabel
 
 	local buyMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".BuyMoneySelector", bPostSelector)
-	buyMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -150, 256)
+	buyMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -450, 256)
 	buyMoneySelector:SetPoint("CENTERLEFT", buyLabel, "CENTERRIGHT", maxLabelWidth - buyLabel:GetWidth(), 0)
 	function buyMoneySelector.Event:ValueChanged(newValue)
 		if not self:GetEnabled() then return end
@@ -342,7 +343,7 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.buyMoneySelector = buyMoneySelector
 
 	local postButton = UI.CreateFrame("RiftButton", name .. ".PostButton", bPostSelector)
-	postButton:SetPoint("BOTTOMRIGHT", bPostSelector, "BOTTOMRIGHT", 0, 2)
+	postButton:SetPoint("BOTTOMRIGHT", bPostSelector, "BOTTOMRIGHT", -300, 2)
 	postButton:SetText(L["PostingPanel/buttonPost"])
 	postButton:SetEnabled(false)
 	function postButton.Event:LeftPress()
@@ -368,9 +369,11 @@ function InternalInterface.UI.PostSelector(name, parent)
 			return
 		end
 		
-		local amount = math.min(stackSize * stackNumber, selectedInfo.stack)  -- Remember: Stack from selectedInfo for the filter to be applied!
+		local amount = math.min(stackSize * stackNumber, selectedInfo.adjustedStack)  -- Remember: Stack from selectedInfo for the filter to be applied!
 		if amount <= 0 then return end
 		
+		local savePriceMatching = bPostSelector.priceMatchingCheck:GetChecked()
+		local saveDuration = bPostSelector.durationSlider:GetPosition()
 		local itemType = BananAH.PostItem(selectedItem, stackSize, amount, bidUnitPrice, buyUnitPrice, duration)
 		if itemType then
 			InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
@@ -378,9 +381,9 @@ function InternalInterface.UI.PostSelector(name, parent)
 			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType] =
 			{
 				pricingModel = pricingModelId,
-				priceMatching = bPostSelector.priceMatchingCheck:GetChecked(),
+				priceMatching = savePriceMatching,
 				stackSize = stackSize,
-				duration = bPostSelector.durationSlider:GetPosition(),
+				duration = saveDuration,
 			}
 			if type(pricingModel.callbackOnPost) == "function" then
 				pricingModel.callbackOnPost(selectedInfo.fixedType, bidUnitPrice, buyUnitPrice)
@@ -399,7 +402,7 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.buyPriceWarning = buyPriceWarning
 	
 	local durationTimeLabel = UI.CreateFrame("BShadowedText", name .. ".DurationTimeLabel", bPostSelector)
-	durationTimeLabel:SetPoint("BOTTOMLEFT", bPostSelector, "BOTTOMRIGHT", -250, -5)
+	durationTimeLabel:SetPoint("BOTTOMLEFT", bPostSelector, "BOTTOMRIGHT", -550, -5)
 	durationTimeLabel:SetText(string.format(L["PostingPanel/labelDurationFormat"], 48))
 	bPostSelector.durationTimeLabel = durationTimeLabel
 
