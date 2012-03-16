@@ -72,7 +72,14 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	-- Bundled Pricing Models
 	["PricingModel/fallbackName"] = "Vendor",
 	["PricingModel/fixedName"] = "User defined",
-	
+	["PricingModel/meanName"] = "Average",
+	["PricingModel/meanError"] = "Not enough data",
+	["PricingModel/stdevName"] = "Standard deviation",
+	["PricingModel/stdevError"] = "Not enough data",
+	["PricingModel/medianName"] = "Median",
+	["PricingModel/medianError"] = "Not enough data",
+	["PricingModel/interPercentileRangeName"] = "IPR",
+	["PricingModel/interPercentileRangeError"] = "Not enough data",
 }--@end-do-not-package@
 --@localization(locale="enUS", format="lua_table", handle-subnamespaces="concat", namespace-delimiter="/")@
 )

@@ -59,7 +59,7 @@ local function ResetItems(self)
 	for _, itemID in pairs(items) do repeat
 		if type(itemID) == "boolean" then break end 
 		local ok, itemDetail = pcall(Inspect.Item.Detail, itemID)
-		if not ok or itemDetail.bound then break end
+		if not ok or not itemDetail or itemDetail.bound then break end
 		
 		local fixedItemType = FixItemType(itemDetail.type)
 		itemTypeTable[fixedItemType] = itemTypeTable[fixedItemType] or { name = itemDetail.name, icon = itemDetail.icon, rarity = itemDetail.rarity, stack = 0, items = {} }
