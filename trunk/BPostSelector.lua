@@ -14,7 +14,7 @@ local function FallbackPricingModel(item, matchPrice)
 	local sellPrice = ok and itemDetail.sell or 1
 	local bid = math.floor(sellPrice * 3) -- TODO Get from config instead of 3
 	local buyout = math.floor(sellPrice * 5) -- TODO Get from config instead of 3
-	return bid, buyout
+	return bid, buyout, false
 end
 BananAH.UnregisterPricingModel(FALLBACK_PRICING_MODEL)
 BananAH.RegisterPricingModel(FALLBACK_PRICING_MODEL, L["PricingModel/fallbackName"], FallbackPricingModel)
@@ -36,7 +36,7 @@ local function FixedPricingModel(item, matchPrice)
 			buyout = savedPrices.buyout
 		end
 	end
-	return bid, buyout
+	return bid, buyout, false
 end
 local function FixedSaveConfig(itemType, bid, buyout)
 	InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
@@ -63,7 +63,7 @@ local function FeedPricingModel(self)
 	local unitBid = nil
 	local unitBuy = nil
 	if pricingFunction then 
-		unitBid, unitBuy = pricingFunction(item, usePriceMatching)
+		unitBid, unitBuy, usePriceMatching = pricingFunction(item, usePriceMatching)
 	end
 	if not unitBid then
 		print(L["PostingPanel/pricingModelError"])
@@ -71,6 +71,51 @@ local function FeedPricingModel(self)
 	else
 		if type(unitBid) == "boolean" then unitBid = self.bidMoneySelector:GetValue() end
 		if type(unitBuy) == "boolean" then unitBuy = self.buyMoneySelector:GetValue() end
+		
+		if usePriceMatching then
+			local userName = Inspect.Unit.Detail("player").name -- TODO Use all player characters
+			local matchingRange = 0.25 -- TODO Config
+			local undercutRange = 0.25 -- TODO Config
+
+			local auctions = BananAH.GetActiveAuctionData(item)
+			local bidsMatchRange = {}
+			local bidsUndercutRange = {}
+			local buysMatchRange = {}
+			local buysUndercutRange = {}
+			
+			for auctionId, auctionData in pairs(auctions) do
+				local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / unitBid)
+				if userName == auctionData.sellerName and bidRelDev <= matchingRange then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
+				if userName ~= auctionData.sellerName and bidRelDev <= undercutRange then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
+
+				local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / unitBuy) or (math.max(matchingRange, undercutRange) + 1)
+				if userName == auctionData.sellerName and buyRelDev <= matchingRange then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
+				if userName ~= auctionData.sellerName and buyRelDev <= undercutRange then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
+			end
+			
+			table.sort(bidsMatchRange)
+			table.sort(bidsUndercutRange)
+			if #bidsMatchRange > 0 then 
+				unitBid = bidsMatchRange[1]
+			elseif #bidsUndercutRange > 0 then
+				unitBid = math.max(bidsUndercutRange[1] - 1, 1)
+			else
+				unitBid = math.floor(unitBid * (1 + undercutRange))
+			end
+			
+			table.sort(buysMatchRange)
+			table.sort(buysUndercutRange)
+			if #buysMatchRange > 0 then 
+				unitBuy = buysMatchRange[1]
+			elseif #buysUndercutRange > 0 then
+				unitBuy = math.max(buysUndercutRange[1] - 1, 1)
+			else
+				unitBuy = math.floor(unitBuy * (1 + undercutRange))
+			end
+			
+			unitBid = math.min(unitBid, unitBuy)			
+		end
+		
 		self.pricesSetByModel = true
 		self.bidMoneySelector:SetValue(unitBid)
 		self.buyMoneySelector:SetValue(unitBuy)
@@ -127,7 +172,6 @@ local function SetItem(self, item, itemInfo)
 		self.bidMoneySelector:SetEnabled(true)
 		self.buyMoneySelector:SetEnabled(true)
 		self.durationSlider:SetPosition(itemConfig and itemConfig.duration or 3) -- TODO Get from config instead of 3
-		print(itemConfig and itemConfig.duration or 0)
 		self.durationSlider:SetEnabled(true)
 		self.postButton:SetEnabled(true)
 	else

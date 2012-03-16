@@ -172,6 +172,10 @@ local function GetAllAuctionData(item)
 		for normalizedItemType, itemData in pairs(auctionTable[playerFaction]) do
 			for auctionID, auctionData in pairs(itemData.auctions) do
 				auctions[auctionID] = CopyTableSimple(auctionData)
+				auctions[auctionID].bidUnitPrice = math.ceil((auctions[auctionID].bidPrice or 0) / (auctions[auctionID].stack or 1))
+				if auctions[auctionID].buyoutPrice then
+					auctions[auctionID].buyoutUnitPrice = math.ceil((auctions[auctionID].buyoutPrice or 0) / (auctions[auctionID].stack or 1))
+				end
 			end
 			lastFullScanTime = math.max(lastFullScanTime, itemData.lastFullScanTime)
 		end
