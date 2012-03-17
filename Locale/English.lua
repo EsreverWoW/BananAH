@@ -30,7 +30,14 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["PostingPanel/buttonPost"] = "Post",
 	["PostingPanel/pricingModelError"] = "Using fallback pricing model...",
 	["PostingPanel/postErrorBidHigherBuy"] = "Error: Bid price higher than buyout price.",
+	["PostingPanel/buttonAutoPostingSave"] = "Save",
+	["PostingPanel/buttonAutoPostingClear"] = "Clear",
+	["PostingPanel/buttonAutoPostingMode"] = "Auto post",
+	["PostingPanel/autoPostingErrorNoItems"] = "You don't have any item configured for auto posting. To enter auto posting configuration mode, right click on this button and configure them. To return to normal posting mode, right click on this button again.",
+	["PostingPanel/autoPostingErrorPricingModelNotFound"] = "Pricing model for %s not found.",
+	["PostingPanel/autoPostingErrorPricingModelFailed"] = "Pricing model for %s failed.",
 	
+	["PostingPanel/autoPostingOnLabel"] = "Auto posting enabled",
 	["PostingPanel/checkShowHidden"] = "Show hidden",
 	["PostingPanel/checkHideItem"] = "Hide this item",
 
