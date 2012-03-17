@@ -102,6 +102,7 @@ function InternalInterface.UI.QueueManager(name, parent)
 	
 	queueGrid:SetPoint("TOPLEFT", bQueueManager, "BOTTOMLEFT", 0, 0)
 	queueGrid:SetPoint("BOTTOMRIGHT", bQueueManager, "BOTTOMRIGHT", 0, 235)
+	queueGrid:SetLayer(1000)
 	queueGrid:SetPadding(0, 0, 0, 32)
 	queueGrid:SetHeadersVisible(false)
 	queueGrid:SetRowHeight(62)

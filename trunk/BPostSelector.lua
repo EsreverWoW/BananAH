@@ -9,7 +9,7 @@ local FALLBACK_PRICING_MODEL = "fallback"
 local FIXED_PRICING_MODEL = "fixed"
 
 -- Fallback price model
-local function FallbackPricingModel(item, matchPrice)
+local function FallbackPricingModel(item, matchPrice, auto)
 	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
 	local sellPrice = ok and itemDetail.sell or 1
 	local bid = math.floor(sellPrice * 3) -- TODO Get from config instead of 3
@@ -20,7 +20,7 @@ BananAH.UnregisterPricingModel(FALLBACK_PRICING_MODEL)
 BananAH.RegisterPricingModel(FALLBACK_PRICING_MODEL, L["PricingModel/fallbackName"], FallbackPricingModel)
 
 -- Fixed price model
-local function FixedPricingModel(item, matchPrice)
+local function FixedPricingModel(item, matchPrice, auto)
 	InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
 	InternalInterface.Settings.Posting.FixedPrices = InternalInterface.Settings.Posting.FixedPrices or {}
 
@@ -31,6 +31,9 @@ local function FixedPricingModel(item, matchPrice)
 	if ok then
 		local fixedType = FixItemType(itemDetail.type)
 		local savedPrices = InternalInterface.Settings.Posting.FixedPrices[fixedType]
+		if auto and savedPrices and savedPrices.autoPosting then
+			savedPrices = savedPrices.autoPosting
+		end
 		if savedPrices then
 			bid = savedPrices.bid
 			buyout = savedPrices.buyout
@@ -38,14 +41,33 @@ local function FixedPricingModel(item, matchPrice)
 	end
 	return bid, buyout, false
 end
-local function FixedSaveConfig(itemType, bid, buyout)
+local function FixedSaveConfig(itemType, bid, buyout, auto)
 	InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
 	InternalInterface.Settings.Posting.FixedPrices = InternalInterface.Settings.Posting.FixedPrices or {}
-	InternalInterface.Settings.Posting.FixedPrices[itemType] =
-	{
-		bid = bid,
-		buyout = buyout or 0,
-	}
+	if auto then
+		if bid then
+			if not InternalInterface.Settings.Posting.FixedPrices[itemType] then
+				InternalInterface.Settings.Posting.FixedPrices[itemType] =
+				{
+					bid = bid,
+					buyout = buyout or 0,
+				}
+			end
+			InternalInterface.Settings.Posting.FixedPrices[itemType].autoPosting =
+			{
+				bid = bid,
+				buyout = buyout or 0,
+			}
+		elseif InternalInterface.Settings.Posting.FixedPrices[itemType] then
+			InternalInterface.Settings.Posting.FixedPrices[itemType].autoPosting = nil
+		end
+	else
+		InternalInterface.Settings.Posting.FixedPrices[itemType] =
+		{
+			bid = bid,
+			buyout = buyout or 0,
+		}
+	end
 end
 BananAH.UnregisterPricingModel(FIXED_PRICING_MODEL)
 BananAH.RegisterPricingModel(FIXED_PRICING_MODEL, L["PricingModel/fixedName"], FixedPricingModel, FixedSaveConfig)
@@ -63,7 +85,7 @@ local function FeedPricingModel(self)
 	local unitBid = nil
 	local unitBuy = nil
 	if pricingFunction then 
-		unitBid, unitBuy, usePriceMatching = pricingFunction(item, usePriceMatching)
+		unitBid, unitBuy, usePriceMatching = pricingFunction(item, usePriceMatching, self.clearButton:GetVisible())
 	end
 	if not unitBid then
 		print(L["PostingPanel/pricingModelError"])
@@ -155,6 +177,8 @@ local function SetItem(self, item, itemInfo)
 		InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
 		InternalInterface.Settings.Posting.ItemConfig = InternalInterface.Settings.Posting.ItemConfig or {}
 		local itemConfig = InternalInterface.Settings.Posting.ItemConfig[itemInfo.fixedType]
+		if itemConfig and itemConfig.autoPosting and self.clearButton:GetVisible() then itemConfig = itemConfig.autoPosting end
+		
 		local pricingModelId = itemConfig and itemConfig.pricingModel
 		local pricingModelIndex = nil
 		for index, pricingModel in ipairs(self.pricingModelTable) do
@@ -170,10 +194,12 @@ local function SetItem(self, item, itemInfo)
 		self.stackSizeSelector:SetRange(1, itemDetail.stackMax or 1)
 		self.stackSizeSelector:SetPosition(itemConfig and itemConfig.stackSize or itemDetail.stackMax or 1)
 		self.bidMoneySelector:SetEnabled(true)
+		self.bindPricesCheck:SetChecked(itemConfig and itemConfig.bindPrices or false) -- TODO Get from config instead of false
 		self.buyMoneySelector:SetEnabled(true)
 		self.durationSlider:SetPosition(itemConfig and itemConfig.duration or 3) -- TODO Get from config instead of 3
 		self.durationSlider:SetEnabled(true)
 		self.postButton:SetEnabled(true)
+		self.clearButton:SetEnabled(itemConfig and InternalInterface.Settings.Posting.ItemConfig[itemInfo.fixedType].autoPosting and true or false)
 	else
 		self.pricingModelSelector:SetEnabled(false)
 		self.pricingModelSelector:SetSelectedIndex(0)
@@ -181,12 +207,14 @@ local function SetItem(self, item, itemInfo)
 		self.priceMatchingCheck:SetChecked(false)
 		self.stackSizeSelector:SetRange(0, 0)
 		self.bidMoneySelector:SetEnabled(false)
+		self.bindPricesCheck:SetChecked(false)
 		self.buyMoneySelector:SetEnabled(false)
 		self.bidMoneySelector:SetValue(0)
 		self.buyMoneySelector:SetValue(0)
 		self.durationSlider:SetPosition(3)
 		self.durationSlider:SetEnabled(false)
 		self.postButton:SetEnabled(false)
+		self.clearButton:SetEnabled(false)
 	end
 	
 	return self.item
@@ -277,7 +305,7 @@ function InternalInterface.UI.PostSelector(name, parent)
 	maxLabelWidth = maxLabelWidth + 15
 	
 	local pricingModelSelector = UI.CreateFrame("BDropdown", name .. ".PricingModelSelector", bPostSelector)
-	pricingModelSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -450, 95)
+	pricingModelSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -425, 95)
 	pricingModelSelector:SetPoint("CENTERLEFT", pricingModelLabel, "CENTERRIGHT", maxLabelWidth - pricingModelLabel:GetWidth(), 1)
 	function pricingModelSelector.Event:SelectionChanged(index)
 		FeedPricingModel(bPostSelector)
@@ -300,7 +328,7 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.priceMatchingLabel = priceMatchingLabel
 	
 	local stackSizeSelector = UI.CreateFrame("BSlider", name .. ".StackSizeSelector", bPostSelector)
-	stackSizeSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -305, 140)
+	stackSizeSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -280, 140)
 	stackSizeSelector:SetPoint("CENTERLEFT", stackSizeLabel, "CENTERRIGHT", maxLabelWidth - stackSizeLabel:GetWidth(), 5)
 	function stackSizeSelector.Event:PositionChanged(stackSize)
 		local itemSelector = bPostSelector.itemSelector
@@ -318,12 +346,12 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.stackSizeSelector = stackSizeSelector
 	
 	local stackNumberSelector = UI.CreateFrame("BSlider", name .. ".StackNumberSelector", bPostSelector)
-	stackNumberSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -305, 180)
+	stackNumberSelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -280, 180)
 	stackNumberSelector:SetPoint("CENTERLEFT", stackNumberLabel, "CENTERRIGHT", maxLabelWidth - stackNumberLabel:GetWidth(), 5)
 	bPostSelector.stackNumberSelector = stackNumberSelector
 
 	local bidMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".BidMoneySelector", bPostSelector)
-	bidMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -450, 216)
+	bidMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -425, 216)
 	bidMoneySelector:SetPoint("CENTERLEFT", bidLabel, "CENTERRIGHT", maxLabelWidth - bidLabel:GetWidth(), 0)
 	function bidMoneySelector.Event:ValueChanged(newValue)
 		if not self:GetEnabled() then return end
@@ -352,6 +380,8 @@ function InternalInterface.UI.PostSelector(name, parent)
 			bPostSelector.bidMoneySelector:SetValue(maxPrice)
 			bPostSelector.buyMoneySelector:SetValue(maxPrice)
 			bPostSelector.pricesSetByModel = nil
+		elseif bPostSelector.pricingModelSelector:GetSelectedIndex() ~= bPostSelector.pricingModelTable.fixedPricingModel then
+			FeedPricingModel(bPostSelector)
 		end
 	end
 	bPostSelector.bindPricesCheck = bindPricesCheck
@@ -363,7 +393,7 @@ function InternalInterface.UI.PostSelector(name, parent)
 	bPostSelector.bindPricesLabel = bindPricesLabel
 
 	local buyMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".BuyMoneySelector", bPostSelector)
-	buyMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -450, 256)
+	buyMoneySelector:SetPoint("TOPRIGHT", bPostSelector, "TOPRIGHT", -425, 256)
 	buyMoneySelector:SetPoint("CENTERLEFT", buyLabel, "CENTERRIGHT", maxLabelWidth - buyLabel:GetWidth(), 0)
 	function buyMoneySelector.Event:ValueChanged(newValue)
 		if not self:GetEnabled() then return end
@@ -386,8 +416,17 @@ function InternalInterface.UI.PostSelector(name, parent)
 	end
 	bPostSelector.buyMoneySelector = buyMoneySelector
 
+	local buyPriceWarning = UI.CreateFrame("BShadowedText", name .. ".BuyPriceWarning", bPostSelector)
+	buyPriceWarning:SetFontSize(14)
+	buyPriceWarning:SetFontColor(1, 0.25, 0, 1)
+	buyPriceWarning:SetShadowColor(0.05, 0, 0.1, 1)
+	buyPriceWarning:SetText(L["PostingPanel/buyWarningLowerSeller"])
+	buyPriceWarning:SetPoint("CENTERLEFT", buyMoneySelector, "CENTERRIGHT", 15, 0)
+	buyPriceWarning:SetVisible(false)
+	bPostSelector.buyPriceWarning = buyPriceWarning	
+	
 	local postButton = UI.CreateFrame("RiftButton", name .. ".PostButton", bPostSelector)
-	postButton:SetPoint("BOTTOMRIGHT", bPostSelector, "BOTTOMRIGHT", -300, 2)
+	postButton:SetPoint("BOTTOMRIGHT", bPostSelector, "BOTTOMRIGHT", -275, 2)
 	postButton:SetText(L["PostingPanel/buttonPost"])
 	postButton:SetEnabled(false)
 	function postButton.Event:LeftPress()
@@ -396,14 +435,19 @@ function InternalInterface.UI.PostSelector(name, parent)
 		local selectedItem, selectedInfo = itemSelector:GetSelectedItem()
 		if not selectedItem or not selectedInfo then return end
 		
+		local autoPosting = bPostSelector.clearButton:GetVisible()
+		
 		local pricingModelIndex = bPostSelector.pricingModelSelector:GetSelectedIndex()
 		local pricingModel = bPostSelector.pricingModelTable[pricingModelIndex or 0]
 		local pricingModelId = pricingModel and pricingModel.pricingModelId or nil
+		local savePriceMatching = bPostSelector.priceMatchingCheck:GetChecked()
 		local stackSize = bPostSelector.stackSizeSelector:GetPosition()
 		local stackNumber = bPostSelector.stackNumberSelector:GetPosition()
 		local bidUnitPrice = bPostSelector.bidMoneySelector:GetValue()
+		local saveBindPrices = bPostSelector.bindPricesCheck:GetChecked()
 		local buyUnitPrice = bPostSelector.buyMoneySelector:GetValue()
-		local duration = 6 * 2 ^ bPostSelector.durationSlider:GetPosition()
+		local saveDuration = bPostSelector.durationSlider:GetPosition()
+		local duration = 6 * 2 ^ saveDuration
 		
 		if not pricingModelId or stackSize <= 0 or stackNumber <= 0 or bidUnitPrice <= 0 then return end
 		if buyUnitPrice <= 0 then 
@@ -415,35 +459,38 @@ function InternalInterface.UI.PostSelector(name, parent)
 		
 		local amount = math.min(stackSize * stackNumber, selectedInfo.adjustedStack)  -- Remember: Stack from selectedInfo for the filter to be applied!
 		if amount <= 0 then return end
-		
-		local savePriceMatching = bPostSelector.priceMatchingCheck:GetChecked()
-		local saveDuration = bPostSelector.durationSlider:GetPosition()
-		local itemType = BananAH.PostItem(selectedItem, stackSize, amount, bidUnitPrice, buyUnitPrice, duration)
-		if itemType then
-			InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
-			InternalInterface.Settings.Posting.ItemConfig = InternalInterface.Settings.Posting.ItemConfig or {}
-			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType] =
+
+		InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
+		InternalInterface.Settings.Posting.ItemConfig = InternalInterface.Settings.Posting.ItemConfig or {}
+		InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType] = InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType] or {}
+		if not autoPosting or not InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].pricingModel then
+			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].pricingModel = pricingModelId
+			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].priceMatching = savePriceMatching
+			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].stackSize = stackSize
+			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].bindPrices = saveBindPrices
+			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].duration = saveDuration
+		end
+		if autoPosting then
+			InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].autoPosting =
 			{
 				pricingModel = pricingModelId,
 				priceMatching = savePriceMatching,
 				stackSize = stackSize,
+				bindPrices = saveBindPrices,
 				duration = saveDuration,
 			}
-			if type(pricingModel.callbackOnPost) == "function" then
-				pricingModel.callbackOnPost(selectedInfo.fixedType, bidUnitPrice, buyUnitPrice)
-			end
+		end
+		if type(pricingModel.callbackOnPost) == "function" then
+			pricingModel.callbackOnPost(selectedInfo.fixedType, bidUnitPrice, buyUnitPrice, autoPosting)
+		end
+		if autoPosting then
+			itemSelector:ResetItems()
+			bPostSelector:SetItem(selectedItem, selectedInfo)
+		else
+			BananAH.PostItem(selectedItem, stackSize, amount, bidUnitPrice, buyUnitPrice, duration)
 		end
 	end
 	bPostSelector.postButton = postButton
-
-	local buyPriceWarning = UI.CreateFrame("BShadowedText", name .. ".BuyPriceWarning", bPostSelector)
-	buyPriceWarning:SetFontSize(14)
-	buyPriceWarning:SetFontColor(1, 0.25, 0, 1)
-	buyPriceWarning:SetShadowColor(0.05, 0, 0.1, 1)
-	buyPriceWarning:SetText(L["PostingPanel/buyWarningLowerSeller"])
-	buyPriceWarning:SetPoint("BOTTOMCENTER", postButton, "TOPCENTER", 0, -12)
-	buyPriceWarning:SetVisible(false)
-	bPostSelector.buyPriceWarning = buyPriceWarning
 	
 	local durationTimeLabel = UI.CreateFrame("BShadowedText", name .. ".DurationTimeLabel", bPostSelector)
 	durationTimeLabel:SetPoint("BOTTOMLEFT", bPostSelector, "BOTTOMRIGHT", -550, -5)
@@ -460,6 +507,177 @@ function InternalInterface.UI.PostSelector(name, parent)
 		durationTimeLabel:SetText(string.format(L["PostingPanel/labelDurationFormat"], 6 * 2 ^ position))
 	end
 	bPostSelector.durationSlider = durationSlider
+
+	local autoPostButton = UI.CreateFrame("RiftButton", name .. ".AutoPostButton", bPostSelector)
+	autoPostButton:SetPoint("BOTTOMRIGHT", bPostSelector, "BOTTOMRIGHT", -5, 2)
+	autoPostButton:SetText(L["PostingPanel/buttonAutoPostingMode"])
+	function autoPostButton.Event:RightClick()
+		local autoPostEditingMode = not bPostSelector.clearButton:GetVisible()
+		bPostSelector.clearButton:SetVisible(autoPostEditingMode)
+		postButton:SetText(autoPostEditingMode and L["PostingPanel/buttonAutoPostingSave"] or L["PostingPanel/buttonPost"])
+
+		local itemSelector = bPostSelector.itemSelector
+		if not itemSelector then return end
+		local selectedItem, selectedInfo = itemSelector:GetSelectedItem()
+		if not selectedItem or not selectedInfo then return end
+		bPostSelector:SetItem(selectedItem, selectedInfo)
+	end
+	function autoPostButton.Event:LeftClick()
+		-- 1. Get all items
+		local slot = Utility.Item.Slot.Inventory()
+		local items = Inspect.Item.List(slot)
+		
+		local itemTypeTable = {}
+		for _, itemID in pairs(items) do repeat
+			if type(itemID) == "boolean" then break end 
+			local ok, itemDetail = pcall(Inspect.Item.Detail, itemID)
+			if not ok or not itemDetail or itemDetail.bound then break end
+			
+			local fixedItemType = FixItemType(itemDetail.type)
+			itemTypeTable[fixedItemType] = itemTypeTable[fixedItemType] or { name = itemDetail.name, stack = 0, referenceItem = itemID, }
+			itemTypeTable[fixedItemType].stack = itemTypeTable[fixedItemType].stack + (itemDetail.stack or 1)
+		until true end
+
+		-- 2. Filter out those without autoPosting configuration or that are already queued
+		local remainingItems = false
+
+		local postingAmounts = {}
+		local postingQueue = BananAH.GetPostingQueue()
+		for index, post in ipairs(postingQueue) do
+			postingAmounts[post.itemType] = (postingAmounts[post.itemType] or 0) + post.amount
+		end
+
+		InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
+		InternalInterface.Settings.Posting.ItemConfig = InternalInterface.Settings.Posting.ItemConfig or {}
+
+		for itemType, itemData in pairs(itemTypeTable) do
+			if not InternalInterface.Settings.Posting.ItemConfig[itemType] or not InternalInterface.Settings.Posting.ItemConfig[itemType].autoPosting then
+				itemTypeTable[itemType] = nil
+			else
+				itemTypeTable[itemType].autoPosting = InternalInterface.Settings.Posting.ItemConfig[itemType].autoPosting
+				itemTypeTable[itemType].stack = itemTypeTable[itemType].stack - (postingAmounts[itemType] or 0)
+				if itemTypeTable[itemType].stack <= 0 then
+					itemTypeTable[itemType] = nil
+				else
+					remainingItems = true 
+				end
+			end
+		end
+		
+		-- 2.1. If there are no items remaining, display message and end execution
+		if not remainingItems then
+			print(L["PostingPanel/autoPostingErrorNoItems"])
+			return
+		end
+		
+		-- 3. Apply pricing model & price matching to the items. 
+		for itemType, itemData in pairs(itemTypeTable) do repeat
+			local pricingModelId = itemData.autoPosting.pricingModel
+			local pricingModelIndex = nil
+			for index, pricingModel in ipairs(bPostSelector.pricingModelTable) do
+				if pricingModelId == pricingModel.pricingModelId then
+					pricingModelIndex = index
+					break
+				end
+			end
+			if not pricingModelIndex then
+				itemTypeTable[itemType] = nil
+				print(string.format(L["PostingPanel/autoPostingErrorPricingModelNotFound"], itemData.name))
+				break
+			end
+
+			local pricingFunction = bPostSelector.pricingModelTable[pricingModelIndex].pricingFunction
+			local unitBid, unitBuy, usePriceMatching = pricingFunction(itemData.referenceItem, itemData.autoPosting.priceMatching, true)
+			if not unitBid then
+				itemTypeTable[itemType] = nil
+				print(string.format(L["PostingPanel/autoPostingErrorPricingModelFailed"], itemData.name))
+				break
+			end
+			
+			if usePriceMatching then
+				local userName = Inspect.Unit.Detail("player").name -- TODO Use all player characters
+				local matchingRange = 0.25 -- TODO Config
+				local undercutRange = 0.25 -- TODO Config
+
+				local auctions = BananAH.GetActiveAuctionData(itemData.referenceItem)
+				local bidsMatchRange = {}
+				local bidsUndercutRange = {}
+				local buysMatchRange = {}
+				local buysUndercutRange = {}
+			
+				for auctionId, auctionData in pairs(auctions) do
+					local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / unitBid)
+					if userName == auctionData.sellerName and bidRelDev <= matchingRange then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
+					if userName ~= auctionData.sellerName and bidRelDev <= undercutRange then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
+
+					local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / unitBuy) or (math.max(matchingRange, undercutRange) + 1)
+					if userName == auctionData.sellerName and buyRelDev <= matchingRange then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
+					if userName ~= auctionData.sellerName and buyRelDev <= undercutRange then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
+				end
+			
+				table.sort(bidsMatchRange)
+				table.sort(bidsUndercutRange)
+				if #bidsMatchRange > 0 then 
+					unitBid = bidsMatchRange[1]
+				elseif #bidsUndercutRange > 0 then
+					unitBid = math.max(bidsUndercutRange[1] - 1, 1)
+				else
+					unitBid = math.floor(unitBid * (1 + undercutRange))
+				end
+			
+				table.sort(buysMatchRange)
+				table.sort(buysUndercutRange)
+				if #buysMatchRange > 0 then 
+					unitBuy = buysMatchRange[1]
+				elseif #buysUndercutRange > 0 then
+					unitBuy = math.max(buysUndercutRange[1] - 1, 1)
+				else
+					unitBuy = math.floor(unitBuy * (1 + undercutRange))
+				end
+			
+				unitBid = math.min(unitBid, unitBuy)			
+			end
+			
+			if itemData.bindPrices then unitBid = unitBuy end
+			itemTypeTable[itemType].unitBid = unitBid
+			itemTypeTable[itemType].unitBuy = unitBuy
+		until true end
+		
+		-- 4. Post the remaining items
+		for _, itemData in pairs(itemTypeTable) do
+			BananAH.PostItem(itemData.referenceItem, itemData.autoPosting.stackSize, itemData.stack, itemData.unitBid, itemData.unitBuy, 6 * 2 ^ itemData.autoPosting.duration)	
+		end
+	end
+	bPostSelector.autoPostButton = autoPostButton
+
+	local clearButton = UI.CreateFrame("RiftButton", name .. ".ClearButton", bPostSelector)
+	clearButton:SetPoint("CENTERRIGHT", autoPostButton, "CENTERLEFT", 0, 0)
+	clearButton:SetText(L["PostingPanel/buttonAutoPostingClear"])
+	clearButton:SetVisible(false)
+	clearButton:SetEnabled(false)
+	function clearButton.Event:LeftPress()
+		local itemSelector = bPostSelector.itemSelector
+		if not itemSelector then return end
+		local selectedItem, selectedInfo = itemSelector:GetSelectedItem()
+		if not selectedItem or not selectedInfo then return end
+
+		local pricingModelId = InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].autoPosting.pricingModel
+		local pricingModelCallback = nil
+		for index, pricingModel in ipairs(bPostSelector.pricingModelTable) do
+			if pricingModelId == pricingModel.pricingModelId then
+				pricingModelCallback = pricingModel.callbackOnPost
+				break
+			end
+		end
+		if type(pricingModelCallback) == "function" then
+			pricingModelCallback(selectedInfo.fixedType, nil, nil, true)
+		end		
+		
+		InternalInterface.Settings.Posting.ItemConfig[selectedInfo.fixedType].autoPosting = nil
+		itemSelector:ResetItems()
+		bPostSelector:SetItem(selectedItem, selectedInfo)
+	end
+	bPostSelector.clearButton = clearButton
 	
 	-- Public
 	bPostSelector.GetItem = GetItem

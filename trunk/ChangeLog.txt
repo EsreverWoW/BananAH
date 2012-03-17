@@ -1,3 +1,6 @@
+	Alpha r24
+- Added auto posting (aka. Batch posting) functionality
+	
 	Alpha r23
 - Added statistical pricing models (Avg, StdDev, Median, IPR)
 - Fixed (I hope) the crafting bug
@@ -8,9 +11,11 @@
 
 	Alpha r21
 - Improved posting functionality
+- Added "undercut on right click" to the auction panel
 - Added basic pricing models
 
 	Alpha r20
+- Added item panel filtering functionality
 - Dropped undercut functionality
 
 	Alpha r19

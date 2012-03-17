@@ -27,7 +27,13 @@ local function ItemSelectorRenderer(name, parent)
 	
 	local itemStackLabel = UI.CreateFrame("Text", name .. ".ItemStackLabel", itemSelectorCell)
 	itemStackLabel:SetPoint("BOTTOMRIGHT", itemSelectorCell, "BOTTOMRIGHT", -4, -4)
-	itemSelectorCell.itemStackLabel = itemStackLabel	
+	itemSelectorCell.itemStackLabel = itemStackLabel
+	
+	local autoPostingLabel = UI.CreateFrame("Text", name .. ".AutoPostingLabel", itemSelectorCell)
+	autoPostingLabel:SetPoint("BOTTOMLEFT", itemSelectorCell, "BOTTOMLEFT", 58, -4)
+	autoPostingLabel:SetFontColor(1, 0.75, 0.75, 1)
+	autoPostingLabel:SetText(L["PostingPanel/autoPostingOnLabel"])
+	itemSelectorCell.autoPostingLabel = autoPostingLabel
 	
 	function itemSelectorCell:SetValue(key, value, width, extra)
 		self:SetWidth(width)
@@ -36,6 +42,11 @@ local function ItemSelectorRenderer(name, parent)
 		self.itemNameLabel:SetText(value.name)
 		self.itemStackLabel:SetText("x" .. value.adjustedStack)
 		self.itemNameLabel:SetFontColor(GetRarityColor(value.rarity))
+		
+		InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
+		InternalInterface.Settings.Posting.ItemConfig = InternalInterface.Settings.Posting.ItemConfig or {}
+		local savedConfig = InternalInterface.Settings.Posting.ItemConfig[value.fixedType]
+		self.autoPostingLabel:SetVisible(savedConfig and savedConfig.autoPosting and true or false)
 	end
 	
 	return itemSelectorCell

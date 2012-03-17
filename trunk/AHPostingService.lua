@@ -113,10 +113,9 @@ local function PostItem(item, stackSize, amount, unitBidPrice, unitBuyoutPrice, 
 	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
 	if not ok then return false end
 	
-	local itemType = FixItemType(itemDetail.type)
 	local postTable = 
 	{ 
-		itemType = itemType, 
+		itemType = FixItemType(itemDetail.type), 
 		stackSize = stackSize, 
 		amount = amount, 
 		unitBidPrice = unitBidPrice, 
@@ -126,7 +125,7 @@ local function PostItem(item, stackSize, amount, unitBidPrice, unitBuyoutPrice, 
 	table.insert(postingQueue, postTable)
 	QueueChangedEvent()
 	QueueStatusChangedEvent()
-	return itemType
+	return true
 end
 
 local function CancelPostingByIndex(index)
