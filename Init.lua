@@ -18,11 +18,6 @@ local function NormalizeItemType(itemType, rarity, includePowerLevels, includeRu
 	return normalizedType
 end
 
-local function GetDateString(value)
-	if type(value) ~= "number" then value = 0 end
-	return os.date("%a %X", value)
-end
-
 local function GetRarityColor(rarity)
 	if     rarity == "sellable"     then return 0.34375, 0.34375, 0.34375, 1
 	elseif rarity == "uncommon"     then return 0,       0.797,   0,       1
@@ -48,7 +43,6 @@ InternalInterface = InternalInterface or {}
 InternalInterface.Utility = InternalInterface.Utility or {}
 InternalInterface.Utility.FixItemType = FixItemType
 InternalInterface.Utility.NormalizeItemType = NormalizeItemType
-InternalInterface.Utility.GetDateString = GetDateString
 InternalInterface.Utility.GetRarityColor = GetRarityColor
 InternalInterface.Utility.CopyTableSimple = CopyTableSimple
 

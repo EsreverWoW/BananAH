@@ -13,6 +13,9 @@ local fallbackConfigFrame = nil
 local function FallbackConfig(parent)
 	if fallbackConfigFrame then return fallbackConfigFrame end
 
+	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
+	InternalInterface.Settings.Config.PricingModels = InternalInterface.Settings.Config.PricingModels or {}
+	
 	fallbackConfigFrame = UI.CreateFrame("Frame", parent:GetName() .. ".FallbackPricingModelConfig", parent)
 
 	local bidMultiplierText = UI.CreateFrame("Text", fallbackConfigFrame:GetName() .. ".BidMultiplierText", fallbackConfigFrame)
@@ -34,11 +37,21 @@ local function FallbackConfig(parent)
 	
 	bidMultiplierSlider:SetPoint("CENTERLEFT", bidMultiplierText, "CENTERRIGHT", 20 + maxWidth - bidMultiplierText:GetWidth(), 8)	
 	bidMultiplierSlider:SetWidth(300)
-	bidMultiplierSlider:SetRange(0, 25)
+	bidMultiplierSlider:SetRange(1, 25)
+	bidMultiplierSlider:SetPosition(InternalInterface.Settings.Config.PricingModels.fallbackBidMultiplier or 3)
 
 	buyMultiplierSlider:SetPoint("CENTERLEFT", buyMultiplierText, "CENTERRIGHT", 20 + maxWidth - buyMultiplierText:GetWidth(), 8)	
 	buyMultiplierSlider:SetWidth(300)
-	buyMultiplierSlider:SetRange(0, 25)
+	buyMultiplierSlider:SetRange(1, 25)
+	buyMultiplierSlider:SetPosition(InternalInterface.Settings.Config.PricingModels.fallbackBuyMultiplier or 5)
+	
+	function bidMultiplierSlider.Event:PositionChanged(position)
+		InternalInterface.Settings.Config.PricingModels.fallbackBidMultiplier = position
+	end
+	
+	function buyMultiplierSlider.Event:PositionChanged(position)
+		InternalInterface.Settings.Config.PricingModels.fallbackBuyMultiplier = position
+	end
 	
 	return fallbackConfigFrame
 end
@@ -46,9 +59,9 @@ end
 local function FallbackPricingModel(item, matchPrice, auto)
 	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
 	local sellPrice = ok and itemDetail.sell or 1
-	local bid = math.floor(sellPrice * 3) -- TODO Get from config instead of 3
-	local buyout = math.floor(sellPrice * 5) -- TODO Get from config instead of 5
-	return bid, buyout, false
+	local bid = math.floor(sellPrice * (InternalInterface.Settings.Config.PricingModels.fallbackBidMultiplier or 3))
+	local buyout = math.floor(sellPrice * (InternalInterface.Settings.Config.PricingModels.fallbackBuyMultiplier or 5))
+	return math.min(bid, buyout), buyout, false
 end
 BananAH.UnregisterPricingModel(FALLBACK_PRICING_MODEL)
 BananAH.RegisterPricingModel(FALLBACK_PRICING_MODEL, L["PricingModel/fallbackName"], FallbackPricingModel, nil, FallbackConfig)
@@ -109,8 +122,8 @@ BananAH.RegisterPricingModel(FIXED_PRICING_MODEL, L["PricingModel/fixedName"], F
 -- Private
 local function ApplyPriceMatching(item, unitBid, unitBuy)
 	local userName = Inspect.Unit.Detail("player").name -- TODO Use all player characters
-	local matchingRange = 0.25 -- TODO Config
-	local undercutRange = 0.25 -- TODO Config
+	local matchingRange = (InternalInterface.Settings.Config.selfMatcherRange or 25) / 100
+	local undercutRange = (InternalInterface.Settings.Config.competitionUndercutterRange or 25) / 100
 
 	local auctions = BananAH.GetActiveAuctionData(item)
 	local bidsMatchRange = {}
@@ -120,12 +133,12 @@ local function ApplyPriceMatching(item, unitBid, unitBuy)
 
 	for auctionId, auctionData in pairs(auctions) do
 		local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / unitBid)
-		if userName == auctionData.sellerName and bidRelDev <= matchingRange then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
-		if userName ~= auctionData.sellerName and bidRelDev <= undercutRange then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
+		if userName == auctionData.sellerName and bidRelDev <= matchingRange and matchingRange > 0 then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
+		if userName ~= auctionData.sellerName and bidRelDev <= undercutRange and undercutRange > 0 then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
 
 		local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / unitBuy) or (math.max(matchingRange, undercutRange) + 1)
-		if userName == auctionData.sellerName and buyRelDev <= matchingRange then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
-		if userName ~= auctionData.sellerName and buyRelDev <= undercutRange then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
+		if userName == auctionData.sellerName and buyRelDev <= matchingRange and matchingRange > 0 then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
+		if userName ~= auctionData.sellerName and buyRelDev <= undercutRange and undercutRange > 0 then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
 	end
 
 	table.sort(bidsMatchRange)
@@ -229,13 +242,17 @@ local function SetItem(self, item, itemInfo)
 		self.pricingModelSelector:SetEnabled(true)
 		self.pricingModelSelector:SetSelectedIndex(pricingModelIndex or self.pricingModelTable.defaultPricingModel)
 		self.priceMatchingCheck:SetEnabled(true)
-		self.priceMatchingCheck:SetChecked(itemConfig and itemConfig.priceMatching or false) -- TODO Get from config instead of false
+		local usePriceMatching = itemConfig and itemConfig.priceMatching
+		if usePriceMatching == nil then usePriceMatching = InternalInterface.Settings.Config.defaultPriceMatching end
+		self.priceMatchingCheck:SetChecked(usePriceMatching or false)
 		self.stackSizeSelector:SetRange(1, itemDetail.stackMax or 1)
 		self.stackSizeSelector:SetPosition(itemConfig and itemConfig.stackSize or itemDetail.stackMax or 1)
 		self.bidMoneySelector:SetEnabled(true)
-		self.bindPricesCheck:SetChecked(itemConfig and itemConfig.bindPrices or false) -- TODO Get from config instead of false
+		local bindPrices = itemConfig and itemConfig.bindPrices
+		if bindPrices == nil then bindPrices = InternalInterface.Settings.Config.defaultBindPrices end
+		self.bindPricesCheck:SetChecked(bindPrices or false)
 		self.buyMoneySelector:SetEnabled(true)
-		self.durationSlider:SetPosition(itemConfig and itemConfig.duration or 3) -- TODO Get from config instead of 3
+		self.durationSlider:SetPosition(itemConfig and itemConfig.duration or InternalInterface.Settings.Config.defaultDuration or 3)
 		self.durationSlider:SetEnabled(true)
 		self.postButton:SetEnabled(true)
 		self.clearButton:SetEnabled(itemConfig and InternalInterface.Settings.Posting.ItemConfig[itemInfo.fixedType].autoPosting and true or false)
@@ -266,6 +283,8 @@ end
 
 function InternalInterface.UI.PostSelector(name, parent)
 	local bPostSelector = UI.CreateFrame("Frame", name, parent)
+
+	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
 
 	local itemTexturePanel = UI.CreateFrame("BPanel", name .. ".ItemTexturePanel", bPostSelector)
 	itemTexturePanel:SetPoint("TOPLEFT", bPostSelector, "TOPLEFT", 0, 0)
@@ -688,11 +707,14 @@ function InternalInterface.UI.PostSelector(name, parent)
 			if id == FIXED_PRICING_MODEL then
 				bPostSelector.pricingModelTable.fixedPricingModel = #bPostSelector.pricingModelTable
 			end
-			if id == FALLBACK_PRICING_MODEL then -- TODO Get from config instead of fallback
+			if id == (InternalInterface.Settings.Config.defaultPricingModel or FALLBACK_PRICING_MODEL) then
 				bPostSelector.pricingModelTable.defaultPricingModel = #bPostSelector.pricingModelTable
 			end
 		end
 		if bPostSelector.pricingModelTable.fallbackPricingModel and bPostSelector.pricingModelTable.fixedPricingModel then
+			if not bPostSelector.pricingModelTable.defaultPricingModel then
+				bPostSelector.pricingModelTable.defaultPricingModel = bPostSelector.pricingModelTable.fallbackPricingModel
+			end
 			bPostSelector.pricingModelSelector:SetValues(pricingModelNames)
 		else
 			bPostSelector.pricingModelSelector:SetValues(nil)

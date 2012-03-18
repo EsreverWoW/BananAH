@@ -7,14 +7,13 @@ local DAY_LENGTH = 86400
 local PRICING_MODEL_ID = "stdev"
 local PRICING_MODEL_NAME = L["PricingModel/stdevName"]
 
-local NUMBER_OF_DAYS = 3 -- TODO Get from config
-local MAX_DEVIATION = 1.5 -- TODO Get from config
-local WEIGHTED = true -- TODO Get from config
-
 local configFrame = nil
 local function ConfigFrame(parent)
 	if configFrame then return configFrame end
 
+	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
+	InternalInterface.Settings.Config.PricingModels = InternalInterface.Settings.Config.PricingModels or {}
+	
 	configFrame = UI.CreateFrame("Frame", parent:GetName() .. ".StandardDeviationPricingModelConfig", parent)
 
 	local weightedCheck = UI.CreateFrame("RiftCheckbox", configFrame:GetName() .. ".WeightedCheck", configFrame)
@@ -27,6 +26,7 @@ local function ConfigFrame(parent)
 	configFrame:SetVisible(false)
 	
 	weightedCheck:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, 10)
+	weightedCheck:SetChecked(InternalInterface.Settings.Config.PricingModels.stdevWeight or false)
 	
 	weightedText:SetPoint("CENTERLEFT", weightedCheck, "CENTERRIGHT", 5, 0)
 	weightedText:SetFontSize(14)
@@ -45,16 +45,34 @@ local function ConfigFrame(parent)
 	daysSlider:SetPoint("CENTERLEFT", daysText, "CENTERRIGHT", 20 + maxWidth - daysText:GetWidth(), 8)	
 	daysSlider:SetWidth(300)
 	daysSlider:SetRange(0, 30)
+	daysSlider:SetPosition(InternalInterface.Settings.Config.PricingModels.stdevDays or 3)
 
 	deviationSlider:SetPoint("CENTERLEFT", deviationText, "CENTERRIGHT", 20 + maxWidth - deviationText:GetWidth(), 8)	
 	deviationSlider:SetWidth(300)
 	deviationSlider:SetRange(0, 100)
+	deviationSlider:SetPosition(InternalInterface.Settings.Config.PricingModels.stdevDeviation or 50)
+
+	function weightedCheck.Event:CheckboxChange()
+		InternalInterface.Settings.Config.PricingModels.stdevWeight = self:GetChecked()
+	end
+	
+	function daysSlider.Event:PositionChanged(position)
+		InternalInterface.Settings.Config.PricingModels.stdevDays = position
+	end
+	
+	function deviationSlider.Event:PositionChanged(position)
+		InternalInterface.Settings.Config.PricingModels.stdevDeviation = position
+	end
+	
 	
 	return configFrame
 end
 
 local function PricingModel(item, matchPrice)
-	local minTime = os.time() - DAY_LENGTH * NUMBER_OF_DAYS
+	local weighted = InternalInterface.Settings.Config.PricingModels.stdevWeight or false
+	local days = InternalInterface.Settings.Config.PricingModels.stdevDays or 3
+	local deviation = 1 + (InternalInterface.Settings.Config.PricingModels.stdevDeviation or 50) / 100
+	local minTime = os.time() - DAY_LENGTH * days
 	
 	local bidW = 0
 	local bidA = 0
@@ -68,8 +86,8 @@ local function PricingModel(item, matchPrice)
 	
 	local auctions = BananAH.GetAllAuctionData(item)
 	for auctionId, auctionData in pairs(auctions) do
-		if auctionData.lastSeenTime >= minTime then
-			local weight = WEIGHTED and auctionData.stack or 1
+		if auctionData.lastSeenTime >= minTime or (days <= 0 and auctionData.removedBeforeExpiration == nil) then
+			local weight = weighted and auctionData.stack or 1
 
 			local pBidA = bidA
 			bidW = bidW + weight
@@ -95,10 +113,10 @@ local function PricingModel(item, matchPrice)
 	bidW, bidA, bidT, bidQ = 0, bidT / bidW, 0, bidQ / bidW
 	buyW, buyA, buyT, buyQ = 0, buyT / buyW, 0, buyQ / buyW
 	
-	local maxDevSquared = MAX_DEVIATION * MAX_DEVIATION
+	local maxDevSquared = deviation * deviation
 	for auctionId, auctionData in pairs(auctions) do
-		if auctionData.lastSeenTime >= minTime then
-			local weight = WEIGHTED and auctionData.stack or 1
+		if auctionData.lastSeenTime >= minTime or (days <= 0 and auctionData.removedBeforeExpiration == nil) then
+			local weight = weighted and auctionData.stack or 1
 
 			local bidD = auctionData.bidUnitPrice - bidA
 			if bidD * bidD <= bidQ * maxDevSquared then

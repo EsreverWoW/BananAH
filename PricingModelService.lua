@@ -22,7 +22,7 @@ local function UnregisterPricingModel(id)
 	if pricingModels[id] then
 		pricingModels[id] = nil
 		PricingModelRemovedEvent(id)
-		return false
+		return true
 	end
 	return false
 end

@@ -3,8 +3,6 @@ local _, InternalInterface = ...
 local FixItemType = InternalInterface.Utility.FixItemType
 local L = InternalInterface.Localization.L
 
-local useMapIcon = true -- TODO Get from config
-
 local function InitializeLayout()
 	local mapContext = UI.CreateContext("BananAH.UI.MapContext")
 	local mapIcon = UI.CreateFrame("Texture", "BananAH.UI.MapIcon", mapContext)
@@ -28,9 +26,12 @@ local function InitializeLayout()
 	local configText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.ConfigTab.Text", configTab:GetContent())
 	local configFrame = InternalInterface.UI.ConfigFrame("BananAH.UI.MainWindow.ConfigFrame", mainPanel:GetContent())
 
+	mapContext:SetStrata("hud")
+
+	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
 	mapIcon:SetPoint("CENTER", UI.Native.MapMini, "BOTTOMLEFT", 24, -25)
 	mapIcon:SetTexture("BananAH", "Textures/MapIcon.png")
-	mapIcon:SetVisible(useMapIcon)
+	mapIcon:SetVisible(InternalInterface.Settings.Config.showMapIcon or false)
 	
 	mainWindow:SetVisible(false)
 	mainWindow:SetMinWidth(1280)
@@ -144,12 +145,11 @@ local function InitializeLayout()
 	
 	configFrame:SetAllPoints()
 	configFrame:SetVisible(false)
+	configFrame.mapIcon = mapIcon
 	configTab.frame = configFrame
 	
-	local function ShowBananAH()
-		if UI.Native.Auction:GetLoaded() then
-			mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
-		end
+	local function ShowBananAH(hEvent)
+		mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
 		mainWindow:SetVisible(true)
 		if mainWindow:GetTop() < 0 then
 			mainWindow:ClearAll()
@@ -157,13 +157,23 @@ local function InitializeLayout()
 			mainWindow:SetWidth(1280)
 			mainWindow:SetHeight(768)
 		end
-		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame)
+		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame, hEvent)
 	end	
 	
+	function UI.Native.MapMini.Event:Layer()
+		mapContext:SetLayer(UI.Native.MapMini:GetLayer() + 1)
+	end
+
 	function mapIcon.Event:LeftClick()
 		local wasVisible = mainWindow:GetVisible()
-		ShowBananAH()
+		ShowBananAH(true)
 		mainWindow:SetVisible(not wasVisible)
+	end
+	
+	function UI.Native.Auction.Event:Loaded()
+		if UI.Native.Auction:GetLoaded() and InternalInterface.Settings.Config.autoOpen then
+			ShowBananAH(false)
+		end
 	end
 	
 	function refreshButton.Event:MouseIn()
@@ -237,10 +247,10 @@ local function InitializeLayout()
 	local slashEvent1 = Command.Slash.Register("bananah")
 	local slashEvent2 = Command.Slash.Register("bah")
 	if slashEvent1 then
-		table.insert(slashEvent1, {ShowBananAH, "BananAH", "ShowBananAH1"})
+		table.insert(slashEvent1, {function() ShowBananAH(true) end, "BananAH", "ShowBananAH1"})
 	end
 	if slashEvent2 then
-		table.insert(slashEvent2, {ShowBananAH, "BananAH", "ShowBananAH2"})
+		table.insert(slashEvent2, {function() ShowBananAH(true) end, "BananAH", "ShowBananAH2"})
 	elseif not slashEvent1 then
 		print(L["General/slashRegisterError"])
 	end

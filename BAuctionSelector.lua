@@ -1,6 +1,7 @@
 local _, InternalInterface = ...
 
 local L = InternalInterface.Localization.L
+local GetLocalizedDateString = InternalInterface.Localization.GetLocalizedDateString
 
 -- Custom renderers
 local function AuctionSelectorRenderer(name, parent)
@@ -132,7 +133,7 @@ local function SetItem(self, item)
 	if (lastUpdate or 0) <= 0 then
 		self.refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. L["PostingPanel/lastUpdateDateFallback"])
 	else
-		self.refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. os.date(L["PostingPanel/lastUpdateDateFormat"], lastUpdate))
+		self.refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. GetLocalizedDateString(L["PostingPanel/lastUpdateDateFormat"], lastUpdate))
 	end
 	
 	RefreshButtons(self)
@@ -158,8 +159,11 @@ function InternalInterface.UI.AuctionSelector(name, parent)
 	bAuctionSelector:AddColumn(L["PostingPanel/columnBuy"], 120, "MoneyRenderer", true, "buyoutPrice")
 	bAuctionSelector:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, "MoneyRenderer", true, "bidUnitPrice")
 	local defaultOrderColumn = bAuctionSelector:AddColumn(L["PostingPanel/columnBuyPerUnit"], 120, "MoneyRenderer", true, "buyoutUnitPrice")
-	bAuctionSelector:AddColumn(L["PostingPanel/columnMinExpire"], 120, "Text", true, "minExpireTime", { Alignment = "right", Formatter = "date" })
-	bAuctionSelector:AddColumn(L["PostingPanel/columnMaxExpire"], 120, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = "date" })
+	local function LocalizedDateFormatter(value)
+		return GetLocalizedDateString("%a %X", value)
+	end
+	bAuctionSelector:AddColumn(L["PostingPanel/columnMinExpire"], 120, "Text", true, "minExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
+	bAuctionSelector:AddColumn(L["PostingPanel/columnMaxExpire"], 120, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
 	bAuctionSelector:AddColumn("", 0, "AuctionSelectorRenderer")
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 	
