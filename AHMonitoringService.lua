@@ -10,6 +10,7 @@ local cachedAuctions = {}
 local AuctionDataEvent = Utility.Event.Create("BananAH", "AuctionData")
 
 local function OnAuctionData(type, auctions)
+	if not Inspect.Interaction("auction") then return end
 	if type.type ~= "search" then return end
 
 	local auctionScanTime = os.time()
@@ -113,7 +114,7 @@ local function OnAuctionData(type, auctions)
 	end
 	if trueFullScan then
 		for normalizedItemType, scanDetail in pairs(auctionTable[playerFaction]) do repeat
-			if scanDetail.activeAuctions and scanDetail.lastFullScanTime >= auctionScanTime then break end
+			if scanDetail.activeAuctions and (scanDetail.lastFullScanTime or 0) >= auctionScanTime then break end
 			for oldAuctionID, oldAuctionDetail in pairs(scanDetail.auctions) do
 				if oldAuctionDetail.removedBeforeExpiration == nil then
 					removedAuctionCount = removedAuctionCount + 1

@@ -3,6 +3,13 @@
 InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 {
 	-- General
+	["General/menuSearch"] = "SEARCH",
+	["General/menuPost"] = "POST",
+	["General/menuAuctions"] = "AUCTIONS",
+	["General/menuBids"] = "BIDS",
+	["General/menuHistory"] = "HISTORY",
+	["General/menuConfig"] = "CONFIG",
+	
 	["General/fullScanStarted"] = "Scan started",
 	["General/fullScanError"] = "Can't issue a full scan right now, try again later.",
 	["General/slashRegisterError"] = "Failed to register slash commands",
@@ -78,15 +85,46 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	
 	-- Bundled Pricing Models
 	["PricingModel/fallbackName"] = "Vendor",
+	["PricingModel/fallbackBidMultiplier"] = "Bid multiplier:",
+	["PricingModel/fallbackBuyMultiplier"] = "Buyout multiplier:",
 	["PricingModel/fixedName"] = "User defined",
 	["PricingModel/meanName"] = "Average",
+	["PricingModel/meanWeight"] = "Weight auctions by stack size",
+	["PricingModel/meanDays"] = "Number of days:",
 	["PricingModel/meanError"] = "Not enough data",
 	["PricingModel/stdevName"] = "Standard deviation",
+	["PricingModel/stdevWeight"] = "Weight auctions by stack size",
+	["PricingModel/stdevDays"] = "Number of days:",
+	["PricingModel/stdevDeviation"] = "Max percentage away from standard deviation:",
 	["PricingModel/stdevError"] = "Not enough data",
 	["PricingModel/medianName"] = "Median",
+	["PricingModel/medianWeight"] = "Weight auctions by stack size",
+	["PricingModel/medianDays"] = "Number of days:",
 	["PricingModel/medianError"] = "Not enough data",
-	["PricingModel/interPercentileRangeName"] = "IPR",
+	["PricingModel/interPercentileRangeName"] = "Trimmed mean",
+	["PricingModel/interPercentileRangeWeight"] = "Weight auctions by stack size",
+	["PricingModel/interPercentileRangeDays"] = "Number of days:",
+	["PricingModel/interPercentileRangeRange"] = "Inner range:",
 	["PricingModel/interPercentileRangeError"] = "Not enough data",
+	
+	-- Configuration
+	["ConfigPanel/categoryGeneral"] = "General",
+	["ConfigPanel/categoryPosting"] = "Posting",
+	["ConfigPanel/subcategoryPostingSettings"] = "Default settings",
+	["ConfigPanel/subcategoryPostingPriceMatchers"] = "Price matchers",
+	["ConfigPanel/categoryPricingModels"] = "Pricing models",
+	
+	["ConfigPanel/mapIconShow"] = "Show map icon",
+	["ConfigPanel/autoOpenWindow"] = "Open the addon window when the native Auction House window is opened",
+	
+	["ConfigPanel/defaultPausedPostingQueue"] = "Start the posting queue in paused state",
+	["ConfigPanel/defaultPostingPricingModel"] = "Default pricing model:",
+	["ConfigPanel/defaultPriceMatching"] = "Enable price matching",
+	["ConfigPanel/defaultBindPrices"] = "Bind bid & buyout prices",
+	["ConfigPanel/defaultDuration"] = "Default duration:",
+	
+	["ConfigPanel/priceMatcherSelfRange"] = "Self match range:",
+	["ConfigPanel/priceMatcherUndercutRange"] = "Competition undercut range:",
 }--@end-do-not-package@
 --@localization(locale="enUS", format="lua_table", handle-subnamespaces="concat", namespace-delimiter="/")@
 )

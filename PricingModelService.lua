@@ -9,9 +9,9 @@ local function GetPricingModels()
 	return pricingModels -- FIXME RETURN COPY!!!
 end
 
-local function RegisterPricingModel(id, displayName, pricingFunction, callbackOnPost)
+local function RegisterPricingModel(id, displayName, pricingFunction, callbackOnPost, configFrame)
 	if not pricingModels[id] then
-		pricingModels[id] = { pricingModelId = id, displayName = displayName, pricingFunction = pricingFunction, callbackOnPost = callbackOnPost }
+		pricingModels[id] = { pricingModelId = id, displayName = displayName, pricingFunction = pricingFunction, callbackOnPost = callbackOnPost, configFrame = configFrame }
 		PricingModelAddedEvent(id, displayName, pricingFunction)
 		return true
 	end
