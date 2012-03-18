@@ -9,19 +9,43 @@ local function GeneralSettings(parent)
 	local autoOpenCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".AutoOpenCheck", frame)
 	local autoOpenText = UI.CreateFrame("Text", frame:GetName() .. ".AutoOpenText", frame)
 	
+	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
+
 	frame:SetVisible(false)
 	
 	showMapIconCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 10)
+	showMapIconCheck:SetChecked(InternalInterface.Settings.Config.showMapIcon or false)
 	
 	showMapIconText:SetPoint("CENTERLEFT", showMapIconCheck, "CENTERRIGHT", 5, 0)
 	showMapIconText:SetFontSize(14)
 	showMapIconText:SetText(L["ConfigPanel/mapIconShow"])
 	
 	autoOpenCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 40)
+	autoOpenCheck:SetChecked(InternalInterface.Settings.Config.autoOpen or false)
 	
 	autoOpenText:SetPoint("CENTERLEFT", autoOpenCheck, "CENTERRIGHT", 5, 0)
 	autoOpenText:SetFontSize(14)
 	autoOpenText:SetText(L["ConfigPanel/autoOpenWindow"])
+	
+	function showMapIconCheck.Event:CheckboxChange()
+		InternalInterface.Settings.Config.showMapIcon = self:GetChecked()
+		local parent = self
+		local mapIcon = nil
+		while parent ~= nil do
+			if parent.mapIcon then
+				mapIcon = parent.mapIcon
+				break
+			end
+			parent = parent.GetParent and parent:GetParent() or nil
+		end
+		if mapIcon then
+			mapIcon:SetVisible(self:GetChecked())
+		end
+	end
+	
+	function autoOpenCheck.Event:CheckboxChange()
+		InternalInterface.Settings.Config.autoOpen = self:GetChecked()
+	end
 	
 	return frame
 end
@@ -41,9 +65,12 @@ local function PostingSettings(parent)
 	local defaultDurationSlider = UI.CreateFrame("RiftSlider", frame:GetName() .. ".DefaultDurationSlider", frame)
 	local defaultDurationTime = UI.CreateFrame("Text", frame:GetName() .. ".DefaultDurationTime", frame)
 
+	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
+
 	frame:SetVisible(false)
 
 	startQueuePausedCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 10)
+	startQueuePausedCheck:SetChecked(InternalInterface.Settings.Config.defaultPausedPostingQueue or false)
 	
 	startQueuePausedText:SetPoint("CENTERLEFT", startQueuePausedCheck, "CENTERRIGHT", 5, 0)
 	startQueuePausedText:SetFontSize(14)
@@ -56,14 +83,34 @@ local function PostingSettings(parent)
 	defaultPricingModelSelector:SetPoint("CENTERLEFT", defaultPricingModelText, "CENTERRIGHT", 10, 0)
 	defaultPricingModelSelector:SetPoint("CENTERRIGHT", defaultPricingModelText, "CENTERRIGHT", 270, 0)
 	defaultPricingModelSelector:SetHeight(36)
+	local pricingModels = BananAH.GetPricingModels()
+	local names = {}
+	local ids = {}
+	local defaultIndex = nil
+	local fallbackIndex = nil
+	for id, data in pairs(pricingModels) do
+		table.insert(ids, id)
+		table.insert(names, data.displayName)
+		if id == "fallback" then
+			fallbackIndex = #ids
+		end		
+		if id == InternalInterface.Settings.Config.defaultPricingModel then
+			defaultIndex = #ids
+		end
+	end
+	defaultIndex = defaultIndex or fallbackIndex
+	defaultPricingModelSelector:SetValues(names)
+	defaultPricingModelSelector:SetSelectedIndex(defaultIndex)
 	
 	defaultPriceMatchingCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 110)
+	defaultPriceMatchingCheck:SetChecked(InternalInterface.Settings.Config.defaultPriceMatching or false)
 	
 	defaultPriceMatchingText:SetPoint("CENTERLEFT", defaultPriceMatchingCheck, "CENTERRIGHT", 5, 0)
 	defaultPriceMatchingText:SetFontSize(14)
 	defaultPriceMatchingText:SetText(L["ConfigPanel/defaultPriceMatching"])
 	
 	defaultBindPricesCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 140)
+	defaultBindPricesCheck:SetChecked(InternalInterface.Settings.Config.defaultBindPrices or false)
 	
 	defaultBindPricesText:SetPoint("CENTERLEFT", defaultBindPricesCheck, "CENTERRIGHT", 5, 0)
 	defaultBindPricesText:SetFontSize(14)
@@ -80,6 +127,32 @@ local function PostingSettings(parent)
 	defaultDurationTime:SetPoint("CENTERLEFT", defaultDurationSlider, "CENTERRIGHT", 15, -5)
 	defaultDurationTime:SetFontSize(14)
 	defaultDurationTime:SetText(string.format(L["PostingPanel/labelDurationFormat"], 48))
+
+	function startQueuePausedCheck.Event:CheckboxChange()
+		InternalInterface.Settings.Config.defaultPausedPostingQueue = self:GetChecked()
+	end
+	
+	function defaultPricingModelSelector.Event:SelectionChanged(index)
+		InternalInterface.Settings.Config.defaultPricingModel = ids[index] or nil
+		BananAH.RegisterPricingModel("")
+		BananAH.UnregisterPricingModel("")
+	end
+
+	function defaultPriceMatchingCheck.Event:CheckboxChange()
+		InternalInterface.Settings.Config.defaultPriceMatching = self:GetChecked()
+	end
+	
+	function defaultBindPricesCheck.Event:CheckboxChange()
+		InternalInterface.Settings.Config.defaultBindPrices = self:GetChecked()
+	end
+	
+	function defaultDurationSlider.Event:SliderChange()
+		local position = self:GetPosition()
+		defaultDurationTime:SetText(string.format(L["PostingPanel/labelDurationFormat"], 6 * 2 ^ position))
+		InternalInterface.Settings.Config.defaultDuration = position
+	end
+	
+	defaultDurationSlider:SetPosition(InternalInterface.Settings.Config.defaultDuration or 3)
 	
 	return frame
 end
@@ -91,6 +164,8 @@ local function PriceMatchers(parent)
 	local selfMatcherSlider = UI.CreateFrame("BSlider", frame:GetName() .. ".SelfMatcherSlider", frame)
 	local competitionUndercutterText = UI.CreateFrame("Text", frame:GetName() .. ".CompetitionUndercutterText", frame)
 	local competitionUndercutterSlider = UI.CreateFrame("BSlider", frame:GetName() .. ".CompetitionUndercutterSlider", frame)
+
+	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
 
 	frame:SetVisible(false)
 
@@ -107,10 +182,20 @@ local function PriceMatchers(parent)
 	selfMatcherSlider:SetPoint("CENTERLEFT", selfMatcherText, "CENTERRIGHT", 20 + maxWidth - selfMatcherText:GetWidth(), 8)	
 	selfMatcherSlider:SetWidth(300)
 	selfMatcherSlider:SetRange(0, 100)
+	selfMatcherSlider:SetPosition(InternalInterface.Settings.Config.selfMatcherRange or 25)
 
 	competitionUndercutterSlider:SetPoint("CENTERLEFT", competitionUndercutterText, "CENTERRIGHT", 20 + maxWidth - competitionUndercutterText:GetWidth(), 8)	
 	competitionUndercutterSlider:SetWidth(300)
 	competitionUndercutterSlider:SetRange(0, 100)
+	competitionUndercutterSlider:SetPosition(InternalInterface.Settings.Config.competitionUndercutterRange or 25)
+	
+	function selfMatcherSlider.Event:PositionChanged(position)
+		InternalInterface.Settings.Config.selfMatcherRange = position
+	end
+	
+	function competitionUndercutterSlider.Event:PositionChanged(position)
+		InternalInterface.Settings.Config.competitionUndercutterRange = position
+	end
 	
 	return frame
 end

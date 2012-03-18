@@ -1,6 +1,6 @@
 -- Private
 local function ResetMoneySelector(self)
-	self.value = self.value or 0
+	self.value = math.floor(self.value or 0)
 
 	local silver = self.value % 100
 	local gold = math.floor(self.value / 100) % 100

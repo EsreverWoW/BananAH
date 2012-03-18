@@ -2,6 +2,12 @@
 
 InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 {
+	-- Meta
+	["Meta/weekdayNames"] = "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday",
+	["Meta/weekdayAbbreviatedNames"] = "Sun,Mon,Tue,Wed,Thu,Fri,Sat",
+	["Meta/monthNames"] = "January,February,March,April,May,June,July,August,September,October,November,December",
+	["Meta/monthAbbreviatedNames"] = "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+
 	-- General
 	["General/menuSearch"] = "SEARCH",
 	["General/menuPost"] = "POST",

@@ -1,6 +1,6 @@
 -- Private
 local function ResetMoneyFrame(self)
-	local value = self.value or 0
+	local value = math.floor(self.value or 0)
 	local silver = value % 100
 	local gold = math.floor(value / 100) % 100
 	local platinum = math.floor(value / 10000)

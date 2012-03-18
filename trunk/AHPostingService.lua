@@ -4,7 +4,7 @@ local FixItemType = InternalInterface.Utility.FixItemType
 
 -- AH Posting Service
 local postingQueue = {}
-local paused = false -- TODO Get initial state from settings
+local paused = false
 local waitingUpdate = false
 local QueueChangedEvent = Utility.Event.Create("BananAH", "PostingQueueChanged")
 local QueueStatusChangedEvent = Utility.Event.Create("BananAH", "PostingQueueStatusChanged")
@@ -190,6 +190,13 @@ local function OnGlobalQueueChanged(queue)
 end
 table.insert(Event.Queue.Status, { OnGlobalQueueChanged, "BananAH", "AHPostingService.OnGlobalQueueChanged" })
 
+local function OnAddonLoaded(addonId)
+	if addonId == "BananAH" then 
+		InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
+		SetPostingQueuePaused(InternalInterface.Settings.Config.defaultPausedPostingQueue or false)
+	end 
+end
+table.insert(Event.Addon.Load.End, { OnAddonLoaded, "BananAH", "AHPostingService.OnAddonLoaded" })
 
 --
 _G.BananAH.PostItem = PostItem

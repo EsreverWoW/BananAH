@@ -33,6 +33,9 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	
 	function postingFrame:Show()
 		itemSelector:ResetItems()
+		local item, itemInfo = itemSelector:GetSelectedItem()
+		postSelector:SetItem(item, itemInfo)
+		auctionSelector:SetItem(item)		
 	end
 	
 	return postingFrame

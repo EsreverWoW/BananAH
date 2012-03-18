@@ -32,6 +32,7 @@ end
 --  * Formatter
 --   + none: Doesn't apply any format to the value (default)
 --   + date: Formats the value as a date (using "%a %X")
+--   + function
 --  * Color
 --   + {r, g, b, a} -- Color to use
 --  * FontSize
@@ -44,6 +45,8 @@ local function TextRenderer(name, parent)
 		local text = ""
 		if extra and extra.Formatter == "date" and type(value) == "number" then
 			text = os.date("%a %X", value)
+		elseif extra and type(extra.Formatter) == "function" then
+			text = extra.Formatter(value)
 		else
 			text = tostring(value)
 		end
