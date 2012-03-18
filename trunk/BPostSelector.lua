@@ -9,15 +9,49 @@ local FALLBACK_PRICING_MODEL = "fallback"
 local FIXED_PRICING_MODEL = "fixed"
 
 -- Fallback price model
+local fallbackConfigFrame = nil
+local function FallbackConfig(parent)
+	if fallbackConfigFrame then return fallbackConfigFrame end
+
+	fallbackConfigFrame = UI.CreateFrame("Frame", parent:GetName() .. ".FallbackPricingModelConfig", parent)
+
+	local bidMultiplierText = UI.CreateFrame("Text", fallbackConfigFrame:GetName() .. ".BidMultiplierText", fallbackConfigFrame)
+	local bidMultiplierSlider = UI.CreateFrame("BSlider", fallbackConfigFrame:GetName() .. ".BidMultiplierSlider", fallbackConfigFrame)
+	local buyMultiplierText = UI.CreateFrame("Text", fallbackConfigFrame:GetName() .. ".BuyMultiplierText", fallbackConfigFrame)
+	local buyMultiplierSlider = UI.CreateFrame("BSlider", fallbackConfigFrame:GetName() .. ".BuyMultiplierSlider", fallbackConfigFrame)
+
+	fallbackConfigFrame:SetVisible(false)
+
+	bidMultiplierText:SetPoint("TOPLEFT", fallbackConfigFrame, "TOPLEFT", 10, 10)
+	bidMultiplierText:SetFontSize(14)
+	bidMultiplierText:SetText(L["PricingModel/fallbackBidMultiplier"])
+	
+	buyMultiplierText:SetPoint("TOPLEFT", fallbackConfigFrame, "TOPLEFT", 10, 50)
+	buyMultiplierText:SetFontSize(14)
+	buyMultiplierText:SetText(L["PricingModel/fallbackBuyMultiplier"])
+
+	local maxWidth = math.max(bidMultiplierText:GetWidth(), buyMultiplierText:GetWidth())
+	
+	bidMultiplierSlider:SetPoint("CENTERLEFT", bidMultiplierText, "CENTERRIGHT", 20 + maxWidth - bidMultiplierText:GetWidth(), 8)	
+	bidMultiplierSlider:SetWidth(300)
+	bidMultiplierSlider:SetRange(0, 25)
+
+	buyMultiplierSlider:SetPoint("CENTERLEFT", buyMultiplierText, "CENTERRIGHT", 20 + maxWidth - buyMultiplierText:GetWidth(), 8)	
+	buyMultiplierSlider:SetWidth(300)
+	buyMultiplierSlider:SetRange(0, 25)
+	
+	return fallbackConfigFrame
+end
+
 local function FallbackPricingModel(item, matchPrice, auto)
 	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
 	local sellPrice = ok and itemDetail.sell or 1
 	local bid = math.floor(sellPrice * 3) -- TODO Get from config instead of 3
-	local buyout = math.floor(sellPrice * 5) -- TODO Get from config instead of 3
+	local buyout = math.floor(sellPrice * 5) -- TODO Get from config instead of 5
 	return bid, buyout, false
 end
 BananAH.UnregisterPricingModel(FALLBACK_PRICING_MODEL)
-BananAH.RegisterPricingModel(FALLBACK_PRICING_MODEL, L["PricingModel/fallbackName"], FallbackPricingModel)
+BananAH.RegisterPricingModel(FALLBACK_PRICING_MODEL, L["PricingModel/fallbackName"], FallbackPricingModel, nil, FallbackConfig)
 
 -- Fixed price model
 local function FixedPricingModel(item, matchPrice, auto)
@@ -73,6 +107,51 @@ BananAH.UnregisterPricingModel(FIXED_PRICING_MODEL)
 BananAH.RegisterPricingModel(FIXED_PRICING_MODEL, L["PricingModel/fixedName"], FixedPricingModel, FixedSaveConfig)
 
 -- Private
+local function ApplyPriceMatching(item, unitBid, unitBuy)
+	local userName = Inspect.Unit.Detail("player").name -- TODO Use all player characters
+	local matchingRange = 0.25 -- TODO Config
+	local undercutRange = 0.25 -- TODO Config
+
+	local auctions = BananAH.GetActiveAuctionData(item)
+	local bidsMatchRange = {}
+	local bidsUndercutRange = {}
+	local buysMatchRange = {}
+	local buysUndercutRange = {}
+
+	for auctionId, auctionData in pairs(auctions) do
+		local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / unitBid)
+		if userName == auctionData.sellerName and bidRelDev <= matchingRange then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
+		if userName ~= auctionData.sellerName and bidRelDev <= undercutRange then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
+
+		local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / unitBuy) or (math.max(matchingRange, undercutRange) + 1)
+		if userName == auctionData.sellerName and buyRelDev <= matchingRange then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
+		if userName ~= auctionData.sellerName and buyRelDev <= undercutRange then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
+	end
+
+	table.sort(bidsMatchRange)
+	table.sort(bidsUndercutRange)
+	if #bidsMatchRange > 0 then 
+		unitBid = bidsMatchRange[1]
+	elseif #bidsUndercutRange > 0 then
+		unitBid = math.max(bidsUndercutRange[1] - 1, 1)
+	else
+		unitBid = math.floor(unitBid * (1 + undercutRange))
+	end
+
+	table.sort(buysMatchRange)
+	table.sort(buysUndercutRange)
+	if #buysMatchRange > 0 then 
+		unitBuy = buysMatchRange[1]
+	elseif #buysUndercutRange > 0 then
+		unitBuy = math.max(buysUndercutRange[1] - 1, 1)
+	else
+		unitBuy = math.floor(unitBuy * (1 + undercutRange))
+	end
+	unitBid = math.min(unitBid, unitBuy)	
+	
+	return unitBid, unitBuy
+end
+
 local function FeedPricingModel(self)
 	local selectedIndex = self.pricingModelSelector:GetSelectedIndex()
 	local item = self:GetItem()
@@ -95,47 +174,7 @@ local function FeedPricingModel(self)
 		if type(unitBuy) == "boolean" then unitBuy = self.buyMoneySelector:GetValue() end
 		
 		if usePriceMatching then
-			local userName = Inspect.Unit.Detail("player").name -- TODO Use all player characters
-			local matchingRange = 0.25 -- TODO Config
-			local undercutRange = 0.25 -- TODO Config
-
-			local auctions = BananAH.GetActiveAuctionData(item)
-			local bidsMatchRange = {}
-			local bidsUndercutRange = {}
-			local buysMatchRange = {}
-			local buysUndercutRange = {}
-			
-			for auctionId, auctionData in pairs(auctions) do
-				local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / unitBid)
-				if userName == auctionData.sellerName and bidRelDev <= matchingRange then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
-				if userName ~= auctionData.sellerName and bidRelDev <= undercutRange then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
-
-				local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / unitBuy) or (math.max(matchingRange, undercutRange) + 1)
-				if userName == auctionData.sellerName and buyRelDev <= matchingRange then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
-				if userName ~= auctionData.sellerName and buyRelDev <= undercutRange then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
-			end
-			
-			table.sort(bidsMatchRange)
-			table.sort(bidsUndercutRange)
-			if #bidsMatchRange > 0 then 
-				unitBid = bidsMatchRange[1]
-			elseif #bidsUndercutRange > 0 then
-				unitBid = math.max(bidsUndercutRange[1] - 1, 1)
-			else
-				unitBid = math.floor(unitBid * (1 + undercutRange))
-			end
-			
-			table.sort(buysMatchRange)
-			table.sort(buysUndercutRange)
-			if #buysMatchRange > 0 then 
-				unitBuy = buysMatchRange[1]
-			elseif #buysUndercutRange > 0 then
-				unitBuy = math.max(buysUndercutRange[1] - 1, 1)
-			else
-				unitBuy = math.floor(unitBuy * (1 + undercutRange))
-			end
-			
-			unitBid = math.min(unitBid, unitBuy)			
+			unitBid, unitBuy = ApplyPriceMatching(item, unitBid, unitBuy)			
 		end
 		
 		self.pricesSetByModel = true
@@ -523,7 +562,6 @@ function InternalInterface.UI.PostSelector(name, parent)
 		bPostSelector:SetItem(selectedItem, selectedInfo)
 	end
 	function autoPostButton.Event:LeftClick()
-		-- 1. Get all items
 		local slot = Utility.Item.Slot.Inventory()
 		local items = Inspect.Item.List(slot)
 		
@@ -538,18 +576,14 @@ function InternalInterface.UI.PostSelector(name, parent)
 			itemTypeTable[fixedItemType].stack = itemTypeTable[fixedItemType].stack + (itemDetail.stack or 1)
 		until true end
 
-		-- 2. Filter out those without autoPosting configuration or that are already queued
 		local remainingItems = false
-
 		local postingAmounts = {}
 		local postingQueue = BananAH.GetPostingQueue()
 		for index, post in ipairs(postingQueue) do
 			postingAmounts[post.itemType] = (postingAmounts[post.itemType] or 0) + post.amount
 		end
-
 		InternalInterface.Settings.Posting = InternalInterface.Settings.Posting or {}
 		InternalInterface.Settings.Posting.ItemConfig = InternalInterface.Settings.Posting.ItemConfig or {}
-
 		for itemType, itemData in pairs(itemTypeTable) do
 			if not InternalInterface.Settings.Posting.ItemConfig[itemType] or not InternalInterface.Settings.Posting.ItemConfig[itemType].autoPosting then
 				itemTypeTable[itemType] = nil
@@ -563,14 +597,11 @@ function InternalInterface.UI.PostSelector(name, parent)
 				end
 			end
 		end
-		
-		-- 2.1. If there are no items remaining, display message and end execution
 		if not remainingItems then
 			print(L["PostingPanel/autoPostingErrorNoItems"])
 			return
 		end
 		
-		-- 3. Apply pricing model & price matching to the items. 
 		for itemType, itemData in pairs(itemTypeTable) do repeat
 			local pricingModelId = itemData.autoPosting.pricingModel
 			local pricingModelIndex = nil
@@ -595,55 +626,14 @@ function InternalInterface.UI.PostSelector(name, parent)
 			end
 			
 			if usePriceMatching then
-				local userName = Inspect.Unit.Detail("player").name -- TODO Use all player characters
-				local matchingRange = 0.25 -- TODO Config
-				local undercutRange = 0.25 -- TODO Config
-
-				local auctions = BananAH.GetActiveAuctionData(itemData.referenceItem)
-				local bidsMatchRange = {}
-				local bidsUndercutRange = {}
-				local buysMatchRange = {}
-				local buysUndercutRange = {}
-			
-				for auctionId, auctionData in pairs(auctions) do
-					local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / unitBid)
-					if userName == auctionData.sellerName and bidRelDev <= matchingRange then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
-					if userName ~= auctionData.sellerName and bidRelDev <= undercutRange then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
-
-					local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / unitBuy) or (math.max(matchingRange, undercutRange) + 1)
-					if userName == auctionData.sellerName and buyRelDev <= matchingRange then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
-					if userName ~= auctionData.sellerName and buyRelDev <= undercutRange then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
-				end
-			
-				table.sort(bidsMatchRange)
-				table.sort(bidsUndercutRange)
-				if #bidsMatchRange > 0 then 
-					unitBid = bidsMatchRange[1]
-				elseif #bidsUndercutRange > 0 then
-					unitBid = math.max(bidsUndercutRange[1] - 1, 1)
-				else
-					unitBid = math.floor(unitBid * (1 + undercutRange))
-				end
-			
-				table.sort(buysMatchRange)
-				table.sort(buysUndercutRange)
-				if #buysMatchRange > 0 then 
-					unitBuy = buysMatchRange[1]
-				elseif #buysUndercutRange > 0 then
-					unitBuy = math.max(buysUndercutRange[1] - 1, 1)
-				else
-					unitBuy = math.floor(unitBuy * (1 + undercutRange))
-				end
-			
-				unitBid = math.min(unitBid, unitBuy)			
+				unitBid, unitBuy = ApplyPriceMatching(itemData.referenceItem, unitBid, unitBuy)
 			end
 			
-			if itemData.bindPrices then unitBid = unitBuy end
+			if itemData.autoPosting.bindPrices then unitBid = unitBuy end
 			itemTypeTable[itemType].unitBid = unitBid
 			itemTypeTable[itemType].unitBuy = unitBuy
 		until true end
 		
-		-- 4. Post the remaining items
 		for _, itemData in pairs(itemTypeTable) do
 			BananAH.PostItem(itemData.referenceItem, itemData.autoPosting.stackSize, itemData.stack, itemData.unitBid, itemData.unitBuy, 6 * 2 ^ itemData.autoPosting.duration)	
 		end

@@ -3,25 +3,153 @@ local _, InternalInterface = ...
 local FixItemType = InternalInterface.Utility.FixItemType
 local L = InternalInterface.Localization.L
 
-local savedPostParams = {}
-
-local useMapIcon = true
+local useMapIcon = true -- TODO Get from config
 
 local function InitializeLayout()
-	local context = UI.CreateContext("BananAH.UI.Context")
-	local mainWindow = UI.CreateFrame("BWindow", "BananAH.UI.MainWindow", context)
-	local refreshButton = UI.CreateFrame("Texture", "BananAH.UI.MainWindow.RefreshButton", mainWindow:GetContent())
-	local postPanel = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.PostPanel", mainWindow:GetContent())
-	local itemSelector = InternalInterface.UI.ItemSelector("BananAH.UI.MainWindow.PostPanel.ItemSelector", postPanel:GetContent())
-	local auctionSelector = InternalInterface.UI.AuctionSelector("BananAH.UI.MainWindow.PostPanel.AuctionSelector", postPanel:GetContent())
-	local postSelector = InternalInterface.UI.PostSelector("BananAH.UI.MainWindow.PostPanel.PostSelector", postPanel:GetContent())
-	local queueManager = InternalInterface.UI.QueueManager("BananAH.UI.MainWindow.PostPanel.QueueManager", postPanel:GetContent())
+	local mapContext = UI.CreateContext("BananAH.UI.MapContext")
+	local mapIcon = UI.CreateFrame("Texture", "BananAH.UI.MapIcon", mapContext)
 
+	local mainContext = UI.CreateContext("BananAH.UI.MainContext")
+	local mainWindow = UI.CreateFrame("BWindow", "BananAH.UI.MainWindow", mainContext)
+	local searchTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.SearchTab", mainWindow:GetContent())
+	local postTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.PostTab", mainWindow:GetContent())
+	local auctionsTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.AuctionsTab", mainWindow:GetContent())
+	local bidsTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.BidsTab", mainWindow:GetContent())
+	local historyTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.HistoryTab", mainWindow:GetContent())
+	local configTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.ConfigTab", mainWindow:GetContent())
+	local mainPanel = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.Panel", mainWindow:GetContent())
+	local refreshButton = UI.CreateFrame("Texture", "BananAH.UI.MainWindow.RefreshButton", mainWindow:GetContent())
+	local searchText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.SearchTab.Text", searchTab:GetContent())
+	local postText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.PostTab.Text", postTab:GetContent())
+	local postFrame = InternalInterface.UI.PostingFrame("BananAH.UI.MainWindow.PostFrame", mainPanel:GetContent())
+	local auctionsText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.AuctionsTab.Text", auctionsTab:GetContent())
+	local bidsText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.BidsTab.Text", bidsTab:GetContent())
+	local historyText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.HistoryTab.Text", historyTab:GetContent())
+	local configText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.ConfigTab.Text", configTab:GetContent())
+	local configFrame = InternalInterface.UI.ConfigFrame("BananAH.UI.MainWindow.ConfigFrame", mainPanel:GetContent())
+
+	mapIcon:SetPoint("CENTER", UI.Native.MapMini, "BOTTOMLEFT", 24, -25)
+	mapIcon:SetTexture("BananAH", "Textures/MapIcon.png")
+	mapIcon:SetVisible(useMapIcon)
+	
+	mainWindow:SetVisible(false)
+	mainWindow:SetMinWidth(1280)
+	mainWindow:SetMinHeight(768)
+	mainWindow:SetWidth(1280)
+	mainWindow:SetHeight(768)
+	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0) -- TODO Get from config
+	mainWindow:SetTitle("BananAH")
+	mainWindow:SetAlpha(1)
+	mainWindow:SetCloseable(true)
+	mainWindow:SetDraggable(true)
+	mainWindow:SetResizable(false)
+	
+	searchTab:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 20, 20)
+	searchTab:SetPoint("BOTTOMLEFT", mainWindow:GetContent(), "TOPLEFT", 20, 64)
+	searchTab.borderFrame.cornerBottomLeft:SetVisible(false)
+	searchTab.borderFrame.borderBottom:SetVisible(false)
+	searchTab.borderFrame.cornerBottomRight:SetVisible(false)
+	searchTab:SetLayer(1)
+
+	postTab:SetPoint("TOPLEFT", searchTab, "TOPRIGHT", 10, 0)
+	postTab:SetPoint("BOTTOMLEFT", searchTab, "BOTTOMRIGHT", 10, 0) 
+	postTab.borderFrame.cornerBottomLeft:SetVisible(false)
+	postTab.borderFrame.borderBottom:SetVisible(false)
+	postTab.borderFrame.cornerBottomRight:SetVisible(false)
+	postTab:SetLayer(1)
+
+	auctionsTab:SetPoint("TOPLEFT", postTab, "TOPRIGHT", 10, 0)
+	auctionsTab:SetPoint("BOTTOMLEFT", postTab, "BOTTOMRIGHT", 10, 0) 
+	auctionsTab.borderFrame.cornerBottomLeft:SetVisible(false)
+	auctionsTab.borderFrame.borderBottom:SetVisible(false)
+	auctionsTab.borderFrame.cornerBottomRight:SetVisible(false)
+	auctionsTab:SetLayer(1)
+
+	bidsTab:SetPoint("TOPLEFT", auctionsTab, "TOPRIGHT", 10, 0)
+	bidsTab:SetPoint("BOTTOMLEFT", auctionsTab, "BOTTOMRIGHT", 10, 0) 
+	bidsTab.borderFrame.cornerBottomLeft:SetVisible(false)
+	bidsTab.borderFrame.borderBottom:SetVisible(false)
+	bidsTab.borderFrame.cornerBottomRight:SetVisible(false)
+	bidsTab:SetLayer(1)
+
+	historyTab:SetPoint("TOPLEFT", bidsTab, "TOPRIGHT", 10, 0)
+	historyTab:SetPoint("BOTTOMLEFT", bidsTab, "BOTTOMRIGHT", 10, 0) 
+	historyTab.borderFrame.cornerBottomLeft:SetVisible(false)
+	historyTab.borderFrame.borderBottom:SetVisible(false)
+	historyTab.borderFrame.cornerBottomRight:SetVisible(false)
+	historyTab:SetLayer(1)
+
+	configTab:SetPoint("TOPLEFT", historyTab, "TOPRIGHT", 10, 0)
+	configTab:SetPoint("BOTTOMLEFT", historyTab, "BOTTOMRIGHT", 10, 0) 
+	configTab.borderFrame.cornerBottomLeft:SetVisible(false)
+	configTab.borderFrame.borderBottom:SetVisible(false)
+	configTab.borderFrame.cornerBottomRight:SetVisible(false)
+	configTab:SetLayer(1)
+
+	mainPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 5, 60)
+	mainPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
+	mainPanel:SetLayer(2)
+	
+	refreshButton:SetTexture("BananAH", "Textures/RefreshDisabled.png")
+	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -20, 5)
+	refreshButton.enabled = false
+
+	searchText:SetPoint("CENTER", searchTab, "CENTER", 0, 2)
+	searchText:SetText(L["General/menuSearch"])
+	searchText:SetFontSize(16)
+	searchText:SetShadowOffset(2, 2)
+	searchText:SetFontColor(0.5, 0.5, 0.5, 1)
+	searchTab:SetWidth(searchText:GetWidth() + 60)
+	
+	postText:SetPoint("CENTER", postTab, "CENTER", 0, 2)
+	postText:SetText(L["General/menuPost"])
+	postText:SetFontSize(16)
+	postText:SetShadowOffset(2, 2)
+	postText:SetFontColor(0.75, 0.75, 0.5, 1)
+	postTab:SetWidth(postText:GetWidth() + 60)
+	postTab.text = postText
+	
+	postFrame:SetAllPoints()
+	postFrame:SetVisible(false)
+	postTab.frame = postFrame
+	
+	auctionsText:SetPoint("CENTER", auctionsTab, "CENTER", 0, 2)
+	auctionsText:SetText(L["General/menuAuctions"])
+	auctionsText:SetFontSize(16)
+	auctionsText:SetShadowOffset(2, 2)
+	auctionsText:SetFontColor(0.5, 0.5, 0.5, 1)
+	auctionsTab:SetWidth(auctionsText:GetWidth() + 60)
+	
+	bidsText:SetPoint("CENTER", bidsTab, "CENTER", 0, 2)
+	bidsText:SetText(L["General/menuBids"])
+	bidsText:SetFontSize(16)
+	bidsText:SetShadowOffset(2, 2)
+	bidsText:SetFontColor(0.5, 0.5, 0.5, 1)
+	bidsTab:SetWidth(bidsText:GetWidth() + 60)
+	
+	historyText:SetPoint("CENTER", historyTab, "CENTER", 0, 2)
+	historyText:SetText(L["General/menuHistory"])
+	historyText:SetFontSize(16)
+	historyText:SetShadowOffset(2, 2)
+	historyText:SetFontColor(0.5, 0.5, 0.5, 1)
+	historyTab:SetWidth(historyText:GetWidth() + 60)
+	
+	configText:SetPoint("CENTER", configTab, "CENTER", 0, 2)
+	configText:SetText(L["General/menuConfig"])
+	configText:SetFontSize(16)
+	configText:SetShadowOffset(2, 2)
+	configText:SetFontColor(0.75, 0.75, 0.5, 1)
+	configTab:SetWidth(configText:GetWidth() + 60)
+	configTab.text = configText
+	
+	configFrame:SetAllPoints()
+	configFrame:SetVisible(false)
+	configTab.frame = configFrame
+	
 	local function ShowBananAH()
 		if UI.Native.Auction:GetLoaded() then
-			context:SetLayer(UI.Native.Auction:GetLayer() + 1)
+			mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
 		end
-		itemSelector:ResetItems()
 		mainWindow:SetVisible(true)
 		if mainWindow:GetTop() < 0 then
 			mainWindow:ClearAll()
@@ -29,58 +157,15 @@ local function InitializeLayout()
 			mainWindow:SetWidth(1280)
 			mainWindow:SetHeight(768)
 		end
+		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame)
 	end	
 	
-	-- Map Icon
-	if useMapIcon then
-		local mapContext = UI.CreateContext("BananAH.UI.MapContext")
-		local mapIcon = UI.CreateFrame("Texture", "BananAH.UI.MapIcon", mapContext)
-		mapIcon:SetTexture("BananAH", "Textures/MapIcon.png")
-		mapIcon:SetPoint("CENTER", UI.Native.MapMini, "BOTTOMLEFT", 24, -25)
-		function mapIcon.Event:LeftClick()
-			-- mainWindow:SetVisible(not mainWindow:GetVisible())
-			ShowBananAH()
-		end
+	function mapIcon.Event:LeftClick()
+		local wasVisible = mainWindow:GetVisible()
+		ShowBananAH()
+		mainWindow:SetVisible(not wasVisible)
 	end
 	
-	mainWindow:SetVisible(false)
-	mainWindow:SetMinWidth(1280)
-	mainWindow:SetMinHeight(768)
-	mainWindow:SetWidth(1280)
-	mainWindow:SetHeight(768)
-	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-	mainWindow:SetTitle("BananAH")
-	mainWindow:SetAlpha(1)
-	mainWindow:SetCloseable(true)
-	mainWindow:SetDraggable(true)
-	mainWindow:SetResizable(false)
-	
-	postPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 5, 60)
-	postPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
-	
-	itemSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 5, 5)
-	itemSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "BOTTOMLEFT", 295, -5)
-	function itemSelector.Event:ItemSelected(item, itemInfo)
-		postSelector:SetItem(item, itemInfo)
-		auctionSelector:SetItem(item)
-	end	
-	itemSelector:GetParent().itemSelector = itemSelector
-	
-	postSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 300, 5)
-	postSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -5, 330) -- -310
-	postSelector.itemSelector = itemSelector
-
-	auctionSelector:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPLEFT", 300, 335)
-	auctionSelector:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "BOTTOMRIGHT", -5, -5)
-	auctionSelector.postSelector = postSelector
-	
-	queueManager:SetPoint("TOPLEFT", postPanel:GetContent(), "TOPRIGHT", -293, 5)
-	queueManager:SetPoint("BOTTOMRIGHT", postPanel:GetContent(), "TOPRIGHT", -5, 74)
-	queueManager:SetLayer(postSelector:GetLayer() + 1)
-	
-	refreshButton:SetTexture("BananAH", "Textures/RefreshDisabled.png")
-	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -10, 5)
-	refreshButton.enabled = false
 	function refreshButton.Event:MouseIn()
 		if self.enabled then
 			self:SetTexture("BananAH", "Textures/RefreshOn.png")
@@ -97,20 +182,47 @@ local function InitializeLayout()
 	end
 	function refreshButton.Event:LeftClick()
 		if not self.enabled then return end
-		if not pcall(Command.Auction.Scan, {type="search"}) then
+		if not pcall(Command.Auction.Scan, { type="search" }) then
 			print(L["General/fullScanError"])
 		else
 			print(L["General/fullScanStarted"])
 		end
 	end	
 
-	local function RelayInteractionChanged(interaction, state)
+	local function TabMouseIn(self)
+		self.text:SetFontSize(18)
+	end
+	local function TabMouseOut(self)
+		self.text:SetFontSize(16)
+	end
+	local function TabLeftClick(self)
+		if mainWindow.selectedTab then
+			mainWindow.selectedTab.text:SetFontColor(0.75, 0.75, 0.5, 1)
+			mainWindow.selectedTab.frame:SetVisible(false)
+		end
+		mainWindow.selectedTab = self
+		mainWindow.selectedTab.text:SetFontColor(1, 1, 1, 1)
+		mainWindow.selectedTab.frame:SetVisible(true)
+		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame)
+	end
+	
+	postTab.Event.MouseIn = TabMouseIn
+	postTab.Event.MouseOut = TabMouseOut
+	postTab.Event.LeftClick = TabLeftClick
+	configTab.Event.MouseIn = TabMouseIn
+	configTab.Event.MouseOut = TabMouseOut
+	configTab.Event.LeftClick = TabLeftClick
+	postTab.Event.LeftClick(postTab)
+	
+	
+	
+	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
 			refreshButton.enabled = state
 			refreshButton:SetTexture("BananAH", state and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
 		end
 	end
-	table.insert(Event.Interaction, { RelayInteractionChanged, "BananAH", "RelayInteractionChanged" })
+	table.insert(Event.Interaction, { OnInteractionChanged, "BananAH", "OnInteractionChanged" })
 	
 	local function ReportAuctionData(full, total, new, updated, removed, before)
 		local fullOrPartialMessage = full and L["General/scanTypeFull"] or L["General/scanTypePartial"]
@@ -134,40 +246,9 @@ local function InitializeLayout()
 	end
 end
 
-local function LoadPostingParameters(addonId)
-	if addonId == "BananAH" then
-		savedPostParams = BananAHPostingParameters or {}
-	end
-end
-table.insert(Event.Addon.SavedVariables.Load.End, {LoadPostingParameters, "BananAH", "LoadPostingParameters"})
-
-local function SavePostingParameters(addonId)
-	if addonId == "BananAH" then
-		BananAHPostingParameters = savedPostParams
-	end
-end
-table.insert(Event.Addon.SavedVariables.Save.Begin, {SavePostingParameters, "BananAH", "SavePostingParameters"})
-
 local function OnAddonLoaded(addonId)
 	if addonId == "BananAH" then 
 		InitializeLayout()
 	end 
 end
 table.insert(Event.Addon.Load.End, { OnAddonLoaded, "BananAH", "OnAddonLoaded" })
-
--- local function TestDataGrid()
-	-- local context = UI.CreateContext("BananAH.UI.TestContext")
-	-- local testWindow = UI.CreateFrame("BWindow", "BananAH.UI.TestWindow", context)
-	-- testWindow:SetVisible(true)
-	-- testWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-	-- testWindow:SetTitle("Test Window")
-	-- testWindow:SetAlpha(1)
-	-- testWindow:SetCloseable(true)
-	-- testWindow:SetDraggable(true)
-	-- testWindow:SetResizable(true)
-	-- local dataGrid = UI.CreateFrame("BDataGrid", "BananAH.UI.DataGrid", testWindow:GetContent())
-	-- dataGrid:SetAllPoints()
--- end
-
---TestDataGrid()
-

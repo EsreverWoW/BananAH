@@ -34,6 +34,8 @@ end
 --   + date: Formats the value as a date (using "%a %X")
 --  * Color
 --   + {r, g, b, a} -- Color to use
+--  * FontSize
+--   + fontSize
 local function TextRenderer(name, parent)
 	local textCell = UI.CreateFrame("Text", name, parent)
 	
@@ -46,6 +48,10 @@ local function TextRenderer(name, parent)
 			text = tostring(value)
 		end
 		self:SetText(text)
+		
+		if extra and type(extra.FontSize) == "number" then
+			self:SetFontSize(extra.FontSize)
+		end
 		
 		-- Apply alignment
 		local anchor, _, offset = self:ReadPoint(0, nil)

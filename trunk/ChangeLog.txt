@@ -1,3 +1,6 @@
+	Alpha r25
+- Added config tab (not functional yet)
+
 	Alpha r24
 - Added auto posting (aka. Batch posting) functionality
 	
@@ -37,9 +40,3 @@
 	
 	Beta 0.1.0
 - First release	
-
-	Known bugs
-- Undercut sometimes matchs the lowest price if you're already selling a similar item.
-- High CPU usage.
-- Sometimes scanned auctions report a stack size of 1. This was a known bug of the API that was fixed on 29th February, but the fix may haven't been applied to Korean & Russian shards yet.
-- When you try to post without any empty slot in your bags, the posting queue may block until relogging, throwing a lot of errors.

@@ -11,7 +11,7 @@ Description =
 	English = "Basic AH addon.",
 }
 Author = "Baanano"
-Version = "0.1.1"
+Version = "0.2.0"
 Email = "baanano.rift@gmail.com"
 Environment = "1.7"
 Embed =
@@ -47,5 +47,7 @@ RunOnStartup =
 	"BAuctionSelector.lua",
 	"BPostSelector.lua",
 	"BQueueManager.lua",
+	"PostingFrame.lua",
+	"ConfigFrame.lua",
 	"Main.lua",
 }

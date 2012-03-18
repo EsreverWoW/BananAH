@@ -10,6 +10,36 @@ local PRICING_MODEL_NAME = L["PricingModel/medianName"]
 local NUMBER_OF_DAYS = 3 -- TODO Get from config
 local WEIGHTED = true -- TODO Get from config
 
+local configFrame = nil
+local function ConfigFrame(parent)
+	if configFrame then return configFrame end
+
+	configFrame = UI.CreateFrame("Frame", parent:GetName() .. ".MedianPricingModelConfig", parent)
+
+	local weightedCheck = UI.CreateFrame("RiftCheckbox", configFrame:GetName() .. ".WeightedCheck", configFrame)
+	local weightedText = UI.CreateFrame("Text", configFrame:GetName() .. ".WeightedText", configFrame)
+	local daysText = UI.CreateFrame("Text", configFrame:GetName() .. ".DaysText", configFrame)
+	local daysSlider = UI.CreateFrame("BSlider", configFrame:GetName() .. ".DaysSlider", configFrame)
+
+	configFrame:SetVisible(false)
+	
+	weightedCheck:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, 10)
+	
+	weightedText:SetPoint("CENTERLEFT", weightedCheck, "CENTERRIGHT", 5, 0)
+	weightedText:SetFontSize(14)
+	weightedText:SetText(L["PricingModel/medianWeight"])
+	
+	daysText:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, 50)
+	daysText:SetFontSize(14)
+	daysText:SetText(L["PricingModel/medianDays"])
+
+	daysSlider:SetPoint("CENTERLEFT", daysText, "CENTERRIGHT", 20, 8)	
+	daysSlider:SetWidth(300)
+	daysSlider:SetRange(0, 30)
+	
+	return configFrame
+end
+
 local function PricingModel(item, matchPrice)
 	local minTime = os.time() - DAY_LENGTH * NUMBER_OF_DAYS
 	
@@ -42,4 +72,4 @@ local function PricingModel(item, matchPrice)
 
 	return math.min(bid, buy), buy, matchPrice
 end
-BananAH.RegisterPricingModel(PRICING_MODEL_ID, PRICING_MODEL_NAME, PricingModel)
+BananAH.RegisterPricingModel(PRICING_MODEL_ID, PRICING_MODEL_NAME, PricingModel, nil, ConfigFrame)
