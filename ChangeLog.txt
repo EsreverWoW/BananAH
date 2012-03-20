@@ -1,29 +1,16 @@
-	Alpha r25
-- Added config tab (not functional yet)
+	Beta 0.2.0
+- Added item filtering functionality to the items panel.
+- Improved the posting fields and added an option to bind bid & buyout prices.
+- Added basic and statistical pricing models (User defined, Vendor, Average, Standard deviation, Median and Trimmed mean).
+- Added price matchers (Self matcher and Competition undercut matcher)
+- Added auto posting (aka. batch posting)
+- Added "undercut on right click" to the auction panel.
+- Added posting queue management functionality.
+- Added (optional) map icon and configuration tab.
+- Fixed some bugs.
 
-	Alpha r24
-- Added auto posting (aka. Batch posting) functionality
-	
-	Alpha r23
-- Added statistical pricing models (Avg, StdDev, Median, IPR)
-- Fixed (I hope) the crafting bug
-
-	Alpha r22
-- Added queue management functionality
-- Improved bid/buy price boxes
-
-	Alpha r21
-- Improved posting functionality
-- Added "undercut on right click" to the auction panel
-- Added basic pricing models
-
-	Alpha r20
-- Added item panel filtering functionality
-- Dropped undercut functionality
-
-	Alpha r19
-- Improved layout
-- Reduced CPU usage
+	Beta 0.1.4
+- Fixed some critical bugs
 
 	Beta 0.1.3
 - Added German translation by chii
