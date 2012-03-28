@@ -1,3 +1,6 @@
+	r30
+- Reworked the auction DB to reduce its size. Note this version can be highly unstable.
+
 	Beta 0.2.1
 - Added addon documentation by LunaEclipse
 
