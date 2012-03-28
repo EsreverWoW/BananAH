@@ -55,19 +55,10 @@ local function PackAuctionDB()
 	end
 	
 	-- 2. Pack the data
-	local lookup = {}
-	local reverseLookup = {}
-	setmetatable(lookup,
-	{
-		__index = 
-			function(tab, key)
-	 	 	 	if not reverseLookup[key] then
-	 	 	 	 	rawset(tab, #tab + 1, key)
-	 	 	 	 	reverseLookup[key] = #tab
-	 	 	 	end
-	 	 	 	return reverseLookup[key]
-			end,
-	})
+	local fullLookup = {}
+	local itemLookup = {}
+	local function FullLookup(key) if key ~= "" then fullLookup[key] = (fullLookup[key] or 0) + 1 end return key end
+	local function ItemLookup(key) itemLookup[key] = (itemLookup[key] or 0) + 1 return key end
 
 	local packedDB = {}
 
@@ -75,37 +66,80 @@ local function PackAuctionDB()
 		local itBaseType, itUnknown, itAugmentID, itRandomID, itRandomPower, itAugmentPower, itRuneID, itUnknown2 = string.match(itemType, "(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
 		local itTable = 
 		{ 
-			string.format("%X", lookup[itBaseType]), 
+			ItemLookup(itBaseType), 
 			itUnknown, 
-			string.format("%X", lookup[itAugmentID]), 
-			string.format("%X", lookup[itRandomID]), 
-			string.format("%X", lookup[itRandomPower]), 
-			string.format("%X", lookup[itAugmentPower]), 
-			string.format("%X", lookup[itRuneID]), 
+			FullLookup(itAugmentID), 
+			FullLookup(itRandomID), 
+			FullLookup(itRandomPower), 
+			FullLookup(itAugmentPower), 
+			ItemLookup(itRuneID), 
 			itUnknown2
 		}
-		local packedType = { table.concat(itTable, ","), string.format("%X", lookup[itemData.rarity]), string.format("%X", lookup[string.format("%X", itemData.fullScan or 0)]), tostring(itemData.activeAuctions and 1 or 0) }
+		local packedType = { itTable, FullLookup(itemData.rarity), FullLookup(string.format("%X", itemData.fullScan)), tostring(itemData.activeAuctions and 1 or 0) }
 		for auctionID, auctionData in pairs(itemData.aucts) do
 			local packedData = 
 			{
-				string.format("%X", lookup[string.format("%X", tonumber(auctionID:sub(2, 9), 16))]),
+				FullLookup(string.format("%X", tonumber(auctionID:sub(2, 9), 16))),
 				string.format("%X", tonumber(auctionID:sub(10), 16)),
 				string.format("%X", auctionData.stk),
-				string.format("%X", lookup[string.format("%X", auctionData.bid)]),
-				string.format("%X", lookup[string.format("%X", auctionData.buy or 0)]),
-				string.format("%X", lookup[auctionData.sln]),
-				string.format("%X", lookup[string.format("%X", auctionData.fst)]),
-				string.format("%X", lookup[string.format("%X", auctionData.lst)]),
-				string.format("%X", lookup[string.format("%X", auctionData.met)]),
-				string.format("%X", lookup[string.format("%X", auctionData.xet)]),
+				FullLookup(string.format("%X", auctionData.bid)),
+				FullLookup(string.format("%X", auctionData.buy or 0)),
+				ItemLookup(auctionData.sln),
+				FullLookup(string.format("%X", auctionData.fst)),
+				FullLookup(string.format("%X", auctionData.lst)),
+				FullLookup(string.format("%X", auctionData.met)),
+				FullLookup(string.format("%X", auctionData.xet)),
 				tostring(auctionData.bdd and 1 or 0),
 				tostring(auctionData.rbe and 2 or (auctionData.rbe == nil and 0 or 1)),
 			}
-			table.insert(packedType, table.concat(packedData, ","))
+			table.insert(packedType, packedData)
 		end
-		table.insert(packedDB, table.concat(packedType, ";"))
+		table.insert(packedDB, packedType)
 	end
-	packedDB.dict = lookup
+	
+	for baseItemType, count in pairs(itemLookup) do if count > 1 then FullLookup(baseItemType) end end
+	
+	itemLookup = {}
+	for key, count in pairs(fullLookup) do table.insert(itemLookup, key) end
+	table.sort(itemLookup, function(a, b) return fullLookup[b] < fullLookup[a] end)
+	for index, key in ipairs(itemLookup) do fullLookup[key] = string.format("%X", index) end
+	setmetatable(fullLookup, { __index = function(tab, key) return rawget(tab, key) or key end })
+	
+	for index, packedType in ipairs(packedDB) do
+		local newItTable = 
+		{ 
+			fullLookup[packedType[1][1]],
+			packedType[1][2], 
+			fullLookup[packedType[1][3]], 
+			fullLookup[packedType[1][4]], 
+			fullLookup[packedType[1][5]], 
+			fullLookup[packedType[1][6]], 
+			fullLookup[packedType[1][7]], 
+			packedType[1][8] 
+		}
+		local newPackedType = { table.concat(newItTable, ","), fullLookup[packedType[2]], fullLookup[packedType[3]], packedType[4] }
+		for index = 5, #packedType do
+			local newPackedData =
+			{
+				fullLookup[packedType[index][1]],
+				packedType[index][2],
+				packedType[index][3],
+				fullLookup[packedType[index][4]],
+				fullLookup[packedType[index][5]],
+				fullLookup[packedType[index][6]],
+				fullLookup[packedType[index][7]],
+				fullLookup[packedType[index][8]],
+				fullLookup[packedType[index][9]],
+				fullLookup[packedType[index][10]],
+				packedType[index][11],
+				packedType[index][12]
+			}
+			table.insert(newPackedType, table.concat(newPackedData, ","))
+		end
+		packedDB[index] = table.concat(newPackedType, ";")
+	end
+	
+	packedDB.dict = itemLookup
 	
 	return packedDB
 end
@@ -118,7 +152,7 @@ local function UnpackAuctionDB(packedDB)
 	{
 		__index = 
 			function(tab, key)
- 	 	 	 	return rawget(tab, tonumber(key, 16))
+ 	 	 	 	return rawget(tab, tonumber(key, 16)) or key
 			end,
 	})
 	
