@@ -11,7 +11,7 @@ Description =
 	English = "Basic AH addon.",
 }
 Author = "Baanano"
-Version = "0.2.0"
+Version = "0.2.2"
 Email = "baanano.rift@gmail.com"
 Environment = "1.7"
 Embed =
