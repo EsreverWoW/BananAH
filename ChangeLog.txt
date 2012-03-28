@@ -1,4 +1,7 @@
-	r30
+	r32
+- Squeezed a few more kilobytes off of the auction DB size.
+
+	r31
 - Reworked the auction DB to reduce its size. Note this version can be highly unstable.
 
 	Beta 0.2.1
