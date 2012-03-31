@@ -236,9 +236,15 @@ local function OnAuctionData(type, auctions)
 	local scanData = {}
 	local auctionsDetail = Inspect.Auction.Detail(auctions)
 	for auctionID, auctionDetail in pairs(auctionsDetail) do
-		cachedAuctions[auctionID] = true
-		local itemDetail = Inspect.Item.Detail(auctionDetail.item)
-		local normalizedItemType = NormalizeItemType(itemDetail.type, itemDetail.rarity or "")
+		local itemDetail = nil
+		local normalizedItemType = cachedAuctions[auctionID]
+		if not normalizedItemType then
+			itemDetail = Inspect.Item.Detail(auctionDetail.item)
+			normalizedItemType = NormalizeItemType(itemDetail.type, itemDetail.rarity or "")
+		else
+			local auctionData = auctionTable.common[normalizedItemType].auctions[auctionID]
+			itemDetail = { type = auctionData.itemType, stack = auctionData.stack, }
+		end
 		scanData[normalizedItemType] = scanData[normalizedItemType] or { auctions = {} }
 		scanData[normalizedItemType].auctions[auctionID] = 
 		{
@@ -249,6 +255,7 @@ local function OnAuctionData(type, auctions)
 			remainingTime = auctionDetail.time, 
 			sellerName = auctionDetail.seller,  
 		}
+		cachedAuctions[auctionID] = normalizedItemType
 		totalAuctionCount = totalAuctionCount + 1
 	end
 	
@@ -409,7 +416,7 @@ local function GetActiveAuctionData(item)
 end
 
 local function GetAuctionCached(auctionID)
-	return cachedAuctions[auctionID]
+	return cachedAuctions[auctionID] and true or nil
 end
 
 _G.BananAH.GetAllAuctionData = GetAllAuctionData
