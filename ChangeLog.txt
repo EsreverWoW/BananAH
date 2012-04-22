@@ -1,3 +1,17 @@
+	Alpha r35
+- Updated to Rift 1.8
+- Redesigned Auction DB
+- Scanning speed has been improved
+- CPU usage has been reduced
+- Added 'market price' pricing model
+- Auction price are now compared to the 'market price' and color coded (cyan: very cheap, green: cheap, yellow: average, orange: expensive, red: very expensive)
+- The Posting queue now displays the number of tasks queued
+- Posting & Autoposting config are stored per character now
+- The 'hide item' filter has been reworked and now allows also hiding item only for some characters (right click)
+- The 'post' button now has a 0.5 cooldown to prevent accidental posting
+- Temporarily disabled config tab
+- Testing new way to display expire times
+
 	Beta 0.2.2
 - Reduced the auction database size so it doesn't get truncated
 - Speeded up the background auction scanner

@@ -1,13 +1,14 @@
-local _, InternalInterface = ...
-
-local FixItemType = InternalInterface.Utility.FixItemType
+local addonInfo, InternalInterface = ...
+local addonID = addonInfo.identifier
 
 -- AH Posting Service
 local postingQueue = {}
 local paused = false
 local waitingUpdate = false
-local QueueChangedEvent = Utility.Event.Create("BananAH", "PostingQueueChanged")
-local QueueStatusChangedEvent = Utility.Event.Create("BananAH", "PostingQueueStatusChanged")
+local cronTask = nil
+local cronRunning = false
+local QueueChangedEvent = Utility.Event.Create(addonID, "PostingQueueChanged")
+local QueueStatusChangedEvent = Utility.Event.Create(addonID, "PostingQueueStatusChanged")
 
 local function PostingQueueCoroutine()
 	repeat
@@ -20,6 +21,10 @@ local function PostingQueueCoroutine()
 				table.remove(postingQueue, 1)
 				QueueChangedEvent()
 				QueueStatusChangedEvent()
+				if #postingQueue <= 0 and cronRunning and cronTask then
+					Library.LibCron.pause(cronTask)
+					cronRunning = false
+				end
 				break
 			end
 
@@ -33,7 +38,7 @@ local function PostingQueueCoroutine()
 			for slotID, itemID in pairs(items) do repeat
 				if type(itemID) == "boolean" then break end
 				local itemDetail = Inspect.Item.Detail(itemID)
-				if itemDetail.bound == true or FixItemType(itemDetail.type) ~= itemType then break end
+				if itemDetail.bound == true or itemDetail.type ~= itemType then break end
 				
 				local itemStack = itemDetail.stack or 1
 				local itemInfo = { itemID = itemID, slotID = slotID }
@@ -64,6 +69,10 @@ local function PostingQueueCoroutine()
 					table.remove(postingQueue, 1)
 					QueueChangedEvent()
 					QueueStatusChangedEvent()
+					if #postingQueue <= 0 and cronRunning and cronTask then
+						Library.LibCron.pause(cronTask)
+						cronRunning = false
+					end
 					break
 				end
 
@@ -71,6 +80,10 @@ local function PostingQueueCoroutine()
 				postingQueue[1].amount = postingQueue[1].amount - searchStackSize
 				waitingUpdate = true
 				QueueStatusChangedEvent()
+				if cronRunning and cronTask then
+					Library.LibCron.pause(cronTask)
+					cronRunning = false
+				end
 				break
 			end
 
@@ -80,6 +93,10 @@ local function PostingQueueCoroutine()
 				Command.Item.Move(firstItemSlot, secondItemSlot)
 				waitingUpdate = true
 				QueueStatusChangedEvent()
+				if cronRunning and cronTask then
+					Library.LibCron.pause(cronTask)
+					cronRunning = false
+				end
 				break
 			end
 
@@ -88,6 +105,10 @@ local function PostingQueueCoroutine()
 				Command.Item.Split(item, searchStackSize)
 				waitingUpdate = true
 				QueueStatusChangedEvent()
+				if cronRunning and cronTask then
+					Library.LibCron.pause(cronTask)
+					cronRunning = false
+				end
 				break
 			end
 
@@ -95,10 +116,18 @@ local function PostingQueueCoroutine()
 			table.remove(postingQueue, 1)
 			QueueChangedEvent()
 			QueueStatusChangedEvent()
+			if #postingQueue <= 0 and cronRunning and cronTask then
+				Library.LibCron.pause(cronTask)
+				cronRunning = false
+			end
 		until true
 		coroutine.yield()
 	until false
 end
+local postingCoroutine = coroutine.create(PostingQueueCoroutine)
+cronTask = Library.LibCron.new(addonID, 0, true, true, coroutine.resume, postingCoroutine)
+if cronTask then Library.LibCron.pause(cronTask) end
+
 
 local function PostItem(item, stackSize, amount, unitBidPrice, unitBuyoutPrice, duration)
 	if not item or not amount or not stackSize or not unitBidPrice or not duration then return false end
@@ -111,11 +140,11 @@ local function PostItem(item, stackSize, amount, unitBidPrice, unitBuyoutPrice, 
 	
 	if amount <= 0 or stackSize <= 0 or unitBidPrice <= 0 or (duration ~= 12 and duration ~= 24 and duration ~= 48) then return false end
 	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
-	if not ok then return false end
+	if not ok or not itemDetail then return false end
 	
 	local postTable = 
 	{ 
-		itemType = FixItemType(itemDetail.type), 
+		itemType = itemDetail.type, 
 		stackSize = stackSize, 
 		amount = amount, 
 		unitBidPrice = unitBidPrice, 
@@ -125,6 +154,10 @@ local function PostItem(item, stackSize, amount, unitBidPrice, unitBuyoutPrice, 
 	table.insert(postingQueue, postTable)
 	QueueChangedEvent()
 	QueueStatusChangedEvent()
+	if not cronRunning and not paused and #postingQueue > 0 and not waitingUpdate and Inspect.Interaction("auction") and Inspect.Queue.Status("global") and cronTask then
+		Library.LibCron.resume(cronTask)
+		cronRunning = true
+	end	
 	return true
 end
 
@@ -133,6 +166,10 @@ local function CancelPostingByIndex(index)
 	table.remove(postingQueue, index)
 	QueueChangedEvent()
 	QueueStatusChangedEvent()
+	if #postingQueue <= 0 and cronRunning and cronTask then
+		Library.LibCron.pause(cronTask)
+		cronRunning = false
+	end
 end
 
 local function GetPostingQueue()
@@ -157,51 +194,72 @@ end
 local function SetPostingQueuePaused(pause)
 	if pause == paused then return end
 	paused = pause
+
+	if paused and cronRunning and cronTask then 
+		Library.LibCron.pause(cronTask) 
+		cronRunning = false 
+	elseif not cronRunning and not paused and #postingQueue > 0 and not waitingUpdate and Inspect.Interaction("auction") and Inspect.Queue.Status("global") and cronTask then
+		Library.LibCron.resume(cronTask)
+		cronRunning = true
+	end
+
 	QueueStatusChangedEvent()
 end
 
-
 --
-local postingCoroutine = coroutine.create(PostingQueueCoroutine)
-
-local function OnUpdateBegin()
-	coroutine.resume(postingCoroutine)
-end
-table.insert(Event.System.Update.Begin, { OnUpdateBegin, "BananAH", "AHPostingService.OnUpdateBegin" })
-
 local function OnWaitingUnlock()
-	waitingUpdate = false
-	QueueStatusChangedEvent() -- FIXME Check if previous waitingUpdate was true!
+	if waitingUpdate then
+		waitingUpdate = false
+		QueueStatusChangedEvent()
+		
+		if not cronRunning and not paused and #postingQueue > 0 and Inspect.Interaction("auction") and Inspect.Queue.Status("global") and cronTask then
+			Library.LibCron.resume(cronTask)
+			cronRunning = true
+		end
+	end
 end
-table.insert(Event.Item.Slot, { OnWaitingUnlock, "BananAH", "AHPostingService.OnWaitingUnlockSlot" })
-table.insert(Event.Item.Update, { OnWaitingUnlock, "BananAH", "AHPostingService.OnWaitingUnlockUpdate" })
+table.insert(Event.Item.Slot, { OnWaitingUnlock, addonID, "AHPostingService.OnWaitingUnlockSlot" })
+table.insert(Event.Item.Update, { OnWaitingUnlock, addonID, "AHPostingService.OnWaitingUnlockUpdate" })
 
 local function OnInteractionChanged(interaction, state)
 	if interaction == "auction" then
 		QueueStatusChangedEvent() -- FIXME Check if it has really changed
+		if not state and cronRunning and cronTask then 
+			Library.LibCron.pause(cronTask) 
+			cronRunning = false 
+		elseif state and not cronRunning and not paused and #postingQueue > 0 and not waitingUpdate and Inspect.Queue.Status("global") and cronTask then
+			Library.LibCron.resume(cronTask)
+			cronRunning = true
+		end		
 	end
 end
-table.insert(Event.Interaction, { OnInteractionChanged, "BananAH", "AHPostingService.OnInteractionChanged" })
+table.insert(Event.Interaction, { OnInteractionChanged, addonID, "AHPostingService.OnInteractionChanged" })
 
 local function OnGlobalQueueChanged(queue)
 	if queue == "global" then
 		QueueStatusChangedEvent() -- FIXME Check if it has really changed
+		if not Inspect.Queue.Status("global") and cronRunning and cronTask then 
+			Library.LibCron.pause(cronTask) 
+			cronRunning = false 
+		elseif not cronRunning and not paused and #postingQueue > 0 and not waitingUpdate and Inspect.Interaction("auction") and Inspect.Queue.Status("global") and cronTask then
+			Library.LibCron.resume(cronTask)
+			cronRunning = true
+		end		
 	end
 end
-table.insert(Event.Queue.Status, { OnGlobalQueueChanged, "BananAH", "AHPostingService.OnGlobalQueueChanged" })
+table.insert(Event.Queue.Status, { OnGlobalQueueChanged, addonID, "AHPostingService.OnGlobalQueueChanged" })
 
 local function OnAddonLoaded(addonId)
-	if addonId == "BananAH" then 
-		InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
-		SetPostingQueuePaused(InternalInterface.Settings.Config.defaultPausedPostingQueue or false)
+	if addonId == addonID then 
+		SetPostingQueuePaused(InternalInterface.AccountSettings.Posting.startPostingQueuePaused or false)
 	end 
 end
-table.insert(Event.Addon.Load.End, { OnAddonLoaded, "BananAH", "AHPostingService.OnAddonLoaded" })
+table.insert(Event.Addon.Load.End, { OnAddonLoaded, addonID, "AHPostingService.OnAddonLoaded" })
 
 --
-_G.BananAH.PostItem = PostItem
-_G.BananAH.CancelPostingByIndex = CancelPostingByIndex
-_G.BananAH.GetPostingQueue = GetPostingQueue
-_G.BananAH.GetPostingQueueStatus = GetPostingQueueStatus
-_G.BananAH.GetPostingQueuePaused = GetPostingQueuePaused
-_G.BananAH.SetPostingQueuePaused = SetPostingQueuePaused
+_G[addonID].PostItem = PostItem
+_G[addonID].CancelPostingByIndex = CancelPostingByIndex
+_G[addonID].GetPostingQueue = GetPostingQueue
+_G[addonID].GetPostingQueueStatus = GetPostingQueueStatus
+_G[addonID].GetPostingQueuePaused = GetPostingQueuePaused
+_G[addonID].SetPostingQueuePaused = SetPostingQueuePaused

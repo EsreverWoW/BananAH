@@ -1,37 +1,36 @@
-local _, InternalInterface = ...
+local addonInfo, InternalInterface = ...
+local addonID = addonInfo.identifier
 
-local FixItemType = InternalInterface.Utility.FixItemType
 local L = InternalInterface.Localization.L
 
 local function InitializeLayout()
-	local mapContext = UI.CreateContext("BananAH.UI.MapContext")
-	local mapIcon = UI.CreateFrame("Texture", "BananAH.UI.MapIcon", mapContext)
+	local mapContext = UI.CreateContext(addonID .. ".UI.MapContext")
+	local mapIcon = UI.CreateFrame("Texture", addonID .. ".UI.MapIcon", mapContext)
 
-	local mainContext = UI.CreateContext("BananAH.UI.MainContext")
-	local mainWindow = UI.CreateFrame("BWindow", "BananAH.UI.MainWindow", mainContext)
-	local searchTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.SearchTab", mainWindow:GetContent())
-	local postTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.PostTab", mainWindow:GetContent())
-	local auctionsTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.AuctionsTab", mainWindow:GetContent())
-	local bidsTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.BidsTab", mainWindow:GetContent())
-	local historyTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.HistoryTab", mainWindow:GetContent())
-	local configTab = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.ConfigTab", mainWindow:GetContent())
-	local mainPanel = UI.CreateFrame("BPanel", "BananAH.UI.MainWindow.Panel", mainWindow:GetContent())
-	local refreshButton = UI.CreateFrame("Texture", "BananAH.UI.MainWindow.RefreshButton", mainWindow:GetContent())
-	local searchText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.SearchTab.Text", searchTab:GetContent())
-	local postText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.PostTab.Text", postTab:GetContent())
-	local postFrame = InternalInterface.UI.PostingFrame("BananAH.UI.MainWindow.PostFrame", mainPanel:GetContent())
-	local auctionsText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.AuctionsTab.Text", auctionsTab:GetContent())
-	local bidsText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.BidsTab.Text", bidsTab:GetContent())
-	local historyText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.HistoryTab.Text", historyTab:GetContent())
-	local configText = UI.CreateFrame("BShadowedText", "BananAH.UI.MainWindow.ConfigTab.Text", configTab:GetContent())
-	local configFrame = InternalInterface.UI.ConfigFrame("BananAH.UI.MainWindow.ConfigFrame", mainPanel:GetContent())
+	local mainContext = UI.CreateContext(addonID .. ".UI.MainContext")
+	local mainWindow = UI.CreateFrame("BWindow", addonID .. ".UI.MainWindow", mainContext)
+	local searchTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.SearchTab", mainWindow:GetContent())
+	local postTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.PostTab", mainWindow:GetContent())
+	local auctionsTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.AuctionsTab", mainWindow:GetContent())
+	local bidsTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.BidsTab", mainWindow:GetContent())
+	local historyTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.HistoryTab", mainWindow:GetContent())
+	local configTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.ConfigTab", mainWindow:GetContent())
+	local mainPanel = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.Panel", mainWindow:GetContent())
+	local refreshButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
+	local searchText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.SearchTab.Text", searchTab:GetContent())
+	local postText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.PostTab.Text", postTab:GetContent())
+	local postFrame = InternalInterface.UI.PostingFrame(addonID .. ".UI.MainWindow.PostFrame", mainPanel:GetContent())
+	local auctionsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.AuctionsTab.Text", auctionsTab:GetContent())
+	local bidsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.BidsTab.Text", bidsTab:GetContent())
+	local historyText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.HistoryTab.Text", historyTab:GetContent())
+	local configText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.ConfigTab.Text", configTab:GetContent())
+--	local configFrame = InternalInterface.UI.ConfigFrame(addonID .. ".UI.MainWindow.ConfigFrame", mainPanel:GetContent())
 
 	mapContext:SetStrata("hud")
 
-	InternalInterface.Settings.Config = InternalInterface.Settings.Config or {}
 	mapIcon:SetPoint("CENTER", UI.Native.MapMini, "BOTTOMLEFT", 24, -25)
-	mapIcon:SetTexture("BananAH", "Textures/MapIcon.png")
-	mapIcon:SetVisible(InternalInterface.Settings.Config.showMapIcon or false)
+	mapIcon:SetTexture(addonID, "Textures/MapIcon.png")
+	mapIcon:SetVisible(InternalInterface.AccountSettings.Posting.showMapIcon or false)
 	
 	mainWindow:SetVisible(false)
 	mainWindow:SetMinWidth(1280)
@@ -39,7 +38,7 @@ local function InitializeLayout()
 	mainWindow:SetWidth(1280)
 	mainWindow:SetHeight(768)
 	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0) -- TODO Get from config
-	mainWindow:SetTitle("BananAH")
+	mainWindow:SetTitle(addonID)
 	mainWindow:SetAlpha(1)
 	mainWindow:SetCloseable(true)
 	mainWindow:SetDraggable(true)
@@ -91,7 +90,7 @@ local function InitializeLayout()
 	mainPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
 	mainPanel:SetLayer(2)
 	
-	refreshButton:SetTexture("BananAH", "Textures/RefreshDisabled.png")
+	refreshButton:SetTexture(addonID, "Textures/RefreshDisabled.png")
 	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -20, 5)
 	refreshButton.enabled = false
 
@@ -139,14 +138,15 @@ local function InitializeLayout()
 	configText:SetText(L["General/menuConfig"])
 	configText:SetFontSize(16)
 	configText:SetShadowOffset(2, 2)
-	configText:SetFontColor(0.75, 0.75, 0.5, 1)
+	--configText:SetFontColor(0.75, 0.75, 0.5, 1)
+	configText:SetFontColor(0.5, 0.5, 0.5, 1)
 	configTab:SetWidth(configText:GetWidth() + 60)
-	configTab.text = configText
+	--configTab.text = configText
 	
-	configFrame:SetAllPoints()
-	configFrame:SetVisible(false)
-	configFrame.mapIcon = mapIcon
-	configTab.frame = configFrame
+	-- configFrame:SetAllPoints()
+	-- configFrame:SetVisible(false)
+	-- configFrame.mapIcon = mapIcon
+	-- configTab.frame = configFrame
 	
 	local function ShowBananAH(hEvent)
 		mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
@@ -157,8 +157,13 @@ local function InitializeLayout()
 			mainWindow:SetWidth(1280)
 			mainWindow:SetHeight(768)
 		end
+		mainWindow.selectedTab.frame:SetVisible(true)
 		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame, hEvent)
-	end	
+	end
+	
+	function mainWindow.Event:Close()
+		mainWindow.selectedTab.frame:SetVisible(false)
+	end
 	
 	function UI.Native.MapMini.Event:Layer()
 		mapContext:SetLayer(UI.Native.MapMini:GetLayer() + 1)
@@ -168,26 +173,27 @@ local function InitializeLayout()
 		local wasVisible = mainWindow:GetVisible()
 		ShowBananAH(true)
 		mainWindow:SetVisible(not wasVisible)
+		mainWindow.selectedTab.frame:SetVisible(not wasVisible)
 	end
 	
 	function UI.Native.Auction.Event:Loaded()
-		if UI.Native.Auction:GetLoaded() and InternalInterface.Settings.Config.autoOpen then
+		if UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.Posting.autoOpen then
 			ShowBananAH(false)
 		end
 	end
 	
 	function refreshButton.Event:MouseIn()
 		if self.enabled then
-			self:SetTexture("BananAH", "Textures/RefreshOn.png")
+			self:SetTexture(addonID, "Textures/RefreshOn.png")
 		else
-			self:SetTexture("BananAH", "Textures/RefreshDisabled.png")
+			self:SetTexture(addonID, "Textures/RefreshDisabled.png")
 		end
 	end
 	function refreshButton.Event:MouseOut()
 		if self.enabled then
-			self:SetTexture("BananAH", "Textures/RefreshOff.png")
+			self:SetTexture(addonID, "Textures/RefreshOff.png")
 		else
-			self:SetTexture("BananAH", "Textures/RefreshDisabled.png")
+			self:SetTexture(addonID, "Textures/RefreshDisabled.png")
 		end
 	end
 	function refreshButton.Event:LeftClick()
@@ -219,46 +225,46 @@ local function InitializeLayout()
 	postTab.Event.MouseIn = TabMouseIn
 	postTab.Event.MouseOut = TabMouseOut
 	postTab.Event.LeftClick = TabLeftClick
-	configTab.Event.MouseIn = TabMouseIn
-	configTab.Event.MouseOut = TabMouseOut
-	configTab.Event.LeftClick = TabLeftClick
-	postTab.Event.LeftClick(postTab)
-	
-	
+	--configTab.Event.MouseIn = TabMouseIn
+	--configTab.Event.MouseOut = TabMouseOut
+	-- configTab.Event.LeftClick = TabLeftClick
+	--postTab.Event.LeftClick(postTab)
+	mainWindow.selectedTab = postTab
+	mainWindow.selectedTab.text:SetFontColor(1, 1, 1, 1)
 	
 	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
 			refreshButton.enabled = state
-			refreshButton:SetTexture("BananAH", state and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
+			refreshButton:SetTexture(addonID, state and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
 		end
 	end
-	table.insert(Event.Interaction, { OnInteractionChanged, "BananAH", "OnInteractionChanged" })
+	table.insert(Event.Interaction, { OnInteractionChanged, addonID, "OnInteractionChanged" })
 	
 	local function ReportAuctionData(full, total, new, updated, removed, before)
 		local fullOrPartialMessage = full and L["General/scanTypeFull"] or L["General/scanTypePartial"]
-		local newMessage = (new > 0) and string.format(L["General/scanNewCount"], new) or ""
-		local updatedMessage = (updated > 0) and string.format(L["General/scanUpdatedCount"], updated) or ""
-		local removedMessage = (removed > 0) and string.format(L["General/scanRemovedCount"], removed, before) or ""
-		local message = string.format(L["General/scanMessage"], fullOrPartialMessage, total, newMessage, updatedMessage, removedMessage)
+		local newMessage = (#new > 0) and string.format(L["General/scanNewCount"], #new) or ""
+		local updatedMessage = (#updated > 0) and string.format(L["General/scanUpdatedCount"], #updated) or ""
+		local removedMessage = (#removed > 0) and string.format(L["General/scanRemovedCount"], #removed, #before) or ""
+		local message = string.format(L["General/scanMessage"], fullOrPartialMessage, #total, newMessage, updatedMessage, removedMessage)
 		print(message)
 	end
-	table.insert(Event.BananAH.AuctionData, { ReportAuctionData, "BananAH", "ReportAuctionData" })
+	table.insert(Event[addonID].AuctionData, { ReportAuctionData, addonID, "ReportAuctionData" })
 
 	local slashEvent1 = Command.Slash.Register("bananah")
 	local slashEvent2 = Command.Slash.Register("bah")
 	if slashEvent1 then
-		table.insert(slashEvent1, {function() ShowBananAH(true) end, "BananAH", "ShowBananAH1"})
+		table.insert(slashEvent1, {function() ShowBananAH(true) end, addonID, "ShowBananAH1"})
 	end
 	if slashEvent2 then
-		table.insert(slashEvent2, {function() ShowBananAH(true) end, "BananAH", "ShowBananAH2"})
+		table.insert(slashEvent2, {function() ShowBananAH(true) end, addonID, "ShowBananAH2"})
 	elseif not slashEvent1 then
 		print(L["General/slashRegisterError"])
 	end
 end
 
 local function OnAddonLoaded(addonId)
-	if addonId == "BananAH" then 
+	if addonId == addonID then 
 		InitializeLayout()
 	end 
 end
-table.insert(Event.Addon.Load.End, { OnAddonLoaded, "BananAH", "OnAddonLoaded" })
+table.insert(Event.Addon.Load.End, { OnAddonLoaded, addonID, "OnAddonLoaded" })
