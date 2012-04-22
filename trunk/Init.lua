@@ -1,23 +1,7 @@
-
-local _, InternalInterface = ...
+local addonInfo, InternalInterface = ...
+local addonID = addonInfo.identifier
 
 -- Utility Functions
-local function FixItemType(itemType)
-	itemType = string.gsub(itemType, "FFFFFFFFFFFFFFFF0", "FFFFFFFF0")
-	return itemType
-end
-
-local function NormalizeItemType(itemType, rarity, includePowerLevels, includeRunes)
-	itemType = FixItemType(itemType)
-	local baseType, _, augmentID, randomID, randomPower, augmentPower, runeID, _ = string.match(itemType, "(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
-	local normalizedType = baseType .. ","
-	if rarity then normalizedType = normalizedType .. rarity .. "," end
-	normalizedType = normalizedType .. augmentID .. "," .. randomID
-	if includePowerLevels then normalizedType = normalizedType .. "," .. augmentPower .. "," .. randomPower end
-	if includeRunes then normalizedType = normalizedType .. "," .. runeID end
-	return normalizedType
-end
-
 local function GetRarityColor(rarity)
 	if     rarity == "sellable"     then return 0.34375, 0.34375, 0.34375, 1
 	elseif rarity == "uncommon"     then return 0,       0.797,   0,       1
@@ -30,45 +14,60 @@ local function GetRarityColor(rarity)
 	end
 end
 
-local function CopyTableSimple(tab)
-	local copy = { }
-	for k, v in pairs(tab) do copy[k] = v end
-	return copy
-end
-
 -- Interfaces
-_G.BananAH = _G.BananAH or {}
+_G[addonID] = _G[addonID] or {}
+
 InternalInterface = InternalInterface or {}
-
-InternalInterface.Utility = InternalInterface.Utility or {}
-InternalInterface.Utility.FixItemType = FixItemType
-InternalInterface.Utility.NormalizeItemType = NormalizeItemType
-InternalInterface.Utility.GetRarityColor = GetRarityColor
-InternalInterface.Utility.CopyTableSimple = CopyTableSimple
-
 InternalInterface.UI = InternalInterface.UI or {}
-
-InternalInterface.Settings = InternalInterface.Settings or {}
+InternalInterface.Utility = InternalInterface.Utility or {}
+InternalInterface.Utility.GetRarityColor = GetRarityColor
+InternalInterface.AccountSettings = InternalInterface.AccountSettings or {}
+InternalInterface.ShardSettings = InternalInterface.ShardSettings or {}
+InternalInterface.CharacterSettings = InternalInterface.CharacterSettings or {}
 
 -- Settings
+local function BuildSettings()
+	InternalInterface.AccountSettings.Posting = InternalInterface.AccountSettings.Posting or 
+	{
+		selfMatcherRange = 25,
+		competitionUndercutterRange = 25,
+		startPostingQueuePaused = false,
+		showMapIcon = true,
+		autoOpen = false,
+	}
+	InternalInterface.AccountSettings.Posting.DefaultConfig = InternalInterface.AccountSettings.Posting.DefaultConfig or
+	{
+		pricingModelOrder = { "market", "vendor", "fixed", },
+		usePriceMatching = false,
+		stackSize = 1,
+		bindPrices = false,
+		duration = 3,
+	}
+
+	InternalInterface.ShardSettings.Posting = InternalInterface.ShardSettings.Posting or {}
+	InternalInterface.ShardSettings.Posting.HiddenItems = InternalInterface.ShardSettings.Posting.HiddenItems or {}
+	
+	InternalInterface.CharacterSettings.Posting = InternalInterface.CharacterSettings.Posting or {}
+	InternalInterface.CharacterSettings.Posting.HiddenItems = InternalInterface.CharacterSettings.Posting.HiddenItems or {}
+	InternalInterface.CharacterSettings.Posting.ItemConfig = InternalInterface.CharacterSettings.Posting.ItemConfig or {}
+	InternalInterface.CharacterSettings.Posting.AutoConfig = InternalInterface.CharacterSettings.Posting.AutoConfig or {}
+end
+
 local function LoadSettings(addonId)
-	if addonId == "BananAH" then
-		InternalInterface.Settings = BananAHSettings or {}
+	if addonId == addonID then
+		InternalInterface.AccountSettings = BananAHAccountSettings or {}
+		InternalInterface.ShardSettings = BananAHShardSettings or {}
+		InternalInterface.CharacterSettings = BananAHCharacterSettings or {}
+		BuildSettings()
 	end
 end
-table.insert(Event.Addon.SavedVariables.Load.End, {LoadSettings, "BananAH", "LoadSettings"})
+table.insert(Event.Addon.SavedVariables.Load.End, {LoadSettings, addonID, "LoadSettings"})
 
 local function SaveSettings(addonId)
-	if addonId == "BananAH" and _G.BananAH.isLoaded then
-		BananAHSettings = InternalInterface.Settings
+	if addonId == addonID then
+		BananAHAccountSettings = InternalInterface.AccountSettings
+		BananAHShardSettings = InternalInterface.ShardSettings
+		BananAHCharacterSettings = InternalInterface.CharacterSettings
 	end
 end
-table.insert(Event.Addon.SavedVariables.Save.Begin, {SaveSettings, "BananAH", "SaveSettings"})
-
--- Loading
-local function OnAddonLoadEnd(addonId)
-	if addonId == "BananAH" then 
-		_G.BananAH.isLoaded = true 
-	end 
-end
-table.insert(Event.Addon.Load.End, { OnAddonLoadEnd, "BananAH", "OnAddonLoadEnd" })
+table.insert(Event.Addon.SavedVariables.Save.Begin, {SaveSettings, addonID, "SaveSettings"})

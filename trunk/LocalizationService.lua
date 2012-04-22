@@ -1,5 +1,3 @@
-
-
 local _, InternalInterface = ...
 
 -- Localization Services
@@ -38,18 +36,20 @@ local function RegisterLocale(locale, tab)
 end
 
 local function GetLocalizedDateString(format, value)
-	local w0, w1, w2, w3, w4, w5, w6 = string.match(localizationTable["Meta/weekdayNames"], "(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
-	local wa0, wa1, wa2, wa3, wa4, wa5, wa6 = string.match(localizationTable["Meta/weekdayAbbreviatedNames"], "(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
+	local weekdayNames = localizationTable["Meta/weekdayNames"] .. ","
+	weekdayNames = { weekdayNames:match((weekdayNames:gsub("[^,]*,", "([^,]*),"))) }
+	local weekdayName = weekdayNames[tonumber(os.date("%w", value)) + 1]
+	
+	local weekdayAbbreviatedNames = localizationTable["Meta/weekdayAbbreviatedNames"] .. ","
+	weekdayAbbreviatedNames = { weekdayAbbreviatedNames:match((weekdayAbbreviatedNames:gsub("[^,]*,", "([^,]*),"))) }
+	local weekdayAbbreviatedName = weekdayAbbreviatedNames[tonumber(os.date("%w", value)) + 1]
+
 	local m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12 = string.match(localizationTable["Meta/monthNames"], "(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
 	local ma1, ma2, ma3, ma4, ma5, ma6, ma7, ma8, ma9, ma10, ma11, ma12 = string.match(localizationTable["Meta/monthAbbreviatedNames"], "(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
 	
-	local weekdayNames = { w0, w1, w2, w3, w4, w5, w6 }
-	local weekdayAbbreviatedNames = { wa0, wa1, wa2, wa3, wa4, wa5, wa6 }
 	local monthNames = { m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12 }
 	local monthAbbreviatedNames = { ma1, ma2, ma3, ma4, ma5, ma6, ma7, ma8, ma9, ma10, ma11, ma12 }
 	
-	local weekdayName = weekdayNames[tonumber(os.date("%w", value)) + 1]
-	local weekdayAbbreviatedName = weekdayAbbreviatedNames[tonumber(os.date("%w", value)) + 1]
 	local monthName = monthNames[tonumber(os.date("%m", value))]
 	local monthAbbreviatedName = monthAbbreviatedNames[tonumber(os.date("%m", value))]
 	
@@ -65,4 +65,3 @@ InternalInterface.Localization = {}
 InternalInterface.Localization.L = localizationTable
 InternalInterface.Localization.RegisterLocale = RegisterLocale
 InternalInterface.Localization.GetLocalizedDateString = GetLocalizedDateString
-

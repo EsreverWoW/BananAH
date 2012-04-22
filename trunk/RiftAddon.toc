@@ -11,21 +11,25 @@ Description =
 	English = "Basic AH addon.",
 }
 Author = "Baanano"
-Version = "0.2.2"
+Version = "0.3.0"
 Email = "baanano.rift@gmail.com"
-Environment = "1.7"
+Environment = "1.8"
 Embed =
 {
 	LibBInterface = true,
+	LibCron = true,
 }
 Dependencies =
 {
 	LibBInterface = {"required", "before"},
+	LibCron = {"required", "before"},
 }
 SavedVariables =
 {
 	BananAHAuctionTable = "shard",
-	BananAHSettings = "shard",
+	BananAHAccountSettings = "account",
+	BananAHShardSettings = "shard",
+	BananAHCharacterSettings = "character",	
 }
 RunOnStartup =
 {
@@ -36,18 +40,16 @@ RunOnStartup =
 	"Locale/German.lua",
 	"Locale/Korean.lua",
 	"Locale/Russian.lua",
+	"AuctionTree.lua",
 	"AHMonitoringService.lua",
 	"AHPostingService.lua",
 	"PricingModelService.lua",
+	"PricingModels/Vendor.lua",
+	"PricingModels/UserDefined.lua",
 	"PricingModels/Average.lua",
 	"PricingModels/StandardDeviation.lua",
 	"PricingModels/Median.lua",
 	"PricingModels/IPR.lua",
-	"BItemSelector.lua",
-	"BAuctionSelector.lua",
-	"BPostSelector.lua",
-	"BQueueManager.lua",
 	"PostingFrame.lua",
-	"ConfigFrame.lua",
 	"Main.lua",
 }

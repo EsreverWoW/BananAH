@@ -1,424 +1,300 @@
-local _, InternalInterface = ...
+local addonInfo, InternalInterface = ...
+local addonID = addonInfo.identifier
 
-local FixItemType = InternalInterface.Utility.FixItemType
-local NormalizeItemType = InternalInterface.Utility.NormalizeItemType
-local CopyTableSimple = InternalInterface.Utility.CopyTableSimple
+local MAX_DATA_AGE = 1 * 24 * 60 * 60
 
--- AH Monitoring Service
-auctionTable = {}
+local auctionTable = {}
+local auctionTableLoaded = false
+local cachedItemTypes = {}
 local cachedAuctions = {}
-local AuctionDataEvent = Utility.Event.Create("BananAH", "AuctionData")
+local auctionSearcher = InternalInterface.Utility.BuildAuctionTree()
+local AuctionDataEvent = Utility.Event.Create(addonID, "AuctionData")
 
-local function PackAuctionDB()
-	-- 1. Convert the table
-	local auctionDB = {}
+local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTimes)
+	local itemType = auctionDetail.itemType
+	if not cachedItemTypes[itemType] then
+		local itemDetail = Inspect.Item.Detail(auctionDetail.item)
+		cachedItemTypes[itemType] = true
 
-	for _, factionData in pairs(auctionTable) do
-		for normID, normData in pairs(factionData) do
-			local rarity = string.match(normID, ".-,(.-),.+") or ""
-			local lastFullScanTime = normData.lastFullScanTime
-			local activeAuctions = normData.activeAuctions
+		local name = itemDetail.name
+		local rarity = itemDetail.rarity or ""
+		local level = itemDetail.requiredLevel or 1
+		local category = itemDetail.category or ""
+		local callings = itemDetail.requiredCalling
+		callings =
+		{
+			warrior = (not callings or callings:find("warrior")) and true or nil,
+			cleric = (not callings or callings:find("cleric")) and true or nil,
+			rogue = (not callings or callings:find("rogue")) and true or nil,
+			mage = (not callings or callings:find("mage")) and true or nil,
+		}
+		
+		if not auctionTable[itemType] then
+			auctionTable[itemType] =
+			{
+				name = name,
+				rarity = rarity,
+				level = level,
+				category = category,
+				callings = callings,
+				auctions = {},
+			}
+		else
+			local oldData = auctionTable[itemType]
 			
-			for auctionID, auctionData in pairs(normData.auctions) do
-				local itemType = auctionData.itemType
-				local stack = auctionData.stack
-				local bidPrice = auctionData.bidPrice
-				local buyoutPrice = auctionData.buyoutPrice
-				local sellerName = auctionData.sellerName
-				local firstSeenTime = auctionData.firstSeenTime
-				local lastSeenTime = auctionData.lastSeenTime
-				local minExpireTime = auctionData.minExpireTime
-				local maxExpireTime = auctionData.maxExpireTime
-				local bidded = auctionData.bidded
-				local removedBeforeExpiration = auctionData.removedBeforeExpiration
-				
-				auctionDB[itemType] = auctionDB[itemType] or { aucts = {} }
-				auctionDB[itemType].rarity = auctionDB[itemType].rarity or rarity
-				auctionDB[itemType].fullScan = math.max(lastFullScanTime or 0, auctionDB[itemType].fullScan or 0)
-				auctionDB[itemType].activeAuctions = auctionDB[itemType].activeAuctions or activeAuctions or false
-				
-				auctionDB[itemType].aucts[auctionID] = auctionDB[itemType].aucts[auctionID] or {}
-				auctionDB[itemType].aucts[auctionID].stk = auctionDB[itemType].aucts[auctionID].stk or stack
-				auctionDB[itemType].aucts[auctionID].bid = auctionDB[itemType].aucts[auctionID].bid or bidPrice
-				auctionDB[itemType].aucts[auctionID].buy = auctionDB[itemType].aucts[auctionID].buy or buyoutPrice
-				auctionDB[itemType].aucts[auctionID].sln = auctionDB[itemType].aucts[auctionID].sln or sellerName
-				auctionDB[itemType].aucts[auctionID].fst = math.min(auctionDB[itemType].aucts[auctionID].fst or math.huge, firstSeenTime)
-				auctionDB[itemType].aucts[auctionID].lst = math.max(auctionDB[itemType].aucts[auctionID].lst or 0, lastSeenTime)
-				auctionDB[itemType].aucts[auctionID].met = math.max(auctionDB[itemType].aucts[auctionID].met or 0, minExpireTime)
-				auctionDB[itemType].aucts[auctionID].xet = math.min(auctionDB[itemType].aucts[auctionID].xet or math.huge, maxExpireTime)
-				auctionDB[itemType].aucts[auctionID].bdd = auctionDB[itemType].aucts[auctionID].bdd or bidded
-				if auctionDB[itemType].aucts[auctionID].rbe == nil or (not auctionDB[itemType].aucts[auctionID].rbe and removedBeforeExpiration) then
-					auctionDB[itemType].aucts[auctionID].rbe = removedBeforeExpiration
+			local oldName = oldData.name
+			local oldRarity = oldData.rarity
+			local oldLevel = oldData.level
+			local oldCategory = oldData.category
+			local oldCallings = oldData.callings
+			
+			if name ~= oldName or rarity ~= oldRarity  or level ~= oldLevel or category ~= oldCategory or callings.warrior ~= oldCallings.warrior or callings.cleric ~= oldCallings.cleric or callings.rogue ~= oldCallings.rogue or callings.mage ~= oldCallings.mage then
+				auctionTable[itemType].name = name
+				auctionTable[itemType].rarity = rarity
+				auctionTable[itemType].level = level
+				auctionTable[itemType].category = category
+				auctionTable[itemType].callings = callings
+				for auctionID, auctionData in pairs(oldData.auctions) do
+					auctionSearcher:RemoveAuction(auctionID, auctionData.rbe, oldCallings, oldRarity, oldLevel, oldCategory, oldName, auctionData.buy)
 				end
 			end
 		end
 	end
-	
-	-- 2. Pack the data
-	local fullLookup = {}
-	local itemLookup = {}
-	local function FullLookup(key) if key ~= "" then fullLookup[key] = (fullLookup[key] or 0) + 1 end return key end
-	local function ItemLookup(key) itemLookup[key] = (itemLookup[key] or 0) + 1 return key end
 
-	local packedDB = {}
-
-	for itemType, itemData in pairs(auctionDB) do
-		local itBaseType, itUnknown, itAugmentID, itRandomID, itRandomPower, itAugmentPower, itRuneID, itUnknown2 = string.match(itemType, "(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
-		local itTable = 
-		{ 
-			ItemLookup(itBaseType), 
-			itUnknown, 
-			FullLookup(itAugmentID), 
-			FullLookup(itRandomID), 
-			FullLookup(itRandomPower), 
-			FullLookup(itAugmentPower), 
-			ItemLookup(itRuneID), 
-			itUnknown2
-		}
-		local packedType = { itTable, FullLookup(itemData.rarity), FullLookup(string.format("%X", itemData.fullScan)), tostring(itemData.activeAuctions and 1 or 0) }
-		for auctionID, auctionData in pairs(itemData.aucts) do
-			local packedData = 
-			{
-				FullLookup(string.format("%X", tonumber(auctionID:sub(2, 9), 16))),
-				string.format("%X", tonumber(auctionID:sub(10), 16)),
-				string.format("%X", auctionData.stk),
-				FullLookup(string.format("%X", auctionData.bid)),
-				FullLookup(string.format("%X", auctionData.buy or 0)),
-				ItemLookup(auctionData.sln),
-				FullLookup(string.format("%X", auctionData.fst)),
-				FullLookup(string.format("%X", auctionData.lst)),
-				FullLookup(string.format("%X", auctionData.met)),
-				FullLookup(string.format("%X", auctionData.xet)),
-				tostring(auctionData.bdd and 1 or 0),
-				tostring(auctionData.rbe and 2 or (auctionData.rbe == nil and 0 or 1)),
-			}
-			table.insert(packedType, packedData)
-		end
-		table.insert(packedDB, packedType)
-	end
-	
-	for baseItemType, count in pairs(itemLookup) do if count > 1 then FullLookup(baseItemType) end end
-	
-	itemLookup = {}
-	for key, count in pairs(fullLookup) do table.insert(itemLookup, key) end
-	table.sort(itemLookup, function(a, b) return fullLookup[b] < fullLookup[a] end)
-	for index, key in ipairs(itemLookup) do fullLookup[key] = string.format("%X", index) end
-	setmetatable(fullLookup, { __index = function(tab, key) return rawget(tab, key) or key end })
-	
-	for index, packedType in ipairs(packedDB) do
-		local newItTable = 
-		{ 
-			fullLookup[packedType[1][1]],
-			packedType[1][2], 
-			fullLookup[packedType[1][3]], 
-			fullLookup[packedType[1][4]], 
-			fullLookup[packedType[1][5]], 
-			fullLookup[packedType[1][6]], 
-			fullLookup[packedType[1][7]], 
-			packedType[1][8] 
-		}
-		local newPackedType = { table.concat(newItTable, ","), fullLookup[packedType[2]], fullLookup[packedType[3]], packedType[4] }
-		for index = 5, #packedType do
-			local newPackedData =
-			{
-				fullLookup[packedType[index][1]],
-				packedType[index][2],
-				packedType[index][3],
-				fullLookup[packedType[index][4]],
-				fullLookup[packedType[index][5]],
-				fullLookup[packedType[index][6]],
-				fullLookup[packedType[index][7]],
-				fullLookup[packedType[index][8]],
-				fullLookup[packedType[index][9]],
-				fullLookup[packedType[index][10]],
-				packedType[index][11],
-				packedType[index][12]
-			}
-			table.insert(newPackedType, table.concat(newPackedData, ","))
-		end
-		packedDB[index] = table.concat(newPackedType, ";")
-	end
-	
-	packedDB.dict = itemLookup
-	
-	return packedDB
-end
-
-local function UnpackAuctionDB(packedDB)
-	local dict = packedDB.dict
-	if not dict then return packedDB end
-
-	setmetatable(dict,
+	auctionTable[itemType].auctions[auctionID] = auctionTable[itemType].auctions[auctionID] or
 	{
-		__index = 
-			function(tab, key)
- 	 	 	 	return rawget(tab, tonumber(key, 16)) or key
-			end,
-	})
-	
-	local unpackTime = os.time()
-	local unpackedDB = {}
-	for _, packedType in ipairs(packedDB) do
-		local itemType, rarity, fullScan, activeAuctions, auctions = string.match(packedType, "(.-);(.-);(.-);(.-);(.+)")
-		local itBaseType, itUnknown, itAugmentID, itRandomID, itRandomPower, itAugmentPower, itRuneID, itUnknown2 = string.match(itemType, "(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-)")
+		stk = auctionDetail.itemStack or 1,
+		bid = auctionDetail.bid,
+		buy = auctionDetail.buyout or 0,
+		sln = auctionDetail.seller,
+		fst = auctionScanTime,
+		lst = auctionScanTime,
+		met = expireTimes[1],
+		xet = expireTimes[2],
+		bdd = 0,
+		rbe = 0,
+	}
+		
+	cachedAuctions[auctionID] = itemType
 
-		itemType = table.concat({ dict[itBaseType], itUnknown, dict[itAugmentID], dict[itRandomID], dict[itRandomPower], dict[itAugmentPower], dict[itRuneID], itUnknown2 }, ",")
-		rarity = dict[rarity]
-		fullScan = tonumber(dict[fullScan], 16)
-		activeAuctions = activeAuctions == "1" and true or nil
+	if auctionTable[itemType].auctions[auctionID].fst == auctionScanTime then
+		auctionSearcher:AddAuction(itemType, auctionID, 0, auctionTable[itemType].callings, auctionTable[itemType].rarity, auctionTable[itemType].level, auctionTable[itemType].category, auctionTable[itemType].name, auctionDetail.buyout or 0)
+		return itemType, nil
+	else
+		auctionTable[itemType].auctions[auctionID].lst = auctionScanTime
+		auctionTable[itemType].auctions[auctionID].met = math.max(auctionTable[itemType].auctions[auctionID].met, expireTimes[1])
+		auctionTable[itemType].auctions[auctionID].xet = math.min(auctionTable[itemType].auctions[auctionID].xet, expireTimes[2])
 		
-		
-		local normType = NormalizeItemType(itemType, rarity)
-		unpackedDB[normType] = unpackedDB[normType] or { auctions = {} }
-		unpackedDB[normType].lastFullScanTime = math.max(unpackedDB[normType].lastFullScanTime or 0, fullScan)
-		unpackedDB[normType].activeAuctions = unpackedDB[normType].activeAuctions or activeAuctions
-		
-		auctionTable = {}
-		auctions:gsub("([^;]+)", function(c) auctionTable[#auctionTable+1] = c end)
-		auctions = auctionTable
---		auctions = { auctions:match((auctions:gsub("[^;]*;", "([^;]*);"))) } -- Error: Too many captures
-		for _, packedAuction in ipairs(auctions) do
-			local auctionHID, auctionLID, stk, bid, buy, sln, fst, lst, met, xet, bdd, rbe = packedAuction:match("(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.-),(.+)")
-			auctionHID = string.format("%08s", dict[auctionHID])
-			auctionLID = string.format("%08s", auctionLID)
-			stk = tonumber(stk, 16)
-			bid = tonumber(dict[bid], 16)
-			buy = tonumber(dict[buy], 16)
-			buy = buy > 0 and buy or nil
-			sln = dict[sln]
-			fst = tonumber(dict[fst], 16)
-			lst = tonumber(dict[lst], 16)
-			met = tonumber(dict[met], 16)
-			xet = tonumber(dict[xet], 16)
-			bdd = bdd == "1" and true or nil
-			if rbe == "2" then rbe = true elseif rbe == "1" then rbe = false else rbe = nil end
-			
-			if unpackTime - lst <= 604800 then
-				unpackedDB[normType].auctions["o" .. auctionHID .. auctionLID] =
-				{
-					itemType = itemType,
-					stack = stk,
-					bidPrice = bid,
-					buyoutPrice = buy,
-					sellerName = sln,
-					firstSeenTime = fst,
-					lastSeenTime = lst,
-					minExpireTime = met,
-					maxExpireTime = xet,
-					bidded = bdd,
-					removedBeforeExpiration = rbe,
-				}
-			end
+		if auctionTable[itemType].auctions[auctionID].bid == auctionDetail.bid then
+			return itemType, false
+		else
+			auctionTable[itemType].auctions[auctionID].bid = auctionDetail.bid
+			auctionTable[itemType].auctions[auctionID].bdd = 1
+			return itemType, true
 		end
 	end
-	
-	for normType, normData in pairs(unpackedDB) do
-		local hasAuctions = false
-		for _,_ in pairs(normData.auctions) do hasAuctions = true break end
-		if not hasAuctions then unpackedDB[normType] = nil end
-	end
-	
-	return unpackedDB
 end
 
-local function OnAuctionData(type, auctions)
+local function OnAuctionData(criteria, auctions)
 	if not Inspect.Interaction("auction") then return end
-	if type.type ~= "search" then return end
 
 	local auctionScanTime = os.time()
+	local expireTimes = 
+	{ 
+		short =		{ auctionScanTime, 			auctionScanTime + 7200 }, 
+		medium =	{ auctionScanTime + 7200, 	auctionScanTime + 43200 }, 
+		long =		{ auctionScanTime + 43200, 	auctionScanTime + 172800 },
+	}
 
-	local totalAuctionCount = 0
-	local newAuctionCount = 0
-	local updatedAuctionCount = 0
-	local removedAuctionCount = 0
-	local beforeExpireAuctionCount = 0
-	
-	local scanData = {}
+	local totalAuctions = {}
+	local newAuctions = {}
+	local updatedAuctions = {}
+	local removedAuctions = {}
+	local beforeExpireAuctions = {}
+
 	local auctionsDetail = Inspect.Auction.Detail(auctions)
 	for auctionID, auctionDetail in pairs(auctionsDetail) do
-		local itemDetail = nil
-		local normalizedItemType = cachedAuctions[auctionID]
-		if not normalizedItemType then
-			itemDetail = Inspect.Item.Detail(auctionDetail.item)
-			normalizedItemType = NormalizeItemType(itemDetail.type, itemDetail.rarity or "")
-		else
-			local auctionData = auctionTable.common[normalizedItemType].auctions[auctionID]
-			itemDetail = { type = auctionData.itemType, stack = auctionData.stack, }
+		table.insert(totalAuctions, auctionID)
+		local itemType, updated = UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTimes[auctionDetail.time])
+		if updated == nil then
+			table.insert(newAuctions, auctionID)
+		elseif updated then
+			table.insert(updatedAuctions, auctionID)
 		end
-		scanData[normalizedItemType] = scanData[normalizedItemType] or { auctions = {} }
-		scanData[normalizedItemType].auctions[auctionID] = 
-		{
-			itemType = FixItemType(itemDetail.type),
-			stack = (itemDetail.stack or 1),
-			bidPrice = auctionDetail.bid, 
-			buyoutPrice = auctionDetail.buyout, 
-			remainingTime = auctionDetail.time, 
-			sellerName = auctionDetail.seller,  
-		}
-		cachedAuctions[auctionID] = normalizedItemType
-		totalAuctionCount = totalAuctionCount + 1
 	end
-	
-	local fullScan = (not type.index or (type.index == 0 and totalAuctionCount < 50)) 
-	                 and not type.category 
-	                 and (not type.levelMin or type.levelMin <= 0) 
-					 and (not type.levelMax or type.levelMax >= 50)
-					 and (not type.priceMin or type.priceMin <= 0)
-					 and not type.priceMax
-					 and not type.rarity 
-					 and not type.role
-	local trueFullScan = fullScan and not type.text
-	
-	for normalizedItemType, scanDetail in pairs(scanData) do
-		auctionTable.common[normalizedItemType] = auctionTable.common[normalizedItemType] or { auctions = {} }
-		auctionTable.common[normalizedItemType].activeAuctions = true
-	
-		for auctionID, auctionDetail in pairs(scanDetail.auctions) do
-			local minExpirationTime = 0
-			local maxExpirationTime = 0
-			if auctionDetail.remainingTime == "short" then
-				minExpirationTime = auctionScanTime
-				maxExpirationTime = auctionScanTime + 7200
-			elseif auctionDetail.remainingTime == "medium" then
-				minExpirationTime = auctionScanTime + 7200
-				maxExpirationTime = auctionScanTime + 43200
-			else
-				minExpirationTime = auctionScanTime + 43200
-				maxExpirationTime = auctionScanTime + 172800
-			end
-		
-			if not auctionTable.common[normalizedItemType].auctions[auctionID] then
-				auctionTable.common[normalizedItemType].auctions[auctionID] = 
-				{
-					itemType = auctionDetail.itemType,
-					stack = auctionDetail.stack,
-					bidPrice = auctionDetail.bidPrice,
-					buyoutPrice = auctionDetail.buyoutPrice,
-					sellerName = auctionDetail.sellerName,
-					firstSeenTime = auctionScanTime,
-					lastSeenTime = auctionScanTime,
-					minExpireTime = minExpirationTime,
-					maxExpireTime = maxExpirationTime,
-				}
-				newAuctionCount = newAuctionCount + 1
-			else
-				auctionTable.common[normalizedItemType].auctions[auctionID].lastSeenTime = auctionScanTime
-				auctionTable.common[normalizedItemType].auctions[auctionID].minExpireTime = math.max(auctionTable.common[normalizedItemType].auctions[auctionID].minExpireTime, minExpirationTime)
-				auctionTable.common[normalizedItemType].auctions[auctionID].maxExpireTime = math.min(auctionTable.common[normalizedItemType].auctions[auctionID].maxExpireTime, maxExpirationTime)
-				if auctionTable.common[normalizedItemType].auctions[auctionID].bidPrice ~= auctionDetail.bidPrice then
-					auctionTable.common[normalizedItemType].auctions[auctionID].bidPrice = auctionDetail.bidPrice
-					auctionTable.common[normalizedItemType].auctions[auctionID].bidded = true
-					updatedAuctionCount = updatedAuctionCount + 1
-				end
-			end			
-		end
 
-		if fullScan then 
-			for oldAuctionID, oldAuctionDetail in pairs(auctionTable.common[normalizedItemType].auctions) do repeat
-				if scanDetail.auctions[oldAuctionID] then break end
-				if oldAuctionDetail.removedBeforeExpiration == nil then
-					removedAuctionCount = removedAuctionCount + 1
-					if auctionScanTime < oldAuctionDetail.minExpireTime then 
-						auctionTable.common[normalizedItemType].auctions[oldAuctionID].removedBeforeExpiration = true
-						beforeExpireAuctionCount = beforeExpireAuctionCount + 1
-					else
-						auctionTable.common[normalizedItemType].auctions[oldAuctionID].removedBeforeExpiration = false
+	if criteria.type == "search" then
+		if not criteria.index or (criteria.index == 0 and #totalAuctions < 50) then
+			local matchingAuctions = auctionSearcher:Search(0, criteria.role, criteria.rarity == "common" and "" or criteria.rarity, criteria.levelMin, criteria.levelMax, criteria.category, criteria.priceMin, criteria.priceMax, criteria.text)
+			for auctionID, itemType in pairs(matchingAuctions) do
+				if not auctions[auctionID] then
+					table.insert(removedAuctions, auctionID)
+
+					local itemData = auctionTable[itemType]
+					local auctionData = itemData.auctions[auctionID]
+					auctionSearcher:RemoveAuction(auctionID, 0, itemData.callings, itemData.rarity, itemData.level, itemData.category, itemData.name, auctionData.buy)
+					
+					if auctionScanTime < auctionData.met then
+						auctionTable[itemType].auctions[auctionID].rbe = 2
+						table.insert(beforeExpireAuctions, auctionID)
+						else
+						auctionTable[itemType].auctions[auctionID].rbe = 1
 					end
-				end
-			until true end
-			auctionTable.common[normalizedItemType].lastFullScanTime = auctionScanTime
-		end
-	end
-	if trueFullScan then
-		for normalizedItemType, scanDetail in pairs(auctionTable.common) do repeat
-			if scanDetail.activeAuctions and (scanDetail.lastFullScanTime or 0) >= auctionScanTime then break end
-			for oldAuctionID, oldAuctionDetail in pairs(scanDetail.auctions) do
-				if oldAuctionDetail.removedBeforeExpiration == nil then
-					removedAuctionCount = removedAuctionCount + 1
-					if auctionScanTime < oldAuctionDetail.minExpireTime then 
-						auctionTable.common[normalizedItemType].auctions[oldAuctionID].removedBeforeExpiration = true
-						beforeExpireAuctionCount = beforeExpireAuctionCount + 1
-					else
-						auctionTable.common[normalizedItemType].auctions[oldAuctionID].removedBeforeExpiration = false
-					end
+					
+					auctionSearcher:AddAuction(itemType, auctionID, auctionTable[itemType].auctions[auctionID].rbe, itemData.callings, itemData.rarity, itemData.level, itemData.category, itemData.name, auctionData.buy)
 				end
 			end
-			auctionTable.common[normalizedItemType].activeAuctions = nil
-			auctionTable.common[normalizedItemType].lastFullScanTime = auctionScanTime
-		until true end
+		end
 	end
-	AuctionDataEvent(fullScan, totalAuctionCount, newAuctionCount, updatedAuctionCount, removedAuctionCount, beforeExpireAuctionCount)
+
+	AuctionDataEvent(criteria.type, totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions)
 end
-table.insert(Event.Auction.Scan, { OnAuctionData, "BananAH", "OnAuctionData" })
+table.insert(Event.Auction.Scan, { OnAuctionData, addonID, "AHMonitoringService.OnAuctionData" })
 
 local function LoadAuctionTable(addonId)
-	if addonId == "BananAH" then
-		if type(BananAHAuctionTable) ~= "table" then -- New saved variables file
-			auctionTable = { common = {} }
-		elseif BananAHAuctionTable.guardian then -- Pre 0.2.2 saved variables file
-			auctionTable = BananAHAuctionTable
-			auctionTable = { common = UnpackAuctionDB(PackAuctionDB()) }
+	if addonId == addonID then
+		if type(_G[addonID .. "AuctionTable"]) == "string" then
+			auctionTable = loadstring("return " .. zlib.inflate()(_G[addonID .. "AuctionTable"]))()
 		else
-			auctionTable = { common = UnpackAuctionDB(BananAHAuctionTable) }
+			auctionTable = {}
 		end
+
+		for itemType, itemData in pairs(auctionTable) do
+			for auctionID, auctionData in pairs(itemData.auctions) do
+				auctionSearcher:AddAuction(itemType, auctionID, auctionData.rbe, itemData.callings, itemData.rarity, itemData.level, itemData.category, itemData.name, auctionData.buy)
+			end
+		end
+
+		auctionTableLoaded = true
 	end
 end
-table.insert(Event.Addon.SavedVariables.Load.End, {LoadAuctionTable, "BananAH", "LoadAuctionData"})
+table.insert(Event.Addon.SavedVariables.Load.End, {LoadAuctionTable, addonID, "AHMonitoringService.LoadAuctionData"})
 
 local function SaveAuctionTable(addonId)
-	if addonId == "BananAH" and _G.BananAH.isLoaded then
-		BananAHAuctionTable = PackAuctionDB()
+	if addonId == addonID and auctionTableLoaded then
+		local purgeTime = os.time() - MAX_DATA_AGE
+		
+		for itemType, itemData in pairs(auctionTable) do
+			local hasAuctions = false
+			for auctionID, auctionData in pairs(itemData.auctions) do
+				if auctionData.lst < purgeTime then
+					auctionTable[itemType].auctions[auctionID] = nil
+				else
+					hasAuctions = true
+				end
+			end
+			if not hasAuctions then
+				auctionTable[itemType] = nil
+			end
+		end
+		
+		_G[addonID .. "AuctionTable"] = zlib.deflate(zlib.BEST_COMPRESSION)(Utility.Serialize.Inline(auctionTable), "finish")
 	end
 end
-table.insert(Event.Addon.SavedVariables.Save.Begin, {SaveAuctionTable, "BananAH", "SaveAuctionData"})
+table.insert(Event.Addon.SavedVariables.Save.Begin, {SaveAuctionTable, addonID, "AHMonitoringService.SaveAuctionData"})
+
+local function SearchAuctions(activeOnly, calling, rarity, levelMin, levelMax, category, priceMin, priceMax, name)
+	local auctions = auctionSearcher:Search(activeOnly and 0 or nil, calling, rarity, levelMin, levelMax, category, priceMin, priceMax, name)
+	for auctionID, itemType in pairs(auctions) do
+		local auctionData = auctionTable[itemType].auctions[auctionID]
+		auctions[auctionID] =
+		{
+			itemType = itemType,
+			stack = auctionData.stk,
+			bidPrice = auctionData.bid,
+			buyoutPrice = auctionData.buy ~= 0 and auctionData.buy or nil,
+			bidUnitPrice = auctionData.bid / auctionData.stk,
+			buyoutUnitPrice = auctionData.buy ~= 0 and (auctionData.buy / auctionData.stk) or nil,
+			sellerName = auctionData.sln,
+			firstSeenTime = auctionData.fst,
+			lastSeenTime = auctionData.lst,
+			minExpireTime = auctionData.met,
+			maxExpireTime = auctionData.xet,
+			bidded = auctionData.bdd == 1 and true or nil,
+			removedBeforeExpiration = auctionData.rbe == 2 and true or nil,
+		}
+		if auctionData.rbe == 1 then auctions[auctionID].removedBeforeExpiration = false end
+	end
+	return auctions
+end
 
 local function GetAllAuctionData(item)
+	if not item then return SearchAuctions() end
+	
+	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
+	if not ok or not itemDetail then return {} end
+	
+	local itemType = itemDetail.type
 	local auctions = {}
-	local lastFullScanTime = 0
-	if item then
-		local ok, itemDetail = pcall(Inspect.Item.Detail, item)
-		if ok then
-			local normalizedItemType = NormalizeItemType(itemDetail.type, itemDetail.rarity or "")
-			if auctionTable.common[normalizedItemType] then
-				for auctionID, auctionData in pairs(auctionTable.common[normalizedItemType].auctions) do
-					auctions[auctionID] = CopyTableSimple(auctionData)
-					auctions[auctionID].bidUnitPrice = math.ceil((auctions[auctionID].bidPrice or 0) / (auctions[auctionID].stack or 1))
-					if auctions[auctionID].buyoutPrice then
-						auctions[auctionID].buyoutUnitPrice = math.ceil((auctions[auctionID].buyoutPrice or 0) / (auctions[auctionID].stack or 1))
-					end
-				end
-				lastFullScanTime = auctionTable.common[normalizedItemType].lastFullScanTime
-			end
-		end
-	else
-		for normalizedItemType, itemData in pairs(auctionTable.common) do
-			for auctionID, auctionData in pairs(itemData.auctions) do
-				auctions[auctionID] = CopyTableSimple(auctionData)
-				auctions[auctionID].bidUnitPrice = math.ceil((auctions[auctionID].bidPrice or 0) / (auctions[auctionID].stack or 1))
-				if auctions[auctionID].buyoutPrice then
-					auctions[auctionID].buyoutUnitPrice = math.ceil((auctions[auctionID].buyoutPrice or 0) / (auctions[auctionID].stack or 1))
-				end
-			end
-			lastFullScanTime = math.max(lastFullScanTime, itemData.lastFullScanTime)
-		end
+	local lastSeenTime = 0
+	if not auctionTable[itemType] then return auctions, lastSeenTime end
+	for auctionID, auctionData in pairs(auctionTable[itemType].auctions) do
+		lastSeenTime = math.max(lastSeenTime, auctionData.lst)
+		
+		auctions[auctionID] =
+		{
+			itemType = itemType,
+			stack = auctionData.stk,
+			bidPrice = auctionData.bid,
+			buyoutPrice = auctionData.buy ~= 0 and auctionData.buy or nil,
+			bidUnitPrice = auctionData.bid / auctionData.stk,
+			buyoutUnitPrice = auctionData.buy ~= 0 and (auctionData.buy / auctionData.stk) or nil,
+			sellerName = auctionData.sln,
+			firstSeenTime = auctionData.fst,
+			lastSeenTime = auctionData.lst,
+			minExpireTime = auctionData.met,
+			maxExpireTime = auctionData.xet,
+			bidded = auctionData.bdd == 1 and true or nil,
+			removedBeforeExpiration = auctionData.rbe == 2 and true or nil,
+		}
+		if auctionData.rbe == 1 then auctions[auctionID].removedBeforeExpiration = false end
 	end
-	return auctions, lastFullScanTime
+	
+	return auctions, lastSeenTime
 end
 
 local function GetActiveAuctionData(item)
-	local auctions, lastFullScanTime = GetAllAuctionData(item)
-	for auctionID, auctionData in pairs(auctions) do
-		if auctionData.removedBeforeExpiration ~= nil then
-			auctions[auctionID] = nil
+	if not item then return SearchAuctions(true) end
+	
+	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
+	if not ok or not itemDetail then return {} end
+	
+	local itemType = itemDetail.type
+	local auctions = {}
+	local lastSeenTime = 0
+	if not auctionTable[itemType] then return auctions, lastSeenTime end
+	for auctionID, auctionData in pairs(auctionTable[itemType].auctions) do
+		lastSeenTime = math.max(lastSeenTime, auctionData.lst)
+		
+		if auctionData.rbe == 0 then
+			auctions[auctionID] =
+			{
+				itemType = itemType,
+				stack = auctionData.stk,
+				bidPrice = auctionData.bid,
+				buyoutPrice = auctionData.buy ~= 0 and auctionData.buy or nil,
+				bidUnitPrice = auctionData.bid / auctionData.stk,
+				buyoutUnitPrice = auctionData.buy ~= 0 and (auctionData.buy / auctionData.stk) or nil,
+				sellerName = auctionData.sln,
+				firstSeenTime = auctionData.fst,
+				lastSeenTime = auctionData.lst,
+				minExpireTime = auctionData.met,
+				maxExpireTime = auctionData.xet,
+				bidded = auctionData.bdd == 1 and true or nil,
+				removedBeforeExpiration = auctionData.rbe == 2 and true or nil,
+			}
+			if auctionData.rbe == 1 then auctions[auctionID].removedBeforeExpiration = false end
 		end
 	end
-	return auctions, lastFullScanTime
+	
+	return auctions, lastSeenTime
 end
 
 local function GetAuctionCached(auctionID)
-	return cachedAuctions[auctionID] and true or nil
+	return cachedAuctions[auctionID] and true or false
 end
 
-_G.BananAH.GetAllAuctionData = GetAllAuctionData
-_G.BananAH.GetActiveAuctionData = GetActiveAuctionData
-_G.BananAH.GetAuctionCached = GetAuctionCached
+_G[addonID].SearchAuctions = SearchAuctions
+_G[addonID].GetAllAuctionData = GetAllAuctionData
+_G[addonID].GetActiveAuctionData = GetActiveAuctionData
+_G[addonID].GetAuctionCached = GetAuctionCached

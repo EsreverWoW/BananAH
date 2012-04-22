@@ -120,7 +120,7 @@ local function SetRowContent(self, row, key, value)
 	for columnIndex, columnData in ipairs(self.columns) do
 		local cell = row.cells[columnIndex]
 		if not cell then
-			local rendererConstructor = renderers[columnData.renderer] or renderers["Text"]
+			local rendererConstructor = type(columnData.renderer) == "function" and columnData.renderer or renderers[columnData.renderer] or renderers["Text"]
 			cell = rendererConstructor(row:GetName() .. ".Cells." .. columnIndex, row)
 			table.insert(row.cells, cell)
 		end
@@ -429,7 +429,7 @@ end
 local function GetSelectedData(self)
 	local selectedValue = nil
 	if self.lastSelectedKey then
-		selectedValue = self.data[self.lastSelectedKey] -- FIXME: This displays the actual total stacks avalaible, including those thay may have been excluded by the filter
+		selectedValue = self.data[self.lastSelectedKey]
 	end
 	return self.lastSelectedKey, selectedValue
 end

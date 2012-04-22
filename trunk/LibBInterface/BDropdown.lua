@@ -43,7 +43,7 @@ local function SetValueFrame(self, index, value)
 	
 	if value then
 		valueFrame:SetVisible(true)
-		valueFrame.text:SetText(tostring(value))
+		valueFrame.text:SetText(tostring(value.displayName))
 	else
 		valueFrame:SetVisible(false)
 	end
@@ -96,7 +96,7 @@ end
 local function SetSelectedIndex(self, index)
 	self.selectedIndex = index
 	local _, value = self:GetSelectedValue()
-	self.selectedText:SetText(value or "")
+	self.selectedText:SetText(tostring(value and value.displayName or ""))
 	if self.Event.SelectionChanged then
 		self.Event.SelectionChanged(self, self.selectedIndex, value)
 	end		

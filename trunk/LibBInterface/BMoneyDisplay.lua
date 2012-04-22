@@ -31,6 +31,20 @@ local function ResetMoneyFrame(self)
 		self.platinumTexture:SetVisible(false)
 		self.platinumText:SetVisible(false)
 	end
+	
+	local color = { 1, 1, 1, 1 }
+	if self.compareValue then
+		local relative = value / self.compareValue
+		if relative < 0.7 then color = { 0, 0.75, 1, 1 }
+		elseif relative < 0.9 then color = { 0, 0.75, 0, 1 }
+		elseif relative < 1.1 then color = { 0.75, 0.75, 0, 1 }
+		elseif relative < 1.5 then color = { 0.75, 0.5, 0, 1 }
+		else color = { 0.75, 0, 0, 1 }
+		end
+	end
+	self.silverText:SetFontColor(unpack(color))
+	self.goldText:SetFontColor(unpack(color))
+	self.platinumText:SetFontColor(unpack(color))
 end
 
 -- Public
@@ -43,6 +57,11 @@ local function SetValue(self, newValue)
 	self.value = math.max(newValue or 0, 0)
 	ResetMoneyFrame(self)
 	return self.value
+end
+
+local function SetCompareValue(self, compareValue)
+	self.compareValue = compareValue
+	ResetMoneyFrame(self)
 end
 
 function Library.LibBInterface.BMoneyDisplay(name, parent)
@@ -87,6 +106,7 @@ function Library.LibBInterface.BMoneyDisplay(name, parent)
 	-- Public
 	bMoneyDisplay.GetValue = GetValue
 	bMoneyDisplay.SetValue = SetValue
+	bMoneyDisplay.SetCompareValue = SetCompareValue
 	
 	-- Late initialization
 	ResetMoneyFrame(bMoneyDisplay)
