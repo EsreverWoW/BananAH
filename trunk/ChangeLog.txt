@@ -1,3 +1,8 @@
+	Alpha r36
+- Added extra info on the auction being posted
+- Reworked auction score
+- Added option to disable background scanner
+
 	Alpha r35
 - Updated to Rift 1.8
 - Redesigned Auction DB

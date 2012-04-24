@@ -70,6 +70,8 @@ local function TextRenderer(name, parent)
 		-- Apply Color
 		if extra and type(extra.Color) == "table" then
 			self:SetFontColor(unpack(extra.Color))
+		elseif extra and type(extra.Color) == "function" then
+			self:SetFontColor(unpack(extra.Color(value)))
 		end
 	end
 	

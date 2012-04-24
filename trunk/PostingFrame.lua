@@ -261,6 +261,19 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	local queueClearButton = UI.CreateFrame("RiftButton", name .. ".QueueClearButton", queueGrid.externalPanel:GetContent())
 	local queueCancelButton = UI.CreateFrame("RiftButton", name .. ".QueueCancelButton", queueGrid.externalPanel:GetContent())
 	
+	local infoStacksLabel = UI.CreateFrame("BShadowedText", name .. ".InfoStacksLabel", postingFrame)
+	local totalBidLabel = UI.CreateFrame("BShadowedText", name .. ".TotalBidLabel", postingFrame)
+	local totalBuyLabel = UI.CreateFrame("BShadowedText", name .. ".TotalBuyLabel", postingFrame)
+	local depositLabel = UI.CreateFrame("BShadowedText", name .. ".DepositLabel", postingFrame)
+	local discountBidLabel = UI.CreateFrame("BShadowedText", name .. ".DiscountBidLabel", postingFrame)
+	local discountBuyLabel = UI.CreateFrame("BShadowedText", name .. ".DiscountBuyLabel", postingFrame)
+	local infoStacks = UI.CreateFrame("Text", name .. ".InfoStacks", postingFrame)
+	local infoTotalBid = UI.CreateFrame("BMoneyDisplay", name .. ".InfoTotalBid", postingFrame)
+	local infoTotalBuy = UI.CreateFrame("BMoneyDisplay", name .. ".InfoTotalBuy", postingFrame)
+	local infoDeposit = UI.CreateFrame("Text", name .. ".InfoDeposit", postingFrame)
+	local infoDiscountBid = UI.CreateFrame("BMoneyDisplay", name .. "IinfoDiscountBid", postingFrame)
+	local infoDiscountBuy = UI.CreateFrame("BMoneyDisplay", name .. "IinfoDiscountBuy", postingFrame)
+	
 	local autoPostingMode = false
 	local pricesSetByModel = false
 	local refreshMode = REFRESH_NONE
@@ -344,6 +357,14 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			value.key = key
 			table.insert(itemPrices, value)
 			if key == prevKey then newIndex = #itemPrices end
+		end
+		
+		if pricings.market then
+			bidMoneySelector:SetCompareValue(pricings.market.bid)
+			buyMoneySelector:SetCompareValue(pricings.market.buy)
+		else
+			bidMoneySelector:SetCompareValue(nil)
+			buyMoneySelector:SetCompareValue(nil)
 		end
 		
 		pricingModelSelector:SetValues(itemPrices)
@@ -485,13 +506,6 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		end
 	end	
 	
-	local function SetRefreshMode(mode)
-		if mode > REFRESH_NONE and refreshMode <= REFRESH_NONE and refreshTask then
-			Library.LibCron.resume(refreshTask)
-		end
-		refreshMode = math.max(mode, refreshMode)
-	end
-
 	local function ApplyPricingModel(item)
 		local _, value = pricingModelSelector:GetSelectedValue()
 
@@ -511,7 +525,46 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		pricesSetByModel = false
 	end
 	
+	local function UpdateInfo()
+		local item, itemInfo = itemGrid:GetSelectedData()
+		if itemInfo and itemInfo.adjustedStack then
+			local amount = itemInfo.adjustedStack
+			local stackSize = stackSizeSelector:GetPosition()
+			local stacks = stackNumberSelector:GetPosition()
+			amount = math.min(amount, stackSize * stacks)
+			local fullStacks = math.floor(amount / stackSize)
+			local oddStackSize = amount % stackSize
+			local stackText = nil
+			if fullStacks > 0 then stackText = fullStacks .. " x " .. stackSize end
+			if oddStackSize > 0 then 
+				stackText = stackText and (stackText .. " + ") or ""
+				stackText = stackText .. oddStackSize
+			end
+			infoStacks:SetText(stackText or "0")
+			
+			local bid = amount * (bidMoneySelector:GetValue() or 0)
+			local buy = amount * (buyMoneySelector:GetValue() or 0)
+			
+			infoTotalBid:SetValue(bid)
+			infoTotalBuy:SetValue(buy)
+			infoDiscountBid:SetValue(bid * AUCTION_FEE_REDUCTION)
+			infoDiscountBuy:SetValue(buy * AUCTION_FEE_REDUCTION)
+		else
+			infoStacks:SetText("0")
+			infoTotalBid:SetValue(0)
+			infoTotalBuy:SetValue(0)
+			infoDiscountBid:SetValue(0)
+			infoDiscountBuy:SetValue(0)
+		end
+	end
 	
+	local function SetRefreshMode(mode)
+		if mode > REFRESH_NONE and refreshMode <= REFRESH_NONE and refreshTask then
+			Library.LibCron.resume(refreshTask)
+		end
+		refreshMode = math.max(mode, refreshMode)
+	end
+
 	local function DoRefresh()
 		if not postingFrame:GetVisible() then return end
 	
@@ -544,6 +597,10 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		
 		if refreshMode >= REFRESH_PRICES then
 			ApplyPricingModel(item)
+		end
+		
+		if refreshMode >= REFRESH_INFO then
+			UpdateInfo()
 		end
 
 		refreshMode = REFRESH_NONE
@@ -614,28 +671,54 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:AddColumn(L["PostingPanel/columnStack"], 70, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
 	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 120, MoneyRenderer, true, "bidPrice")
 	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 120, MoneyRenderer, true, "buyoutPrice")
-	local function CompareFunction()
-		for _, price in ipairs(itemPrices) do
-			if price.key == "market" then
-				return { price.bid, price.buy }
-			end
-		end
-		return {}
-	end
-	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, MoneyRenderer, true, "bidUnitPrice", { Compare = function() return CompareFunction()[1] end })
-	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 120, MoneyRenderer, true, "buyoutUnitPrice", { Compare = function() return CompareFunction()[2] end })
+	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, MoneyRenderer, true, "bidUnitPrice")--, { Compare = function() return CompareFunction()[1] end })
+	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 120, MoneyRenderer, true, "buyoutUnitPrice")--, { Compare = function() return CompareFunction()[2] end })
 	local function LocalizedDateFormatter(value)
 		--return GetLocalizedDateString("%a %X", value)
 		local diff = value - os.time()
-		return diff <= 0 and "" or math.floor(diff / 3600) .. " h " .. math.floor(math.floor(diff % 3600) / 60) .. " m " .. math.floor(diff % 60) .. " s"
+		if diff <= 0 then return "" end
+		local hours = math.floor(diff / 3600)
+		local minutes = math.floor(math.floor(diff % 3600) / 60)
+		local seconds = math.floor(diff % 60)
+		if hours > 0 then
+			return hours .. " h " .. minutes .. " m"
+		elseif minutes > 0 then
+			return minutes .. " m " .. seconds .. " s"
+		else
+			return seconds .. " s"
+		end
+		--return diff <= 0 and "" or math.floor(diff / 3600) .. " h " .. math.floor(math.floor(diff % 3600) / 60) .. " m " .. math.floor(diff % 60) .. " s"
 		-- if diff <= 0 then return ""
 		-- elseif diff <= 60 then return diff .. " s"
 		-- elseif diff <= 3600 then return math.floor(diff / 60) .. " m"
 		-- else return math.floor(diff / 3600) .. " h"
 		-- end
 	end	
-	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 120, "Text", true, "minExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
-	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 120, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
+	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 90, "Text", true, "minExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
+	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 90, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
+	local function ScoreValue(value)
+		if not value then return "" end
+		for _, price in ipairs(itemPrices) do
+			if price.key == "market" then
+				return math.floor(value * 100 / price.buy) .. " %"
+			end
+		end
+		return ""
+	end
+	local function ScoreColor(value)
+		if not value then return { 1, 1, 1, 1 } end
+		for _, price in ipairs(itemPrices) do
+			if price.key == "market" then
+				local score = math.floor(value / price.buy)
+				if score < 0.85 then return { 0, 0.75, 0, 1 }
+				elseif score < 1.15 then return { 0.75, 0.75, 0, 1 }
+				else return { 0.75, 0.25, 0, 1 }
+				end
+			end
+		end
+		return { 1, 1, 1, 1 }
+	end
+	auctionGrid:AddColumn("Score", 60, "Text", true, "buyoutUnitPrice", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor }) -- LOCALIZE
 	auctionGrid:AddColumn("", 0, AuctionRenderer)
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 
@@ -836,6 +919,63 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	queueCancelButton:SetPoint("BOTTOMLEFT", queueGrid.externalPanel:GetContent(), "BOTTOMCENTER")
 	queueCancelButton:SetText(L["PostingPanel/buttonCancelQueueSelected"])
 	queueCancelButton:SetEnabled(false)
+	
+	infoStacksLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 95)
+	infoStacksLabel:SetText("Stacks:") -- LOCALIZE
+	infoStacksLabel:SetFontSize(14)
+	infoStacksLabel:SetFontColor(1, 1, 0.75, 1)
+	infoStacksLabel:SetShadowOffset(2, 2)	
+
+	totalBidLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 125)
+	totalBidLabel:SetText("Total bid:") -- LOCALIZE
+	totalBidLabel:SetFontSize(14)
+	totalBidLabel:SetFontColor(1, 1, 0.75, 1)
+	totalBidLabel:SetShadowOffset(2, 2)	
+
+	totalBuyLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 155)
+	totalBuyLabel:SetText("Total buyout:") -- LOCALIZE
+	totalBuyLabel:SetFontSize(14)
+	totalBuyLabel:SetFontColor(1, 1, 0.75, 1)
+	totalBuyLabel:SetShadowOffset(2, 2)	
+	
+	depositLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 185)
+	depositLabel:SetText("Deposit:") -- LOCALIZE
+	depositLabel:SetFontSize(14)
+	depositLabel:SetFontColor(1, 1, 0.75, 1)
+	depositLabel:SetShadowOffset(2, 2)	
+
+	discountBidLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 215)
+	discountBidLabel:SetText("Adjusted bid:") -- LOCALIZE
+	discountBidLabel:SetFontSize(14)
+	discountBidLabel:SetFontColor(1, 1, 0.75, 1)
+	discountBidLabel:SetShadowOffset(2, 2)	
+
+	discountBuyLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 245)
+	discountBuyLabel:SetText("Adjusted buyout:") -- LOCALIZE
+	discountBuyLabel:SetFontSize(14)
+	discountBuyLabel:SetFontColor(1, 1, 0.75, 1)
+	discountBuyLabel:SetShadowOffset(2, 2)	
+
+	infoStacks:SetPoint("CENTERRIGHT", postingFrame, "TOPRIGHT", -15, 95)
+	infoStacks:SetText("0")
+
+	infoTotalBid:SetPoint("CENTERRIGHT", postingFrame, "TOPRIGHT", -15, 125)
+	infoTotalBid:SetHeight(20)
+
+	infoTotalBuy:SetPoint("CENTERRIGHT", postingFrame, "TOPRIGHT", -15, 155)
+	infoTotalBuy:SetHeight(20)
+
+	infoDeposit:SetPoint("CENTERRIGHT", postingFrame, "TOPRIGHT", -15, 185)
+	infoDeposit:SetText("?")
+
+	infoDiscountBid:SetPoint("CENTERRIGHT", postingFrame, "TOPRIGHT", -15, 215)
+	infoDiscountBid:SetHeight(20)
+
+	infoDiscountBuy:SetPoint("CENTERRIGHT", postingFrame, "TOPRIGHT", -15, 245)
+	infoDiscountBuy:SetHeight(20)
+
+
+	
 
 	function filterTextPanel.Event:LeftClick()
 		filterTextField:SetKeyFocus(true)
@@ -923,6 +1063,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common" }) then
 			print(L["PostingPanel/itemScanError"])
 		else
+			InternalInterface.ScanNext()
 			print(L["PostingPanel/itemScanStarted"])
 		end				
 	end
@@ -966,6 +1107,11 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		else
 			stackNumberSelector:SetRange(0, 0)
 		end
+		SetRefreshMode(REFRESH_INFO)
+	end
+	
+	function stackNumberSelector.Event:PositionChanged(stackNumber)
+		SetRefreshMode(REFRESH_INFO)
 	end
 
 	function postButton.Event:LeftPress()
@@ -1018,6 +1164,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	function durationSlider.Event:SliderChange()
 		local position = self:GetPosition()
 		durationTimeLabel:SetText(string.format(L["PostingPanel/labelDurationFormat"], 6 * 2 ^ position))
+		SetRefreshMode(REFRESH_INFO)
 	end
 	
 	function autoPostButton.Event:LeftClick()
@@ -1126,6 +1273,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 				end
 			end
 		end
+		SetRefreshMode(REFRESH_INFO)
 	end
 	
 	function buyMoneySelector.Event:ValueChanged(newValue)
@@ -1148,6 +1296,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		end
 		local _, selectedInfo = itemGrid:GetSelectedData()
 		buyPriceWarning:SetVisible(newValue > 0 and newValue < (selectedInfo.sell or 0) * AUCTION_FEE_REDUCTION)
+		SetRefreshMode(REFRESH_INFO)
 	end
 
 
