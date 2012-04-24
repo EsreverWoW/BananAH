@@ -9,6 +9,8 @@ local cachedItemTypes = {}
 local cachedAuctions = {}
 local auctionSearcher = InternalInterface.Utility.BuildAuctionTree()
 local AuctionDataEvent = Utility.Event.Create(addonID, "AuctionData")
+local backgroundScannerDisabled = false
+local scanNext = false
 
 local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTimes)
 	local itemType = auctionDetail.itemType
@@ -96,7 +98,7 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 end
 
 local function OnAuctionData(criteria, auctions)
-	if not Inspect.Interaction("auction") then return end
+	if (backgroundScannerDisabled and not scanNext) or not Inspect.Interaction("auction") then return end
 
 	local auctionScanTime = os.time()
 	local expireTimes = 
@@ -146,7 +148,8 @@ local function OnAuctionData(criteria, auctions)
 			end
 		end
 	end
-
+	
+	scanNext = false
 	AuctionDataEvent(criteria.type, totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions)
 end
 table.insert(Event.Auction.Scan, { OnAuctionData, addonID, "AHMonitoringService.OnAuctionData" })
@@ -294,7 +297,21 @@ local function GetAuctionCached(auctionID)
 	return cachedAuctions[auctionID] and true or false
 end
 
+local function GetBackgroundScannerEnabled()
+	return not backgroundScannerDisabled
+end
+
+local function SetBackgroundScannerEnabled(enabled)
+	backgroundScannerDisabled = not enabled
+end
+
+function InternalInterface.ScanNext()
+	scanNext = true
+end
+
 _G[addonID].SearchAuctions = SearchAuctions
 _G[addonID].GetAllAuctionData = GetAllAuctionData
 _G[addonID].GetActiveAuctionData = GetActiveAuctionData
 _G[addonID].GetAuctionCached = GetAuctionCached
+_G[addonID].GetBackgroundScannerEnabled = GetBackgroundScannerEnabled
+_G[addonID].SetBackgroundScannerEnabled = SetBackgroundScannerEnabled

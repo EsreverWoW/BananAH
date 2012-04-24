@@ -16,6 +16,8 @@ local function InitializeLayout()
 	local historyTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.HistoryTab", mainWindow:GetContent())
 	local configTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.ConfigTab", mainWindow:GetContent())
 	local mainPanel = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.Panel", mainWindow:GetContent())
+	local statusPanel = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
+	local scannerButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.ScannerButton", statusPanel:GetContent())
 	local refreshButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
 	local searchText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.SearchTab.Text", searchTab:GetContent())
 	local postText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.PostTab.Text", postTab:GetContent())
@@ -36,7 +38,7 @@ local function InitializeLayout()
 	mainWindow:SetMinWidth(1280)
 	mainWindow:SetMinHeight(768)
 	mainWindow:SetWidth(1280)
-	mainWindow:SetHeight(768)
+	mainWindow:SetHeight(798)
 	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0) -- TODO Get from config
 	mainWindow:SetTitle(addonID)
 	mainWindow:SetAlpha(1)
@@ -87,8 +89,18 @@ local function InitializeLayout()
 	configTab:SetLayer(1)
 
 	mainPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 5, 60)
-	mainPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
+	mainPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -35)
 	mainPanel:SetLayer(2)
+	
+	statusPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMLEFT", 3, -33)
+	statusPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -3, -3)
+	statusPanel:SetInvertedBorder(true)
+	statusPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	
+	scannerButton:SetTexture(addonID, "Textures/SearchIcon.png")
+	scannerButton:SetPoint("CENTERRIGHT", statusPanel:GetContent(), "CENTERRIGHT", -2, 0)
+	scannerButton:SetWidth(16)
+	scannerButton:SetHeight(16)
 	
 	refreshButton:SetTexture(addonID, "Textures/RefreshDisabled.png")
 	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -20, 5)
@@ -201,9 +213,16 @@ local function InitializeLayout()
 		if not pcall(Command.Auction.Scan, { type="search" }) then
 			print(L["General/fullScanError"])
 		else
+			InternalInterface.ScanNext()
 			print(L["General/fullScanStarted"])
 		end
 	end	
+	
+	function scannerButton.Event:LeftClick()
+		local newState = not _G[addonID].GetBackgroundScannerEnabled()
+		_G[addonID].SetBackgroundScannerEnabled(newState)
+		self:SetTexture(addonID, newState and "Textures/SearchIcon.png" or "Textures/DontSearchIcon.png")
+	end
 
 	local function TabMouseIn(self)
 		self.text:SetFontSize(18)
