@@ -1,3 +1,6 @@
+	Alpha r38
+- Fixed some bugs
+
 	Alpha r37
 - Reworked auction score (again)
 - Added status bar
