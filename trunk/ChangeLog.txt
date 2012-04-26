@@ -1,3 +1,7 @@
+	Alpha r37
+- Reworked auction score (again)
+- Added status bar
+
 	Alpha r36
 - Added extra info on the auction being posted
 - Reworked auction score

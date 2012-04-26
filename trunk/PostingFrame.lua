@@ -15,6 +15,8 @@ local REFRESH_NONE = 0
 
 local L = InternalInterface.Localization.L
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
+local GetOutput = InternalInterface.Utility.GetOutput
+local function out(value) GetOutput()(value) end
 local GetLocalizedDateString = InternalInterface.Localization.GetLocalizedDateString
 
 local visibilityMode = false
@@ -108,6 +110,18 @@ local function ItemRenderer(name, parent)
 end
 
 -- AuctionRenderer
+local function AuctionCachedRenderer(name, parent)
+	local cachedCell = UI.CreateFrame("Texture", name, parent)
+	
+	cachedCell:SetTexture(addonID, "Textures/AuctionUnavailable.png")
+	cachedCell:SetVisible(false)
+	
+	function cachedCell:SetValue(key, value, width, extra)
+		self:SetVisible(not _G[addonID].GetAuctionCached(key))
+	end
+	
+	return cachedCell
+end
 local function AuctionRenderer(name, parent)
 	local auctionCell = UI.CreateFrame("Frame", name, parent)
 	
@@ -115,11 +129,12 @@ local function AuctionRenderer(name, parent)
 		self:ClearAll()
 		self:SetAllPoints()
 		self:SetLayer(self:GetParent():GetLayer() - 1)
-		if _G[addonID].GetAuctionCached(key) then
-			self:SetBackgroundColor(0, 0.75, 0.75, 0.1)
-		else
-			self:SetBackgroundColor(0.75, 0, 0, 0.1)
-		end
+		self:SetBackgroundColor(unpack(extra.Color(value)))
+		-- if _G[addonID].GetAuctionCached(key) then
+			-- self:SetBackgroundColor(0, 0.75, 0.75, 0.1)
+		-- else
+			-- self:SetBackgroundColor(0.75, 0, 0, 0.1)
+		-- end
 	end
 	
 	return auctionCell
@@ -667,8 +682,9 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:SetRowMargin(0)
 	auctionGrid:SetUnselectedRowBackgroundColor(0.2, 0.2, 0.2, 0.25)
 	auctionGrid:SetSelectedRowBackgroundColor(0.6, 0.6, 0.6, 0.25)
-	auctionGrid:AddColumn(L["PostingPanel/columnSeller"], 100, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
-	auctionGrid:AddColumn(L["PostingPanel/columnStack"], 70, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
+	auctionGrid:AddColumn("", 20, AuctionCachedRenderer)
+	auctionGrid:AddColumn(L["PostingPanel/columnSeller"], 90, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
+	auctionGrid:AddColumn(L["PostingPanel/columnStack"], 60, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
 	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 120, MoneyRenderer, true, "bidPrice")
 	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 120, MoneyRenderer, true, "buyoutPrice")
 	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, MoneyRenderer, true, "bidUnitPrice")--, { Compare = function() return CompareFunction()[1] end })
@@ -706,20 +722,23 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		return ""
 	end
 	local function ScoreColor(value)
-		if not value then return { 1, 1, 1, 1 } end
+		if not value then return { 0.75, 0.5, 0.75, 0.1 } end
 		for _, price in ipairs(itemPrices) do
 			if price.key == "market" then
 				local score = math.floor(value / price.buy)
-				if score < 0.85 then return { 0, 0.75, 0, 1 }
-				elseif score < 1.15 then return { 0.75, 0.75, 0, 1 }
-				else return { 0.75, 0.25, 0, 1 }
+				if score < 0.85 then return { 0, 0.75, 0.75, 0.1 } --{ 0, 0.75, 0, 1 }
+				elseif score < 1.15 then return { 0.75, 0.75, 0, 0.1 }
+				else return { 0.75, 0, 0, 0.1 } --{ 0.75, 0.25, 0, 1 }
 				end
+			-- self:SetBackgroundColor(0, 0.75, 0.75, 0.1)
+		-- else
+			-- self:SetBackgroundColor(0.75, 0, 0, 0.1)				
 			end
 		end
-		return { 1, 1, 1, 1 }
+		return { 0.75, 0.5, 0.75, 0.1 }
 	end
 	auctionGrid:AddColumn("Score", 60, "Text", true, "buyoutUnitPrice", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor }) -- LOCALIZE
-	auctionGrid:AddColumn("", 0, AuctionRenderer)
+	auctionGrid:AddColumn("", 0, AuctionRenderer, false, "buyoutUnitPrice", { Color = ScoreColor })
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 
 	paddingLeft, _, paddingRight, paddingBottom = auctionGrid:GetPadding()
@@ -1061,10 +1080,10 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		if not item then return end
 		
 		if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common" }) then
-			print(L["PostingPanel/itemScanError"])
+			out(L["PostingPanel/itemScanError"])
 		else
 			InternalInterface.ScanNext()
-			print(L["PostingPanel/itemScanStarted"])
+			out(L["PostingPanel/itemScanStarted"])
 		end				
 	end
 
@@ -1134,7 +1153,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		if buyUnitPrice <= 0 then 
 			buyUnitPrice = nil
 		elseif buyUnitPrice < bidUnitPrice then
-			print(L["PostingPanel/postErrorBidHigherBuy"])
+			out(L["PostingPanel/postErrorBidHigherBuy"])
 			return
 		end
 		
@@ -1203,7 +1222,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			end
 		end
 		if not remainingItems then
-			print(L["PostingPanel/autoPostingErrorNoItems"])
+			out(L["PostingPanel/autoPostingErrorNoItems"])
 			return
 		end
 		
@@ -1213,7 +1232,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			
 			if not prices[pricingModelOrder] then
 				itemTypeTable[itemType] = nil
-				print(string.format(L["PostingPanel/autoPostingErrorPricingModelNotFound"], itemData.name))
+				out(string.format(L["PostingPanel/autoPostingErrorPricingModelNotFound"], itemData.name))
 				break
 			end
 
@@ -1295,7 +1314,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			end
 		end
 		local _, selectedInfo = itemGrid:GetSelectedData()
-		buyPriceWarning:SetVisible(newValue > 0 and newValue < (selectedInfo.sell or 0) * AUCTION_FEE_REDUCTION)
+		buyPriceWarning:SetVisible(selectedInfo and newValue > 0 and newValue < (selectedInfo.sell or 0) * AUCTION_FEE_REDUCTION)
 		SetRefreshMode(REFRESH_INFO)
 	end
 

@@ -1,6 +1,8 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local outputFunction = print
+
 -- Utility Functions
 local function GetRarityColor(rarity)
 	if     rarity == "sellable"     then return 0.34375, 0.34375, 0.34375, 1
@@ -14,6 +16,14 @@ local function GetRarityColor(rarity)
 	end
 end
 
+local function GetOutput()
+	return outputFunction
+end
+
+local function SetOutput(func)
+	outputFunction = func
+end
+
 -- Interfaces
 _G[addonID] = _G[addonID] or {}
 
@@ -21,6 +31,8 @@ InternalInterface = InternalInterface or {}
 InternalInterface.UI = InternalInterface.UI or {}
 InternalInterface.Utility = InternalInterface.Utility or {}
 InternalInterface.Utility.GetRarityColor = GetRarityColor
+InternalInterface.Utility.GetOutput = GetOutput
+InternalInterface.Utility.SetOutput = SetOutput
 InternalInterface.AccountSettings = InternalInterface.AccountSettings or {}
 InternalInterface.ShardSettings = InternalInterface.ShardSettings or {}
 InternalInterface.CharacterSettings = InternalInterface.CharacterSettings or {}

@@ -18,11 +18,13 @@ Embed =
 {
 	LibBInterface = true,
 	LibCron = true,
+--	LibTooltipEx = true,
 }
 Dependencies =
 {
 	LibBInterface = {"required", "before"},
 	LibCron = {"required", "before"},
+--	LibTooltipEx = {"optional", "before"},
 }
 SavedVariables =
 {

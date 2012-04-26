@@ -2,6 +2,8 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
 local L = InternalInterface.Localization.L
+local GetOutput = InternalInterface.Utility.GetOutput
+local function out(value) GetOutput()(value) end
 
 local function InitializeLayout()
 	local mapContext = UI.CreateContext(addonID .. ".UI.MapContext")
@@ -17,6 +19,7 @@ local function InitializeLayout()
 	local configTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.ConfigTab", mainWindow:GetContent())
 	local mainPanel = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.Panel", mainWindow:GetContent())
 	local statusPanel = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
+	local statusText = UI.CreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
 	local scannerButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.ScannerButton", statusPanel:GetContent())
 	local refreshButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
 	local searchText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.SearchTab.Text", searchTab:GetContent())
@@ -101,6 +104,9 @@ local function InitializeLayout()
 	scannerButton:SetPoint("CENTERRIGHT", statusPanel:GetContent(), "CENTERRIGHT", -2, 0)
 	scannerButton:SetWidth(16)
 	scannerButton:SetHeight(16)
+	
+	statusText:SetPoint("CENTERLEFT", statusPanel:GetContent(), "CENTERLEFT", 5, 0)
+	statusText:SetPoint("CENTERRIGHT", scannerButton, "CENTERLEFT", -2, 0)
 	
 	refreshButton:SetTexture(addonID, "Textures/RefreshDisabled.png")
 	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -20, 5)
@@ -211,10 +217,10 @@ local function InitializeLayout()
 	function refreshButton.Event:LeftClick()
 		if not self.enabled then return end
 		if not pcall(Command.Auction.Scan, { type="search" }) then
-			print(L["General/fullScanError"])
+			out(L["General/fullScanError"])
 		else
 			InternalInterface.ScanNext()
-			print(L["General/fullScanStarted"])
+			out(L["General/fullScanStarted"])
 		end
 	end	
 	
@@ -265,7 +271,7 @@ local function InitializeLayout()
 		local updatedMessage = (#updated > 0) and string.format(L["General/scanUpdatedCount"], #updated) or ""
 		local removedMessage = (#removed > 0) and string.format(L["General/scanRemovedCount"], #removed, #before) or ""
 		local message = string.format(L["General/scanMessage"], fullOrPartialMessage, #total, newMessage, updatedMessage, removedMessage)
-		print(message)
+		out(message)
 	end
 	table.insert(Event[addonID].AuctionData, { ReportAuctionData, addonID, "ReportAuctionData" })
 
@@ -277,8 +283,13 @@ local function InitializeLayout()
 	if slashEvent2 then
 		table.insert(slashEvent2, {function() ShowBananAH(true) end, addonID, "ShowBananAH2"})
 	elseif not slashEvent1 then
-		print(L["General/slashRegisterError"])
+		out(L["General/slashRegisterError"])
 	end
+	
+	local function StatusBarOutput(value)
+		statusText:SetText(value and tostring(value) or "")
+	end
+	InternalInterface.Utility.SetOutput(StatusBarOutput)
 end
 
 local function OnAddonLoaded(addonId)
