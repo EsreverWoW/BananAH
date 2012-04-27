@@ -1314,7 +1314,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			end
 		end
 		local _, selectedInfo = itemGrid:GetSelectedData()
-		buyPriceWarning:SetVisible(selectedInfo and newValue > 0 and newValue < (selectedInfo.sell or 0) * AUCTION_FEE_REDUCTION)
+		buyPriceWarning:SetVisible((selectedInfo and newValue > 0 and newValue < (selectedInfo.sell or 0) * AUCTION_FEE_REDUCTION) or false)
 		SetRefreshMode(REFRESH_INFO)
 	end
 
