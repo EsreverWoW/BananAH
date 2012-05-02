@@ -1,3 +1,13 @@
+	Alpha r40
+- The global 'hide item' filtered items are saved per account now (they were stored per shard)
+- Added experimental code to estimate more accurately the expiration times
+- Started fixing the config tab
+- Added option to close the addon window when the native auction window is closed
+- Added option to disable the background scanner on start
+
+	Alpha r39
+- Solved another bug	
+
 	Alpha r38
 - Fixed some bugs
 

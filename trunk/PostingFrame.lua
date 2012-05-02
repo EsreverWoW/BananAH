@@ -66,7 +66,7 @@ local function ItemRenderer(name, parent)
 		self.itemNameLabel:SetFontColor(GetRarityColor(value.rarity))
 		self.itemStackLabel:SetText("x" .. value.adjustedStack)
 		
-		if InternalInterface.ShardSettings.Posting.HiddenItems[value.itemType] then
+		if InternalInterface.AccountSettings.Posting.HiddenItems[value.itemType] then
 			visibilityIcon:SetTexture(addonID, "Textures/HideIcon.png")
 		elseif InternalInterface.CharacterSettings.Posting.HiddenItems[value.itemType] then
 			visibilityIcon:SetTexture(addonID, "Textures/CharacterHideIcon.png")
@@ -80,23 +80,23 @@ local function ItemRenderer(name, parent)
 	end
 	
 	function visibilityIcon.Event:LeftClick()
-		if InternalInterface.ShardSettings.Posting.HiddenItems[self.itemType] then
+		if InternalInterface.AccountSettings.Posting.HiddenItems[self.itemType] then
 			visibilityIcon:SetTexture(addonID, "Textures/ShowIcon.png")
-			InternalInterface.ShardSettings.Posting.HiddenItems[self.itemType] = nil
+			InternalInterface.AccountSettings.Posting.HiddenItems[self.itemType] = nil
 		elseif InternalInterface.CharacterSettings.Posting.HiddenItems[self.itemType] then
 			visibilityIcon:SetTexture(addonID, "Textures/ShowIcon.png")
 			InternalInterface.CharacterSettings.Posting.HiddenItems[self.itemType] = nil
 		else
 			visibilityIcon:SetTexture(addonID, "Textures/HideIcon.png")
-			InternalInterface.ShardSettings.Posting.HiddenItems[self.itemType] = true
+			InternalInterface.AccountSettings.Posting.HiddenItems[self.itemType] = true
 		end
 		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
 	end
 	
 	function visibilityIcon.Event:RightClick()
-		if InternalInterface.ShardSettings.Posting.HiddenItems[self.itemType] then
+		if InternalInterface.AccountSettings.Posting.HiddenItems[self.itemType] then
 			visibilityIcon:SetTexture(addonID, "Textures/ShowIcon.png")
-			InternalInterface.ShardSettings.Posting.HiddenItems[self.itemType] = nil
+			InternalInterface.AccountSettings.Posting.HiddenItems[self.itemType] = nil
 		elseif InternalInterface.CharacterSettings.Posting.HiddenItems[self.itemType] then
 			visibilityIcon:SetTexture(addonID, "Textures/ShowIcon.png")
 			InternalInterface.CharacterSettings.Posting.HiddenItems[self.itemType] = nil
@@ -639,7 +639,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		if not string.find(upperName, filterText) then return false end
 		
 		if not visibilityMode then
-			if InternalInterface.ShardSettings.Posting.HiddenItems[value.itemType] or InternalInterface.CharacterSettings.Posting.HiddenItems[value.itemType] then
+			if InternalInterface.AccountSettings.Posting.HiddenItems[value.itemType] or InternalInterface.CharacterSettings.Posting.HiddenItems[value.itemType] then
 				return false
 			end
 		end
@@ -1079,7 +1079,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		local item, itemInfo = itemGrid:GetSelectedData()
 		if not item then return end
 		
-		if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common" }) then
+		if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common", sort = "time", sortOrder = "descending" }) then
 			out(L["PostingPanel/itemScanError"])
 		else
 			InternalInterface.ScanNext()

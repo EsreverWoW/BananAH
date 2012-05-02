@@ -53,5 +53,6 @@ RunOnStartup =
 	"PricingModels/Median.lua",
 	"PricingModels/IPR.lua",
 	"PostingFrame.lua",
+	"ConfigFrame.lua",
 	"Main.lua",
 }

@@ -39,13 +39,18 @@ InternalInterface.CharacterSettings = InternalInterface.CharacterSettings or {}
 
 -- Settings
 local function BuildSettings()
+	InternalInterface.AccountSettings.General = InternalInterface.AccountSettings.General or
+	{
+		showMapIcon = false,
+		autoOpen = false,
+		autoClose = false,
+		disableBackgroundScanner = false,
+	}
 	InternalInterface.AccountSettings.Posting = InternalInterface.AccountSettings.Posting or 
 	{
 		selfMatcherRange = 25,
 		competitionUndercutterRange = 25,
 		startPostingQueuePaused = false,
-		showMapIcon = true,
-		autoOpen = false,
 	}
 	InternalInterface.AccountSettings.Posting.DefaultConfig = InternalInterface.AccountSettings.Posting.DefaultConfig or
 	{
@@ -55,9 +60,9 @@ local function BuildSettings()
 		bindPrices = false,
 		duration = 3,
 	}
+	InternalInterface.AccountSettings.Posting.HiddenItems = InternalInterface.AccountSettings.Posting.HiddenItems or {}
 
 	InternalInterface.ShardSettings.Posting = InternalInterface.ShardSettings.Posting or {}
-	InternalInterface.ShardSettings.Posting.HiddenItems = InternalInterface.ShardSettings.Posting.HiddenItems or {}
 	
 	InternalInterface.CharacterSettings.Posting = InternalInterface.CharacterSettings.Posting or {}
 	InternalInterface.CharacterSettings.Posting.HiddenItems = InternalInterface.CharacterSettings.Posting.HiddenItems or {}
