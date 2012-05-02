@@ -29,13 +29,14 @@ local function InitializeLayout()
 	local bidsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.BidsTab.Text", bidsTab:GetContent())
 	local historyText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.HistoryTab.Text", historyTab:GetContent())
 	local configText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.ConfigTab.Text", configTab:GetContent())
---	local configFrame = InternalInterface.UI.ConfigFrame(addonID .. ".UI.MainWindow.ConfigFrame", mainPanel:GetContent())
+	local configFrame = InternalInterface.UI.ConfigFrame(addonID .. ".UI.MainWindow.ConfigFrame", mainPanel:GetContent())
 
 	mapContext:SetStrata("hud")
 
 	mapIcon:SetPoint("CENTER", UI.Native.MapMini, "BOTTOMLEFT", 24, -25)
 	mapIcon:SetTexture(addonID, "Textures/MapIcon.png")
-	mapIcon:SetVisible(InternalInterface.AccountSettings.Posting.showMapIcon or false)
+	mapIcon:SetVisible(InternalInterface.AccountSettings.General.showMapIcon or false)
+	InternalInterface.UI.MapIcon = mapIcon
 	
 	mainWindow:SetVisible(false)
 	mainWindow:SetMinWidth(1280)
@@ -100,7 +101,7 @@ local function InitializeLayout()
 	statusPanel:SetInvertedBorder(true)
 	statusPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
 	
-	scannerButton:SetTexture(addonID, "Textures/SearchIcon.png")
+	scannerButton:SetTexture(addonID, _G[addonID].GetBackgroundScannerEnabled() and "Textures/SearchIcon.png" or "Textures/DontSearchIcon.png")
 	scannerButton:SetPoint("CENTERRIGHT", statusPanel:GetContent(), "CENTERRIGHT", -2, 0)
 	scannerButton:SetWidth(16)
 	scannerButton:SetHeight(16)
@@ -156,15 +157,13 @@ local function InitializeLayout()
 	configText:SetText(L["General/menuConfig"])
 	configText:SetFontSize(16)
 	configText:SetShadowOffset(2, 2)
-	--configText:SetFontColor(0.75, 0.75, 0.5, 1)
-	configText:SetFontColor(0.5, 0.5, 0.5, 1)
+	configText:SetFontColor(0.75, 0.75, 0.5, 1)
 	configTab:SetWidth(configText:GetWidth() + 60)
-	--configTab.text = configText
+	configTab.text = configText
 	
-	-- configFrame:SetAllPoints()
-	-- configFrame:SetVisible(false)
-	-- configFrame.mapIcon = mapIcon
-	-- configTab.frame = configFrame
+	configFrame:SetAllPoints()
+	configFrame:SetVisible(false)
+	configTab.frame = configFrame
 	
 	local function ShowBananAH(hEvent)
 		mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
@@ -189,14 +188,19 @@ local function InitializeLayout()
 
 	function mapIcon.Event:LeftClick()
 		local wasVisible = mainWindow:GetVisible()
-		ShowBananAH(true)
-		mainWindow:SetVisible(not wasVisible)
-		mainWindow.selectedTab.frame:SetVisible(not wasVisible)
+		if not wasVisible then
+			ShowBananAH(true)
+		else
+			mainWindow:Close()
+		end
 	end
 	
 	function UI.Native.Auction.Event:Loaded()
-		if UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.Posting.autoOpen then
+		if UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.General.autoOpen then
 			ShowBananAH(false)
+		end
+		if not UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.General.autoClose then
+			mainWindow:Close()
 		end
 	end
 	
@@ -216,7 +220,7 @@ local function InitializeLayout()
 	end
 	function refreshButton.Event:LeftClick()
 		if not self.enabled then return end
-		if not pcall(Command.Auction.Scan, { type="search" }) then
+		if not pcall(Command.Auction.Scan, { type="search", sort = "time", sortOrder = "descending" }) then
 			out(L["General/fullScanError"])
 		else
 			InternalInterface.ScanNext()
@@ -250,10 +254,9 @@ local function InitializeLayout()
 	postTab.Event.MouseIn = TabMouseIn
 	postTab.Event.MouseOut = TabMouseOut
 	postTab.Event.LeftClick = TabLeftClick
-	--configTab.Event.MouseIn = TabMouseIn
-	--configTab.Event.MouseOut = TabMouseOut
-	-- configTab.Event.LeftClick = TabLeftClick
-	--postTab.Event.LeftClick(postTab)
+	configTab.Event.MouseIn = TabMouseIn
+	configTab.Event.MouseOut = TabMouseOut
+	configTab.Event.LeftClick = TabLeftClick
 	mainWindow.selectedTab = postTab
 	mainWindow.selectedTab.text:SetFontColor(1, 1, 1, 1)
 	

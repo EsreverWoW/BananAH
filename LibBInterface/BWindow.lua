@@ -62,10 +62,11 @@ local function SetCloseable(self, closeable)
 			closeButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -8, 15)
 			function closeButton.Event:LeftPress()
 				local parent = self:GetParent()
-				parent:SetVisible(false)
-				if parent.Event.Close then
-					parent.Event.Close(parent)
-				end			
+				parent:Close()
+				-- parent:SetVisible(false)
+				-- if parent.Event.Close then
+					-- parent.Event.Close(parent)
+				-- end			
 			end
 			self.closeButton = closeButton
 		end
@@ -75,6 +76,15 @@ local function SetCloseable(self, closeable)
 	end
 	self.closeable = closeable
 	return self.closeable
+end
+
+local function Close(self)
+	if self:GetCloseable() then
+		self:SetVisible(false)
+		if self.Event.Close then
+			self.Event.Close(self)
+		end
+	end
 end
 
 local function GetDraggable(self)
@@ -301,6 +311,7 @@ function Library.LibBInterface.BWindow(name, parent)
 	
 	bWindow.GetCloseable = GetCloseable
 	bWindow.SetCloseable = SetCloseable
+	bWindow.Close = Close
 
 	bWindow.GetDraggable = GetDraggable
 	bWindow.SetDraggable = SetDraggable

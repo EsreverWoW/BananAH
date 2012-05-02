@@ -69,7 +69,6 @@ local function UnpackAuctionTable(packedDB)
 	return unpackedDB
 end
 
-
 local function PackAuctionTable()
 	local packedDB = {}
 	
@@ -302,6 +301,36 @@ local function OnAuctionData(criteria, auctions)
 		end
 	end
 	
+	if criteria.sort and criteria.sort == "time" and criteria.sortOrder then
+		if criteria.sortOrder == "descending" then
+			table.sort(totalAuctions, function(a,b) return auctions[a] < auctions[b] end)
+		else
+			table.sort(totalAuctions, function(a,b) return auctions[b] < auctions[a] end)
+		end
+		for index = 2, #totalAuctions, 1 do
+			local auctionID = totalAuctions[index]
+			local prevAuctionID = totalAuctions[index - 1]
+			
+			local auctionMET = auctionTable[cachedAuctions[auctionID]].auctions[auctionID].met
+			local prevAuctionMET = auctionTable[cachedAuctions[prevAuctionID]].auctions[prevAuctionID].met
+			
+			if auctionMET < prevAuctionMET then
+				auctionTable[cachedAuctions[auctionID]].auctions[auctionID].met = prevAuctionMET
+			end
+		end
+		for index = #totalAuctions - 1, 1, -1 do
+			local auctionID = totalAuctions[index]
+			local nextAuctionID = totalAuctions[index + 1]
+			
+			local auctionXET = auctionTable[cachedAuctions[auctionID]].auctions[auctionID].xet
+			local nextAuctionXET = auctionTable[cachedAuctions[nextAuctionID]].auctions[nextAuctionID].xet
+			
+			if auctionXET > nextAuctionXET then
+				auctionTable[cachedAuctions[auctionID]].auctions[auctionID].xet = nextAuctionXET
+			end
+		end
+	end
+	
 	scanNext = false
 	AuctionDataEvent(criteria.type, totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions)
 end
@@ -463,6 +492,13 @@ end
 function InternalInterface.ScanNext()
 	scanNext = true
 end
+
+local function OnAddonLoaded(addonId)
+	if addonId == addonID then 
+		SetBackgroundScannerEnabled(not (InternalInterface.AccountSettings.General.disableBackgroundScanner or false))
+	end 
+end
+table.insert(Event.Addon.Load.End, { OnAddonLoaded, addonID, "AHMonitoringService.OnAddonLoaded" })
 
 _G[addonID].SearchAuctions = SearchAuctions
 _G[addonID].GetAllAuctionData = GetAllAuctionData
