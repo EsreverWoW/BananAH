@@ -683,7 +683,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:SetUnselectedRowBackgroundColor(0.2, 0.2, 0.2, 0.25)
 	auctionGrid:SetSelectedRowBackgroundColor(0.6, 0.6, 0.6, 0.25)
 	auctionGrid:AddColumn("", 20, AuctionCachedRenderer)
-	auctionGrid:AddColumn(L["PostingPanel/columnSeller"], 90, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
+	auctionGrid:AddColumn(L["PostingPanel/columnSeller"], 140, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
 	auctionGrid:AddColumn(L["PostingPanel/columnStack"], 60, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
 	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 120, MoneyRenderer, true, "bidPrice")
 	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 120, MoneyRenderer, true, "buyoutPrice")
@@ -725,7 +725,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		if not value then return { 0.75, 0.5, 0.75, 0.1 } end
 		for _, price in ipairs(itemPrices) do
 			if price.key == "market" then
-				local score = math.floor(value / price.buy)
+				local score = value / price.buy
 				if score < 0.85 then return { 0, 0.75, 0.75, 0.1 } --{ 0, 0.75, 0, 1 }
 				elseif score < 1.15 then return { 0.75, 0.75, 0, 0.1 }
 				else return { 0.75, 0, 0, 0.1 } --{ 0.75, 0.25, 0, 1 }

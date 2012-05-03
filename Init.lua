@@ -29,6 +29,7 @@ _G[addonID] = _G[addonID] or {}
 
 InternalInterface = InternalInterface or {}
 InternalInterface.UI = InternalInterface.UI or {}
+InternalInterface.PricingModelService = InternalInterface.PricingModelService or {}
 InternalInterface.Utility = InternalInterface.Utility or {}
 InternalInterface.Utility.GetRarityColor = GetRarityColor
 InternalInterface.Utility.GetOutput = GetOutput
