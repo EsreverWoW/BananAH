@@ -52,6 +52,7 @@ RunOnStartup =
 	"PricingModels/StandardDeviation.lua",
 	"PricingModels/Median.lua",
 	"PricingModels/IPR.lua",
+	"PriceScorers/MarketPrice.lua",
 	"PostingFrame.lua",
 	"ConfigFrame.lua",
 	"Main.lua",

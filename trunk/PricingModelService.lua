@@ -2,14 +2,27 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
 local PricingModelAddedEvent = Utility.Event.Create(addonID, "PricingModelAdded")
+local PriceScorerAddedEvent = Utility.Event.Create(addonID, "PriceScorerAdded")
 local PriceMatcherAddedEvent = Utility.Event.Create(addonID, "PriceMatcherAdded")
 
 local pricingModels = {}
+local priceScorers = {}
 local priceMatchers = {}
 
+function InternalInterface.PricingModelService.GetAllPricingModels()
+	return pricingModels -- FIXME Return copy
+end
+
+function InternalInterface.PricingModelService.GetAllPriceScorers()
+	return priceScorers -- FIXME Return copy
+end
+
+function InternalInterface.PricingModelService.GetAllPriceMatchers()
+	return priceMatchers -- FIXME Return copy
+end
+
 local function GetPricingModel(id)
-	if not pricingModels[id] then return nil end
-	return pricingModels[id] -- FIXME Return copy
+	return pricingModels[id] or priceScorers[id] or nil -- FIXME Return copy
 end
 
 local function GetPriceMatcher(id)
@@ -33,6 +46,23 @@ local function RegisterPricingModel(id, displayName, pricingFunction, callbackFu
 	return false
 end
 
+local function RegisterPriceScorer(id, displayName, pricingFunction, callbackFunction, scoreFunction, configFrameConstructor)
+	if not priceScorers[id] then
+		priceScorers[id] =
+		{
+			priceScorerID = id,
+			displayName = displayName,
+			pricingFunction = pricingFunction,
+			callbackFunction = callbackFunction,
+			scoreFunction = scoreFunction,
+			configFrameConstructor = configFrameConstructor,
+		}
+		PriceScorerAddedEvent(id)
+		return true
+	end
+	return false
+end
+
 local function RegisterPriceMatcher(id, displayName, matchingFunction)
 	if not priceMatchers[id] then
 		priceMatcher[id] =
@@ -50,28 +80,21 @@ local function GetPricings(item, autoMode)
 	local prices = {}
 	local auctions = _G[addonID].GetAllAuctionData(item)
 	
-	local marketPricePricingModels = { vendor = 0, mean = 0, stdev = 2, median = 2, interpercentilerange = 0, } -- TODO Config
-	local marketPriceBidT = 0
-	local marketPriceBidW = 0
-	local marketPriceBuyT = 0
-	local marketPriceBuyW = 0
-	
 	for pricingModelID, pricingModelData in pairs(pricingModels) do
 		local bid, buy = pricingModelData.pricingFunction(item, auctions, autoMode)
 
 		if bid then
 			prices[pricingModelID] = { displayName = pricingModelData.displayName, bid = bid, buy = buy, }
-			
-			local weight = marketPricePricingModels[pricingModelID] or 0
-			marketPriceBidT = marketPriceBidT + bid * weight
-			marketPriceBidW = marketPriceBidW + weight
-			marketPriceBuyT = marketPriceBuyT + (buy or 0) * weight
-			marketPriceBuyW = marketPriceBuyW + (buy and weight or 0)
 		end
 	end
 	
-	if marketPriceBidW > 0 then
-		prices["market"] = { displayName = "Market Price", bid = math.floor(marketPriceBidT / marketPriceBidW), buy = marketPriceBuyW > 0 and math.floor(marketPriceBuyT / marketPriceBuyW) or nil, } -- TODO LOCALIZATION
+	for priceScorerID, priceScorerData in pairs(priceScorers) do
+		if priceScorerData.pricingFunction then
+			local bid, buy = priceScorerData.pricingFunction(item, auctions, autoMode, prices)
+			if bid then
+				prices[priceScorerID] = { displayName = priceScorerData.displayName, bid = bid, buy = buy, }
+			end
+		end
 	end
 	
 	return prices
@@ -126,6 +149,7 @@ end
 _G[addonID].GetPricingModel = GetPricingModel
 _G[addonID].GetPriceMatcher = GetPriceMatcher
 _G[addonID].RegisterPricingModel = RegisterPricingModel
+_G[addonID].RegisterPriceScorer = RegisterPriceScorer
 _G[addonID].RegisterPriceMatcher = RegisterPriceMatcher
 _G[addonID].GetPricings = GetPricings
 _G[addonID].MatchPrice = MatchPrice
