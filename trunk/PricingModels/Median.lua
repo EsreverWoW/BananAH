@@ -7,9 +7,21 @@ local DAY_LENGTH = 86400
 local PRICING_MODEL_ID = "median"
 local PRICING_MODEL_NAME = L["PricingModel/medianName"]
 
+local configFrame = nil
+
+local function DefaultConfig()
+	InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID] = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID] or
+	{
+		weight = true,
+		days = 3,
+	}
+end
+
 local function PricingModel(item, auctions, autoMode)
-	local weighted = true --InternalInterface.Settings.Config.PricingModels.medianWeight or true
-	local days = 3 -- InternalInterface.Settings.Config.PricingModels.medianDays or 3
+	DefaultConfig()
+	
+	local weighted = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].weight or false
+	local days = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].days or 3
 	
 	local minTime = os.time() - DAY_LENGTH * days
 	
@@ -41,4 +53,44 @@ local function PricingModel(item, auctions, autoMode)
 	return math.min(bid, buy), buy
 end
 
-_G[addonID].RegisterPricingModel(PRICING_MODEL_ID, PRICING_MODEL_NAME, PricingModel, nil, nil)
+local function ConfigFrame(parent)
+	if configFrame then return configFrame end
+
+	DefaultConfig()
+	
+	configFrame = UI.CreateFrame("Frame", parent:GetName() .. ".MedianPricingModelConfig", parent)
+	local weightedCheck = UI.CreateFrame("RiftCheckbox", configFrame:GetName() .. ".WeightedCheck", configFrame)
+	local weightedText = UI.CreateFrame("Text", configFrame:GetName() .. ".WeightedText", configFrame)
+	local daysText = UI.CreateFrame("Text", configFrame:GetName() .. ".DaysText", configFrame)
+	local daysSlider = UI.CreateFrame("BSlider", configFrame:GetName() .. ".DaysSlider", configFrame)
+
+	configFrame:SetVisible(false)
+	
+	weightedCheck:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, 10)
+	weightedCheck:SetChecked(InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].weight or false)
+	
+	weightedText:SetPoint("CENTERLEFT", weightedCheck, "CENTERRIGHT", 5, 0)
+	weightedText:SetFontSize(14)
+	weightedText:SetText(L["PricingModel/medianWeight"])
+	
+	daysText:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, 50)
+	daysText:SetFontSize(14)
+	daysText:SetText(L["PricingModel/medianDays"])
+
+	daysSlider:SetPoint("CENTERLEFT", daysText, "CENTERRIGHT", 20, 8)	
+	daysSlider:SetPoint("TOPRIGHT", configFrame, "TOPRIGHT", -10, 50)
+	daysSlider:SetRange(0, 30)
+	daysSlider:SetPosition(InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].days or 3)
+	
+	function weightedCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].weight = self:GetChecked()
+	end
+	
+	function daysSlider.Event:PositionChanged(position)
+		InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].days = position
+	end
+	
+	return configFrame
+end
+
+_G[addonID].RegisterPricingModel(PRICING_MODEL_ID, PRICING_MODEL_NAME, PricingModel, nil, ConfigFrame)

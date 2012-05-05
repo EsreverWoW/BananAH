@@ -39,9 +39,9 @@ local function InitializeLayout()
 	InternalInterface.UI.MapIcon = mapIcon
 	
 	mainWindow:SetVisible(false)
-	mainWindow:SetMinWidth(1330)
+	mainWindow:SetMinWidth(1370)
 	mainWindow:SetMinHeight(800)
-	mainWindow:SetWidth(1330)
+	mainWindow:SetWidth(1370)
 	mainWindow:SetHeight(800)
 	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0) -- TODO Get from config
 	mainWindow:SetTitle(addonID)

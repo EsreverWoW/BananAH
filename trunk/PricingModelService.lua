@@ -63,13 +63,14 @@ local function RegisterPriceScorer(id, displayName, pricingFunction, callbackFun
 	return false
 end
 
-local function RegisterPriceMatcher(id, displayName, matchingFunction)
+local function RegisterPriceMatcher(id, displayName, matchingFunction, configFrameConstructor)
 	if not priceMatchers[id] then
-		priceMatcher[id] =
+		priceMatchers[id] =
 		{
 			priceMatcherID = id,
 			displayName = displayName,
 			matchingFunction = matchingFunction,
+			configFrameConstructor = configFrameConstructor,
 		}
 		PriceMatcherAddedEvent(id)
 	end
@@ -101,47 +102,27 @@ local function GetPricings(item, autoMode)
 end
 
 local function MatchPrice(item, unitBid, unitBuy)
-	-- TODO Use registered price matchers instead of this!
-	local userName = Inspect.Unit.Detail("player").name -- TODO Use all player characters
-	local matchingRange = (InternalInterface.AccountSettings.Posting.selfMatcherRange or 25) / 100
-	local undercutRange = (InternalInterface.AccountSettings.Posting.competitionUndercutterRange or 25) / 100
-
 	local auctions = _G[addonID].GetActiveAuctionData(item)
-	local bidsMatchRange = {}
-	local bidsUndercutRange = {}
-	local buysMatchRange = {}
-	local buysUndercutRange = {}
-
-	for auctionId, auctionData in pairs(auctions) do
-		local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / unitBid)
-		if userName == auctionData.sellerName and bidRelDev <= matchingRange and matchingRange > 0 then table.insert(bidsMatchRange, auctionData.bidUnitPrice) end
-		if userName ~= auctionData.sellerName and bidRelDev <= undercutRange and undercutRange > 0 then table.insert(bidsUndercutRange, auctionData.bidUnitPrice) end
-
-		local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / unitBuy) or (math.max(matchingRange, undercutRange) + 1)
-		if userName == auctionData.sellerName and buyRelDev <= matchingRange and matchingRange > 0 then table.insert(buysMatchRange, auctionData.buyoutUnitPrice) end
-		if userName ~= auctionData.sellerName and buyRelDev <= undercutRange and undercutRange > 0 then table.insert(buysUndercutRange, auctionData.buyoutUnitPrice) end
+	
+	local priceMatcherOrder = InternalInterface.AccountSettings.Posting.DefaultConfig.priceMatcherOrder or {}
+	local priceMatcherUsed = {}
+	
+	for _, priceMatcherID in ipairs(priceMatcherOrder) do
+		if priceMatchers[priceMatcherID] then
+			local matchBid, matchBuy = priceMatchers[priceMatcherID].matchingFunction(item, auctions, unitBid, unitBuy)
+			unitBid = matchBid or unitBid
+			unitBuy = matchBuy or unitBuy
+			priceMatcherUsed[priceMatcherID] = true
+		end
 	end
-
-	table.sort(bidsMatchRange)
-	table.sort(bidsUndercutRange)
-	if #bidsMatchRange > 0 then 
-		unitBid = bidsMatchRange[1]
-	elseif #bidsUndercutRange > 0 then
-		unitBid = math.max(bidsUndercutRange[1] - 1, 1)
-	else
-		unitBid = math.floor(unitBid * (1 + undercutRange))
+	
+	for priceMatcherID, priceMatcherData in pairs(priceMatchers) do
+		if not priceMatcherUsed[priceMatcherID] then
+			local matchBid, matchBuy = priceMatcherData.matchingFunction(item, auctions, unitBid, unitBuy)
+			unitBid = matchBid or unitBid
+			unitBuy = matchBuy or unitBuy
+		end
 	end
-
-	table.sort(buysMatchRange)
-	table.sort(buysUndercutRange)
-	if #buysMatchRange > 0 then 
-		unitBuy = buysMatchRange[1]
-	elseif #buysUndercutRange > 0 then
-		unitBuy = math.max(buysUndercutRange[1] - 1, 1)
-	else
-		unitBuy = math.floor(unitBuy * (1 + undercutRange))
-	end
-	unitBid = math.min(unitBid, unitBuy)	
 	
 	return unitBid, unitBuy
 end

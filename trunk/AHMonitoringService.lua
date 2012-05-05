@@ -52,6 +52,7 @@ local function UnpackAuctionTable(packedDB)
 				stk = tonumber(auctionData[3], 16), bid = tonumber(dictionary[auctionData[4]], 16), 	
 				fst = tonumber(dictionary[auctionData[7]], 16), lst = tonumber(dictionary[auctionData[8]], 16),
 				met = tonumber(dictionary[auctionData[9]], 16), xet = tonumber(dictionary[auctionData[10]], 16),
+				own = tonumber(auctionData[13])
 			}
 		end
 
@@ -107,6 +108,7 @@ local function PackAuctionTable()
 				EncodeAlways(auctionData.xet),
 				auctionData.bdd,
 				auctionData.rbe,
+				auctionData.own or 0,
 			}
 			table.insert(packedAuctions, packedAuctionData)					
 		end
@@ -154,7 +156,7 @@ local function PackAuctionTable()
 		packedDB[index][5] = encodeAlways[packedItemData[5]]
 		packedDB[index][6] = encodeAlways[packedItemData[6]]
 		for aIndex, packedAuctionData in ipairs(packedItemData[7]) do
-			packedDB[index][7][aIndex] = table.concat({ encodeAlways[packedAuctionData[1]], packedAuctionData[2], packedAuctionData[3], encodeAlways[packedAuctionData[4]], encodeAlways[packedAuctionData[5]], encodeAlways[packedAuctionData[6]], encodeAlways[packedAuctionData[7]], encodeAlways[packedAuctionData[8]], encodeAlways[packedAuctionData[9]], encodeAlways[packedAuctionData[10]], encodeAlways[packedAuctionData[11]], encodeAlways[packedAuctionData[12]], }, ",")
+			packedDB[index][7][aIndex] = table.concat({ encodeAlways[packedAuctionData[1]], packedAuctionData[2], packedAuctionData[3], encodeAlways[packedAuctionData[4]], encodeAlways[packedAuctionData[5]], encodeAlways[packedAuctionData[6]], encodeAlways[packedAuctionData[7]], encodeAlways[packedAuctionData[8]], encodeAlways[packedAuctionData[9]], encodeAlways[packedAuctionData[10]], packedAuctionData[11], packedAuctionData[12], packedAuctionData[13], }, ",")
 		end
 		packedDB[index][7] = table.concat(packedDB[index][7], "#")
 		packedDB[index] = table.concat(packedDB[index], "#")
@@ -227,6 +229,7 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 		xet = expireTimes[2],
 		bdd = 0,
 		rbe = 0,
+		own = auctionDetail.seller == Inspect.Unit.Detail("player").name and 1 or 0,
 	}
 		
 	cachedAuctions[auctionID] = itemType
@@ -238,6 +241,7 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 		auctionTable[itemType].auctions[auctionID].lst = auctionScanTime
 		auctionTable[itemType].auctions[auctionID].met = math.max(auctionTable[itemType].auctions[auctionID].met, expireTimes[1])
 		auctionTable[itemType].auctions[auctionID].xet = math.min(auctionTable[itemType].auctions[auctionID].xet, expireTimes[2])
+		auctionTable[itemType].auctions[auctionID].own = auctionDetail.seller == Inspect.Unit.Detail("player").name and 1 or 0
 		
 		if auctionTable[itemType].auctions[auctionID].bid == auctionDetail.bid then
 			return itemType, false
@@ -300,6 +304,7 @@ local function OnAuctionData(criteria, auctions)
 			end
 		end
 	end
+	-- TODO Mark auctions as removed when criteria.type == "mine" and they're not seen. Dont use OWN as those could be from an alter!!! Use SLN instead
 	
 	if criteria.sort and criteria.sort == "time" and criteria.sortOrder then
 		if criteria.sortOrder == "descending" then
@@ -399,6 +404,7 @@ local function SearchAuctions(activeOnly, calling, rarity, levelMin, levelMax, c
 			maxExpireTime = auctionData.xet,
 			bidded = auctionData.bdd == 1 and true or nil,
 			removedBeforeExpiration = auctionData.rbe == 2 and true or nil,
+			own = auctionData.own == 1 and true or false,
 		}
 		if auctionData.rbe == 1 then auctions[auctionID].removedBeforeExpiration = false end
 	end
@@ -433,6 +439,7 @@ local function GetAllAuctionData(item)
 			maxExpireTime = auctionData.xet,
 			bidded = auctionData.bdd == 1 and true or nil,
 			removedBeforeExpiration = auctionData.rbe == 2 and true or nil,
+			own = auctionData.own == 1 and true or false,
 		}
 		if auctionData.rbe == 1 then auctions[auctionID].removedBeforeExpiration = false end
 	end
@@ -469,6 +476,7 @@ local function GetActiveAuctionData(item)
 				maxExpireTime = auctionData.xet,
 				bidded = auctionData.bdd == 1 and true or nil,
 				removedBeforeExpiration = auctionData.rbe == 2 and true or nil,
+				own = auctionData.own == 1 and true or false,
 			}
 			if auctionData.rbe == 1 then auctions[auctionID].removedBeforeExpiration = false end
 		end
