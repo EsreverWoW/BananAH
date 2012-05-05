@@ -49,19 +49,27 @@ local function BuildSettings()
 	}
 	InternalInterface.AccountSettings.Posting = InternalInterface.AccountSettings.Posting or 
 	{
-		selfMatcherRange = 25,
-		competitionUndercutterRange = 25,
 		startPostingQueuePaused = false,
+		rarityFilter = 1,
 	}
 	InternalInterface.AccountSettings.Posting.DefaultConfig = InternalInterface.AccountSettings.Posting.DefaultConfig or
 	{
 		pricingModelOrder = { "market", "vendor", "fixed", },
+		priceMatcherOrder = { "undercut", "self", "vendor", },
 		usePriceMatching = false,
-		stackSize = 1,
 		bindPrices = false,
+		stackSize = 1,
 		duration = 3,
 	}
 	InternalInterface.AccountSettings.Posting.HiddenItems = InternalInterface.AccountSettings.Posting.HiddenItems or {}
+	InternalInterface.AccountSettings.PricingModels = InternalInterface.AccountSettings.PricingModels or {}
+	InternalInterface.AccountSettings.PriceScorers = InternalInterface.AccountSettings.PriceScorers or {}
+	InternalInterface.AccountSettings.PriceScorers.Settings = InternalInterface.AccountSettings.PriceScorers.Settings or
+	{
+		default = "market",
+		colorRanges = { -1, -1, -1, 85, 115, -1, -1, -1, -1 },
+	}
+	InternalInterface.AccountSettings.PriceMatchers = InternalInterface.AccountSettings.PriceMatchers or {}
 
 	InternalInterface.ShardSettings.Posting = InternalInterface.ShardSettings.Posting or {}
 	

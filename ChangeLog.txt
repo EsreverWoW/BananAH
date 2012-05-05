@@ -1,7 +1,18 @@
+	Alpha r42
+- All old options from Config Tab are available now
+- Added "Vendor minimum" price matcher (prevents prices going below what the vendor pays for them)
+- The "Self matcher" price matcher now considers auctions as "self" when the seller is another character in your account
+- The "Undercut competition" price matcher no longer considers auctions as "competition" when the seller is another character in your account
+- The "Buy < Vendor" warning now takes into account the 5% auction house fee
+- The "You're the seller" warning is now also displayed when the auctions seller is another character in your account
+
+	Alpha r41
+- Size increased for some columns in the auctions grid
+
 	Alpha r40
 - The global 'hide item' filtered items are saved per account now (they were stored per shard)
 - Added experimental code to estimate more accurately the expiration times
-- Started fixing the config tab
+- Started fixing the Config Tab
 - Added option to close the addon window when the native auction window is closed
 - Added option to disable the background scanner on start
 

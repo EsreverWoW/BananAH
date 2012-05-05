@@ -397,15 +397,14 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		local bidPrice = 1
 		
 		local selectedAuctionID, selectedAuctionData = auctionGrid:GetSelectedData()
-		if selectedAuctionID and selectedAuctionData then 
+		if selectedAuctionID and selectedAuctionData then
 			auctionSelected = true
 			selectedAuctionCached = _G[addonID].GetAuctionCached(selectedAuctionID) or false
 			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
 			selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
 			local ok, auctionData = pcall(Inspect.Auction.Detail, selectedAuctionID)
 			if ok and auctionData and auctionData.bidder then highestBidder = true end
-			local ok, unitDetail = pcall(Inspect.Unit.Detail, "player")
-			if ok and unitDetail and unitDetail.name == selectedAuctionData.sellerName then seller = true end
+			seller = selectedAuctionData.own
 			bidPrice = selectedAuctionData.bidPrice
 		end
 		
@@ -634,6 +633,11 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	itemGrid:SetSelectedRowBackgroundColor(0.6, 0.45, 0.6, 1)
 	itemGrid:AddColumn("Item", 248, ItemRenderer, function(a, b) local items = itemGrid:GetData() return string.upper(items[a].name) < string.upper(items[b].name) end)
 	local function ItemGridFilter(key, value)
+		local rarity = value.rarity or "common"
+		rarity = ({ sellable = 1, common = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, quest = 8 })[rarity] or 1
+		local minRarity = InternalInterface.AccountSettings.Posting.rarityFilter or 1
+		if rarity < minRarity then return false end
+
 		local filterText = string.upper(filterTextField:GetText())
 		local upperName = string.upper(value.name)
 		if not string.find(upperName, filterText) then return false end
@@ -685,10 +689,10 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:AddColumn("", 20, AuctionCachedRenderer)
 	auctionGrid:AddColumn(L["PostingPanel/columnSeller"], 140, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
 	auctionGrid:AddColumn(L["PostingPanel/columnStack"], 60, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
-	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 120, MoneyRenderer, true, "bidPrice")
-	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 120, MoneyRenderer, true, "buyoutPrice")
-	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, MoneyRenderer, true, "bidUnitPrice")--, { Compare = function() return CompareFunction()[1] end })
-	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 120, MoneyRenderer, true, "buyoutUnitPrice")--, { Compare = function() return CompareFunction()[2] end })
+	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 130, MoneyRenderer, true, "bidPrice")
+	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 130, MoneyRenderer, true, "buyoutPrice")
+	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, MoneyRenderer, true, "bidUnitPrice")--, { Compare = function() return CompareFunction()[1] end })
+	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, MoneyRenderer, true, "buyoutUnitPrice")--, { Compare = function() return CompareFunction()[2] end })
 	local function LocalizedDateFormatter(value)
 		--return GetLocalizedDateString("%a %X", value)
 		local diff = value - os.time()
@@ -1314,7 +1318,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			end
 		end
 		local _, selectedInfo = itemGrid:GetSelectedData()
-		buyPriceWarning:SetVisible((selectedInfo and newValue > 0 and newValue < (selectedInfo.sell or 0) * AUCTION_FEE_REDUCTION) or false)
+		buyPriceWarning:SetVisible((selectedInfo and newValue > 0 and newValue < math.ceil((selectedInfo.sell or 0) / AUCTION_FEE_REDUCTION)) or false)
 		SetRefreshMode(REFRESH_INFO)
 	end
 

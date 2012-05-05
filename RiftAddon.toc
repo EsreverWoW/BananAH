@@ -18,13 +18,11 @@ Embed =
 {
 	LibBInterface = true,
 	LibCron = true,
---	LibTooltipEx = true,
 }
 Dependencies =
 {
 	LibBInterface = {"required", "before"},
 	LibCron = {"required", "before"},
---	LibTooltipEx = {"optional", "before"},
 }
 SavedVariables =
 {
@@ -53,6 +51,9 @@ RunOnStartup =
 	"PricingModels/Median.lua",
 	"PricingModels/IPR.lua",
 	"PriceScorers/MarketPrice.lua",
+	"PriceMatchers/Undercut.lua",
+	"PriceMatchers/SelfMatcher.lua",
+	"PriceMatchers/Vendor.lua",
 	"PostingFrame.lua",
 	"ConfigFrame.lua",
 	"Main.lua",
