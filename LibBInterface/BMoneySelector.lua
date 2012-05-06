@@ -19,14 +19,13 @@ local function ResetMoneySelector(self)
 	self.platinumInput:SetWidth(self.secretLabel:GetWidth() + 10)
 	
 	local color = { 0, 0, 0 }
-	if self.compareValue then
-		local score = self.value / self.compareValue
-		if score < 0.85 then color = { 0, 0.1, 0 }
-		elseif score < 1.15 then color = { 0.1, 0.1, 0 }
-		else color = { 0.1, 0, 0 }
-		end
+	if self.compareFunction then
+		color = self.compareFunction(self.value)
+		color[1] = math.max(color[1] * 0.2, 0)
+		color[2] = math.max(color[2] * 0.2, 0)
+		color[3] = math.max(color[3] * 0.2, 0)
 	end
-	color[4] = 0.75
+	color[4] = 0.5
 	self.silverPanel:GetContent():SetBackgroundColor(unpack(color))
 	self.goldPanel:GetContent():SetBackgroundColor(unpack(color))
 	self.platinumPanel:GetContent():SetBackgroundColor(unpack(color))
@@ -106,8 +105,8 @@ local function SetValue(self, value)
 	return self.value
 end
 
-local function SetCompareValue(self, compareValue)
-	self.compareValue = compareValue
+local function SetCompareFunction(self, compareFunction)
+	self.compareFunction = compareFunction
 	ResetMoneySelector(self)
 end
 
@@ -219,7 +218,7 @@ function Library.LibBInterface.BMoneySelector(name, parent)
 	bMoneySelector.SetEnabled = SetEnabled
 	bMoneySelector.GetValue = GetValue
 	bMoneySelector.SetValue = SetValue
-	bMoneySelector.SetCompareValue = SetCompareValue
+	bMoneySelector.SetCompareFunction = SetCompareFunction
 	Library.LibBInterface.BEventHandler(bMoneySelector, { "ValueChanged" })
 	
 	-- Late Initialization

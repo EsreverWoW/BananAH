@@ -296,13 +296,11 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	local itemPrices = {}
 
 	local function AuctionRightClick(self)
-		local playerName = Inspect.Unit.Detail("player").name
 		local data = self.dataValue
-		local sellerName = data and data.sellerName or nil
 		local bid = data and data.bidUnitPrice or nil
 		local buy = data and data.buyoutUnitPrice or 0
-		if playerName and sellerName and bid then
-			if playerName ~= sellerName then
+		if bid then
+			if not data.own then
 				bid = math.max(bid - 1, 1)
 				buy = buy == 0 and buy or math.max(buy - 1, 1)
 			end	
@@ -374,13 +372,8 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			if key == prevKey then newIndex = #itemPrices end
 		end
 		
-		if pricings.market then
-			bidMoneySelector:SetCompareValue(pricings.market.bid)
-			buyMoneySelector:SetCompareValue(pricings.market.buy)
-		else
-			bidMoneySelector:SetCompareValue(nil)
-			buyMoneySelector:SetCompareValue(nil)
-		end
+		bidMoneySelector:SetCompareFunction(function(value) return InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
+		buyMoneySelector:SetCompareFunction(function(value) return InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
 		
 		pricingModelSelector:SetValues(itemPrices)
 		if newIndex then pricingModelSelector:SetSelectedIndex(newIndex) end
@@ -717,29 +710,24 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 90, "Text", true, "minExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
 	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 90, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
 	local function ScoreValue(value)
-		if not value then return "" end
-		for _, price in ipairs(itemPrices) do
-			if price.key == "market" then
-				return math.floor(value * 100 / price.buy) .. " %"
-			end
+		local prices = {}
+		for _, itemPrice in ipairs(itemPrices) do
+			prices[itemPrice.key] = itemPrice
 		end
-		return ""
+		
+		local score = _G[addonID].ScorePrice(nil, value, prices)
+		
+		if not score then return "" end
+
+		return math.floor(score) .. " %"
 	end
 	local function ScoreColor(value)
-		if not value then return { 0.75, 0.5, 0.75, 0.1 } end
-		for _, price in ipairs(itemPrices) do
-			if price.key == "market" then
-				local score = value / price.buy
-				if score < 0.85 then return { 0, 0.75, 0.75, 0.1 } --{ 0, 0.75, 0, 1 }
-				elseif score < 1.15 then return { 0.75, 0.75, 0, 0.1 }
-				else return { 0.75, 0, 0, 0.1 } --{ 0.75, 0.25, 0, 1 }
-				end
-			-- self:SetBackgroundColor(0, 0.75, 0.75, 0.1)
-		-- else
-			-- self:SetBackgroundColor(0.75, 0, 0, 0.1)				
-			end
+		local prices = {}
+		for _, itemPrice in ipairs(itemPrices) do
+			prices[itemPrice.key] = itemPrice
 		end
-		return { 0.75, 0.5, 0.75, 0.1 }
+		local r, g, b = unpack(InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(nil, value, prices)))
+		return { r, g, b, 0.1 }
 	end
 	auctionGrid:AddColumn("Score", 60, "Text", true, "buyoutUnitPrice", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor }) -- LOCALIZE
 	auctionGrid:AddColumn("", 0, AuctionRenderer, false, "buyoutUnitPrice", { Color = ScoreColor })
@@ -1066,14 +1054,15 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	function buyButton.Event:LeftPress()
 		local auctionID, auctionData = auctionGrid:GetSelectedData()
 		if auctionID then
-			Command.Auction.Bid(auctionID, auctionData.buyoutPrice)
+			Command.Auction.Bid(auctionID, auctionData.buyoutPrice, function(...) InternalInterface.AHMonitoringService.AuctionBuyCallback(auctionID, ...) end)
 		end
 	end
 	
 	function bidButton.Event:LeftPress()
 		local auctionID = auctionGrid:GetSelectedData()
 		if auctionID then
-			Command.Auction.Bid(auctionID, auctionMoneySelector:GetValue())
+			local bidAmount = auctionMoneySelector:GetValue()
+			Command.Auction.Bid(auctionID, bidAmount, function(...) InternalInterface.AHMonitoringService.AuctionBidCallback(auctionID, bidAmount, ...) end)
 		end
 	end
 	
