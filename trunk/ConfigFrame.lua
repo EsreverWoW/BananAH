@@ -464,8 +464,32 @@ end
 local function PriceScoreSettings(parent)
 	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".PriceScoreSettings", parent)
 	
+	InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits = InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits or { 85, 85, 115, 115 }
+	
 	local defaultPriceScorerText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultPriceScorerText", frame)
-	local defaultPriceScorerDropdown = UI.CreateFrame("BDropdown", frame:GetName() .. ".DefaultPriceScorerDropdown", frame)	
+	local defaultPriceScorerDropdown = UI.CreateFrame("BDropdown", frame:GetName() .. ".DefaultPriceScorerDropdown", frame)
+	local colorNilSample = UI.CreateFrame("BPanel", frame:GetName() .. ".ColorNilSample", frame)
+	local color1Sample = UI.CreateFrame("BPanel", frame:GetName() .. ".Color1Sample", frame)
+	local color2Sample = UI.CreateFrame("BPanel", frame:GetName() .. ".Color2Sample", frame)
+	local color3Sample = UI.CreateFrame("BPanel", frame:GetName() .. ".Color3Sample", frame)
+	local color4Sample = UI.CreateFrame("BPanel", frame:GetName() .. ".Color4Sample", frame)
+	local color5Sample = UI.CreateFrame("BPanel", frame:GetName() .. ".Color5Sample", frame)
+	local colorNilText = UI.CreateFrame("Text", frame:GetName() .. ".ColorNilText", frame)
+	local color1Text = UI.CreateFrame("Text", frame:GetName() .. ".Color1Text", frame)
+	local color2Text = UI.CreateFrame("Text", frame:GetName() .. ".Color2Text", frame)
+	local color3Text = UI.CreateFrame("Text", frame:GetName() .. ".Color3Text", frame)
+	local color4Text = UI.CreateFrame("Text", frame:GetName() .. ".Color4Text", frame)
+	local color5Text = UI.CreateFrame("Text", frame:GetName() .. ".Color5Text", frame)
+	local color1Limit = UI.CreateFrame("BSlider", frame:GetName() .. ".Color1Limit", frame)
+	local color2Limit = UI.CreateFrame("BSlider", frame:GetName() .. ".Color2Limit", frame)
+	local color3Limit = UI.CreateFrame("BSlider", frame:GetName() .. ".Color3Limit", frame)
+	local color4Limit = UI.CreateFrame("BSlider", frame:GetName() .. ".Color4Limit", frame)
+	local samplePanel = UI.CreateFrame("BPanel", frame:GetName() .. ".SamplePanel", frame)
+	local color1SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color1SamplePanel", samplePanel:GetContent())
+	local color2SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color2SamplePanel", samplePanel:GetContent())
+	local color3SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color3SamplePanel", samplePanel:GetContent())
+	local color4SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color4SamplePanel", samplePanel:GetContent())
+	local color5SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color5SamplePanel", samplePanel:GetContent())
 	
 	local function ResetDefaultPriceScorer()
 		local priceScorers = InternalInterface.PricingModelService.GetAllPriceScorers()
@@ -481,6 +505,34 @@ local function PriceScoreSettings(parent)
 		defaultPriceScorerDropdown:SetSelectedIndex(defaultIndex)
 	end
 	
+	local function ResetColorSample()
+		color1SamplePanel:ClearAll()
+		color2SamplePanel:ClearAll()
+		color3SamplePanel:ClearAll()
+		color4SamplePanel:ClearAll()
+
+		local limit1, limit2, limit3, limit4 = color1Limit:GetPosition(), color2Limit:GetPosition(), color3Limit:GetPosition(), color4Limit:GetPosition()
+		local content = samplePanel:GetContent()
+		local width = content:GetWidth()
+
+		color1SamplePanel:SetPoint("TOPLEFT", content, "TOPLEFT")
+		color1SamplePanel:SetPoint("BOTTOMRIGHT", content, limit1 / 999, 1)
+
+		color2SamplePanel:SetPoint("TOPLEFT", content, limit1 / 999, 0)
+		color2SamplePanel:SetPoint("BOTTOMRIGHT", content, limit2 / 999, 1)
+
+		color3SamplePanel:SetPoint("TOPLEFT", content, limit2 / 999, 0)
+		color3SamplePanel:SetPoint("BOTTOMRIGHT", content, limit3 / 999, 1)
+
+		color4SamplePanel:SetPoint("TOPLEFT", content, limit3 / 999, 0)
+		color4SamplePanel:SetPoint("BOTTOMRIGHT", content, limit4 / 999, 1)
+
+		color5SamplePanel:SetPoint("TOPLEFT", content, limit4 / 999, 0)
+		color5SamplePanel:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT")
+		
+		InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits = { limit1, limit2, limit3, limit4 }
+	end
+	
 	frame:SetVisible(false)
 
 	defaultPriceScorerText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 10)
@@ -490,12 +542,143 @@ local function PriceScoreSettings(parent)
 	defaultPriceScorerDropdown:SetPoint("CENTERLEFT", defaultPriceScorerText, "CENTERRIGHT", 10, 0)
 	defaultPriceScorerDropdown:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 3)
 	
+	colorNilSample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 90)
+	colorNilSample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 120)
+	colorNilSample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(nil)))
+	colorNilSample:SetInvertedBorder(true)
+	
+	color1Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 140)
+	color1Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 170)
+	color1Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(1)))
+	color1Sample:SetInvertedBorder(true)
+	
+	color2Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 190)
+	color2Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 220)
+	color2Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(2)))
+	color2Sample:SetInvertedBorder(true)
+	
+	color3Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 240)
+	color3Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 270)
+	color3Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(3)))
+	color3Sample:SetInvertedBorder(true)
+	
+	color4Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 290)
+	color4Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 320)
+	color4Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(4)))
+	color4Sample:SetInvertedBorder(true)
+	
+	color5Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 340)
+	color5Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 370)
+	color5Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(5)))
+	color5Sample:SetInvertedBorder(true)
+	
+	colorNilText:SetPoint("CENTERLEFT", colorNilSample, "CENTERRIGHT", 10, 0)
+	colorNilText:SetFontSize(14)
+	colorNilText:SetText("No score") -- LOCALIZE
+	
+	color1Text:SetPoint("CENTERLEFT", color1Sample, "CENTERRIGHT", 10, 0)
+	color1Text:SetFontSize(14)
+	color1Text:SetText("Very low") -- LOCALIZE
+	
+	color2Text:SetPoint("CENTERLEFT", color2Sample, "CENTERRIGHT", 10, 0)
+	color2Text:SetFontSize(14)
+	color2Text:SetText("Low") -- LOCALIZE
+	
+	color3Text:SetPoint("CENTERLEFT", color3Sample, "CENTERRIGHT", 10, 0)
+	color3Text:SetFontSize(14)
+	color3Text:SetText("Medium") -- LOCALIZE
+	
+	color4Text:SetPoint("CENTERLEFT", color4Sample, "CENTERRIGHT", 10, 0)
+	color4Text:SetFontSize(14)
+	color4Text:SetText("High") -- LOCALIZE
+	
+	color5Text:SetPoint("CENTERLEFT", color5Sample, "CENTERRIGHT", 10, 0)
+	color5Text:SetFontSize(14)
+	color5Text:SetText("Very high") -- LOCALIZE
+	
+	color1Limit:SetPoint("TOPLEFT", color1Sample, "BOTTOMRIGHT", 200, 0)
+	color1Limit:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -10, 190)
+	color1Limit:SetRange(0, 999)
+	color1Limit:SetPosition(InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits[1])
+	
+	color2Limit:SetPoint("TOPLEFT", color2Sample, "BOTTOMRIGHT", 200, 0)
+	color2Limit:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -10, 240)
+	color2Limit:SetRange(0, 999)
+	color2Limit:SetPosition(InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits[2])
+	
+	color3Limit:SetPoint("TOPLEFT", color3Sample, "BOTTOMRIGHT", 200, 0)
+	color3Limit:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -10, 290)
+	color3Limit:SetRange(0, 999)
+	color3Limit:SetPosition(InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits[3])
+	
+	color4Limit:SetPoint("TOPLEFT", color4Sample, "BOTTOMRIGHT", 200, 0)
+	color4Limit:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -10, 340)
+	color4Limit:SetRange(0, 999)
+	color4Limit:SetPosition(InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits[4])
+	
+	samplePanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 390)
+	samplePanel:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -10, 420)
+	samplePanel:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(nil)))
+	
+	color1SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(1)))
+	color2SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(2)))
+	color3SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(3)))
+	color4SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(4)))
+	color5SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(5)))
+	
 	function defaultPriceScorerDropdown.Event:SelectionChanged()
 		local index, data = self:GetSelectedValue()
 		InternalInterface.AccountSettings.PriceScorers.Settings.default = data and data.priceScorerID or "market"
 	end
+
+	local propagate = false
+	
+	function color1Limit.Event:PositionChanged(position)
+		if not propagate then
+			propagate = true
+			color2Limit:SetPosition(math.max(position, color2Limit:GetPosition()))
+			color3Limit:SetPosition(math.max(color2Limit:GetPosition(), color3Limit:GetPosition()))
+			color4Limit:SetPosition(math.max(color3Limit:GetPosition(), color4Limit:GetPosition()))
+			propagate = false
+			ResetColorSample()
+		end
+	end
+	
+	function color2Limit.Event:PositionChanged(position)
+		if not propagate then
+			propagate = true
+			color1Limit:SetPosition(math.min(color1Limit:GetPosition(), position))
+			color3Limit:SetPosition(math.max(position, color3Limit:GetPosition()))
+			color4Limit:SetPosition(math.max(color3Limit:GetPosition(), color4Limit:GetPosition()))
+			propagate = false
+			ResetColorSample()
+		end
+	end
+	
+	function color3Limit.Event:PositionChanged(position)
+		if not propagate then
+			propagate = true
+			color2Limit:SetPosition(math.min(color2Limit:GetPosition(), position))
+			color1Limit:SetPosition(math.min(color1Limit:GetPosition(), color2Limit:GetPosition()))
+			color4Limit:SetPosition(math.max(position, color4Limit:GetPosition()))
+			propagate = false
+			ResetColorSample()
+		end
+	end
+	
+	function color4Limit.Event:PositionChanged(position)
+		if not propagate then
+			propagate = true
+			color3Limit:SetPosition(math.min(color3Limit:GetPosition(), position))
+			color2Limit:SetPosition(math.min(color2Limit:GetPosition(), color3Limit:GetPosition()))
+			color1Limit:SetPosition(math.min(color1Limit:GetPosition(), color2Limit:GetPosition()))
+			propagate = false
+			ResetColorSample()
+		end
+	end
 	
 	ResetDefaultPriceScorer()
+	ResetColorSample()
 	
 	table.insert(Event[addonID].PriceScorerAdded, { ResetDefaultPriceScorer, addonID, "ConfigFrame.PriceScorerAdded" })
 	
@@ -506,7 +689,6 @@ local function LoadConfigScreens(self, configDisplay)
 	local postingChildren =
 	{
 		{ title = "\t" .. L["ConfigPanel/subcategoryPostingSettings"], frame = PostingSettings(configDisplay), order = 31 },
-		-- { title = "\t" .. L["ConfigPanel/subcategoryPostingPriceMatchers"], frame = PriceMatchers(configDisplay), order = 32 },
 	}
 	
 	local pricingModels = InternalInterface.PricingModelService.GetAllPricingModels()
@@ -519,11 +701,19 @@ local function LoadConfigScreens(self, configDisplay)
 		end
 	end
 	
+	local priceScorers = InternalInterface.PricingModelService.GetAllPriceScorers()
 	local priceScorersChildren = {{ title = "\t" .. "Score settings", frame = PriceScoreSettings(configDisplay), order = 201 }} -- LOCALIZE
+	count = 2
+	for priceScorerId, priceScorerData in pairs(priceScorers) do
+		if priceScorerData.configFrameConstructor then
+			table.insert(priceScorersChildren, { title = "\t" .. priceScorerData.displayName, frame = priceScorerData.configFrameConstructor(configDisplay), order = 200 + count })
+			count = count + 1
+		end
+	end
 	
 	local priceMatchers = InternalInterface.PricingModelService.GetAllPriceMatchers()
 	local priceMatchersChilden = { }
-	local count = 1
+	count = 1
 	for priceMatcherId, priceMatcherData in pairs(priceMatchers) do
 		if priceMatcherData.configFrameConstructor then
 			table.insert(priceMatchersChilden, { title = "\t" .. priceMatcherData.displayName, frame = priceMatcherData.configFrameConstructor(configDisplay), order = 300 + count })

@@ -29,7 +29,7 @@ end
 -- Public
 local function SetRange(self, minRange, maxRange)
 	self.minValue = math.max(minRange, 0)
-	self.maxValue = math.min(maxRange, 100)
+	self.maxValue = math.min(maxRange, 999)
 	self.currentValue = math.max(math.min(self.currentValue, self.maxValue), self.minValue)
 	RepositionSlider(self)
 end

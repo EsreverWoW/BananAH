@@ -1,3 +1,11 @@
+	Alpha r43
+- Right click undercutting now considers auctions posted by other characters in your account as self instead of competition
+- Added option to configure the score ranges in the Config Tab
+- The "Market price" price scorer can be configured now
+- Bought auctions are deleted from the auction list without having to rescan
+- Bidded auctions are updated in the auction list without having to rescan
+- Posted auctions expire times are more accurate now
+
 	Alpha r42
 - All old options from Config Tab are available now
 - Added "Vendor minimum" price matcher (prevents prices going below what the vendor pays for them)
@@ -5,6 +13,8 @@
 - The "Undercut competition" price matcher no longer considers auctions as "competition" when the seller is another character in your account
 - The "Buy < Vendor" warning now takes into account the 5% auction house fee
 - The "You're the seller" warning is now also displayed when the auctions seller is another character in your account
+- The items shown in the Post tab can be filtered by rarity now
+- New option to select the order in which the price matchers are applied
 
 	Alpha r41
 - Size increased for some columns in the auctions grid

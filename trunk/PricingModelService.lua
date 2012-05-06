@@ -127,6 +127,48 @@ local function MatchPrice(item, unitBid, unitBuy)
 	return unitBid, unitBuy
 end
 
+local function ScorePrice(item, value, prices)
+	if not value then return nil end
+
+	if not prices then 
+		if item then
+			prices = GetPricings(item) 
+		else
+			return nil
+		end
+	end
+
+	local priceScorer = InternalInterface.AccountSettings.PriceScorers.Settings.default or "market"
+	if not priceScorers[priceScorer] or not priceScorers[priceScorer].scoreFunction then return nil end
+
+	return priceScorers[priceScorer].scoreFunction(item, value, prices)
+end
+
+function InternalInterface.UI.ScoreColorByIndex(index)
+	if not index or type(index) ~= "number" then return { 0.75, 0.5, 0.75 } end
+	if index <= 1 then return { 0, 0.75, 0.75 }
+	elseif index <= 2 then return { 0, 0.75, 0 }
+	elseif index <= 3 then return { 0.75, 0.75, 0 }
+	elseif index <= 4 then return { 0.75, 0.5, 0 }
+	else return { 0.75, 0, 0 }
+	end
+	return { 0.75, 0.5, 0.75 }
+end
+
+function InternalInterface.UI.ScoreColorByScore(score)
+	local index = nil
+	local limits = InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits or { 85, 85, 115, 115 }
+	if score then
+		if score <= limits[1] then index = 1
+		elseif score <= limits[2] then index = 2
+		elseif score <= limits[3] then index = 3
+		elseif score <= limits[4] then index = 4
+		else index = 5
+		end
+	end
+	return InternalInterface.UI.ScoreColorByIndex(index)
+end
+
 _G[addonID].GetPricingModel = GetPricingModel
 _G[addonID].GetPriceMatcher = GetPriceMatcher
 _G[addonID].RegisterPricingModel = RegisterPricingModel
@@ -134,4 +176,5 @@ _G[addonID].RegisterPriceScorer = RegisterPriceScorer
 _G[addonID].RegisterPriceMatcher = RegisterPriceMatcher
 _G[addonID].GetPricings = GetPricings
 _G[addonID].MatchPrice = MatchPrice
+_G[addonID].ScorePrice = ScorePrice
 

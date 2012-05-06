@@ -29,6 +29,7 @@ _G[addonID] = _G[addonID] or {}
 
 InternalInterface = InternalInterface or {}
 InternalInterface.UI = InternalInterface.UI or {}
+InternalInterface.AHMonitoringService = InternalInterface.AHMonitoringService or {}
 InternalInterface.PricingModelService = InternalInterface.PricingModelService or {}
 InternalInterface.Utility = InternalInterface.Utility or {}
 InternalInterface.Utility.GetRarityColor = GetRarityColor
@@ -67,7 +68,7 @@ local function BuildSettings()
 	InternalInterface.AccountSettings.PriceScorers.Settings = InternalInterface.AccountSettings.PriceScorers.Settings or
 	{
 		default = "market",
-		colorRanges = { -1, -1, -1, 85, 115, -1, -1, -1, -1 },
+		colorLimits = { 85, 85, 115, 115 },
 	}
 	InternalInterface.AccountSettings.PriceMatchers = InternalInterface.AccountSettings.PriceMatchers or {}
 

@@ -76,7 +76,7 @@ local function PostingQueueCoroutine()
 					break
 				end
 
-				Command.Auction.Post(item, tim, bid, buyout)
+				Command.Auction.Post(item, tim, bid, buyout, function(...) InternalInterface.AHMonitoringService.AuctionPostCallback(itemType, tim, os.time(), bid, buyout, ...) end)
 				postingQueue[1].amount = postingQueue[1].amount - searchStackSize
 				waitingUpdate = true
 				QueueStatusChangedEvent()

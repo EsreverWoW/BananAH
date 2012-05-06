@@ -11,6 +11,46 @@ local auctionSearcher = InternalInterface.Utility.BuildAuctionTree()
 local AuctionDataEvent = Utility.Event.Create(addonID, "AuctionData")
 local backgroundScannerDisabled = false
 local scanNext = false
+local alreadyMatched = {}
+local pendingPosts = {}
+
+local function TryMatchAuction(auctionID)
+	if alreadyMatched[auctionID] then return end
+	
+	local itemType = cachedAuctions[auctionID]
+	local pending = itemType and pendingPosts[itemType] or nil
+	local itemInfo = auctionTable[itemType]
+	local auctionInfo = itemInfo and itemInfo.auctions[auctionID] or nil
+	
+	if not pending or not auctionInfo then return end
+	
+	for index, pendingData in ipairs(pending) do
+		if not pendingData.matched and pendingData.bid == auctionInfo.bid and (pendingData.buy or 0) == (auctionInfo.buy or 0) then
+			auctionTable[itemType].auctions[auctionID].met = pendingData.timestamp + pendingData.tim * 3600 
+			auctionTable[itemType].auctions[auctionID].xet = auctionInfo.fst + pendingData.tim * 3600 
+			pendingPosts[itemType][index].matched = true
+			alreadyMatched[auctionID] = true
+			return
+		end
+	end
+	auctionTable[itemType].auctions[auctionID].postPending = true
+end
+
+local function TryMatchPost(itemType, tim, timestamp, bid, buyout)
+	local itemInfo = auctionTable[itemType]
+	local auctions = itemInfo and itemInfo.auctions or {}
+	for auctionID, auctionInfo in pairs(auctions) do
+		if auctionInfo.postPending and bid == auctionInfo.bid and (buyout or 0) == (auctionInfo.buy or 0) then
+			auctionTable[itemType].auctions[auctionID].met = timestamp + tim * 3600 
+			auctionTable[itemType].auctions[auctionID].xet = auctionInfo.fst + tim * 3600 
+			auctionTable[itemType].auctions[auctionID].postPending = nil
+			AuctionDataEvent("playerpost", {auctionID}, {}, {}, {}, {})
+			return
+		end
+	end
+	pendingPosts[itemType] = pendingPosts[itemType] or {}
+	table.insert(pendingPosts[itemType], { tim = tim, timestamp = timestamp, bid = bid, buy = buyout })
+end
 
 local function UnpackAuctionTable(packedDB)
 	if type(packedDB) ~= "table" or not packedDB.DICT then return packedDB end
@@ -52,7 +92,7 @@ local function UnpackAuctionTable(packedDB)
 				stk = tonumber(auctionData[3], 16), bid = tonumber(dictionary[auctionData[4]], 16), 	
 				fst = tonumber(dictionary[auctionData[7]], 16), lst = tonumber(dictionary[auctionData[8]], 16),
 				met = tonumber(dictionary[auctionData[9]], 16), xet = tonumber(dictionary[auctionData[10]], 16),
-				own = tonumber(auctionData[13])
+				own = tonumber(auctionData[13]), obd = tonumber(auctionData[14]), obg = tonumber(auctionData[15])
 			}
 		end
 
@@ -109,6 +149,8 @@ local function PackAuctionTable()
 				auctionData.bdd,
 				auctionData.rbe,
 				auctionData.own or 0,
+				auctionData.obd or 0,
+				auctionData.obg or 0,
 			}
 			table.insert(packedAuctions, packedAuctionData)					
 		end
@@ -156,7 +198,7 @@ local function PackAuctionTable()
 		packedDB[index][5] = encodeAlways[packedItemData[5]]
 		packedDB[index][6] = encodeAlways[packedItemData[6]]
 		for aIndex, packedAuctionData in ipairs(packedItemData[7]) do
-			packedDB[index][7][aIndex] = table.concat({ encodeAlways[packedAuctionData[1]], packedAuctionData[2], packedAuctionData[3], encodeAlways[packedAuctionData[4]], encodeAlways[packedAuctionData[5]], encodeAlways[packedAuctionData[6]], encodeAlways[packedAuctionData[7]], encodeAlways[packedAuctionData[8]], encodeAlways[packedAuctionData[9]], encodeAlways[packedAuctionData[10]], packedAuctionData[11], packedAuctionData[12], packedAuctionData[13], }, ",")
+			packedDB[index][7][aIndex] = table.concat({ encodeAlways[packedAuctionData[1]], packedAuctionData[2], packedAuctionData[3], encodeAlways[packedAuctionData[4]], encodeAlways[packedAuctionData[5]], encodeAlways[packedAuctionData[6]], encodeAlways[packedAuctionData[7]], encodeAlways[packedAuctionData[8]], encodeAlways[packedAuctionData[9]], encodeAlways[packedAuctionData[10]], packedAuctionData[11], packedAuctionData[12], packedAuctionData[13], packedAuctionData[14], packedAuctionData[15], }, ",")
 		end
 		packedDB[index][7] = table.concat(packedDB[index][7], "#")
 		packedDB[index] = table.concat(packedDB[index], "#")
@@ -230,12 +272,17 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 		bdd = 0,
 		rbe = 0,
 		own = auctionDetail.seller == Inspect.Unit.Detail("player").name and 1 or 0,
+		obd = 0,
+		obg = 0,
 	}
 		
 	cachedAuctions[auctionID] = itemType
-
+	
 	if auctionTable[itemType].auctions[auctionID].fst == auctionScanTime then
 		auctionSearcher:AddAuction(itemType, auctionID, 0, auctionTable[itemType].callings, auctionTable[itemType].rarity, auctionTable[itemType].level, auctionTable[itemType].category, auctionTable[itemType].name, auctionDetail.buyout or 0)
+		if auctionTable[itemType].auctions[auctionID].own then
+			TryMatchAuction(auctionID)
+		end
 		return itemType, nil
 	else
 		auctionTable[itemType].auctions[auctionID].lst = auctionScanTime
@@ -305,6 +352,7 @@ local function OnAuctionData(criteria, auctions)
 		end
 	end
 	-- TODO Mark auctions as removed when criteria.type == "mine" and they're not seen. Dont use OWN as those could be from an alter!!! Use SLN instead
+	-- TODO Mark auctions OBD = 1 and BDD = 1 when criteria.type == "bids"
 	
 	if criteria.sort and criteria.sort == "time" and criteria.sortOrder then
 		if criteria.sortOrder == "descending" then
@@ -499,6 +547,49 @@ end
 
 function InternalInterface.ScanNext()
 	scanNext = true
+end
+
+function InternalInterface.AHMonitoringService.AuctionBuyCallback(auctionID, failed)
+	if failed then return end
+	
+	local itemType = cachedAuctions[auctionID]
+	local itemInfo = itemType and auctionTable[itemType] or nil
+	local auctionInfo = itemInfo and itemInfo.auctions[auctionID] or nil
+	
+	if auctionInfo then
+		if auctionTable[itemType].auctions[auctionID].rbe == 0 then
+			auctionSearcher:RemoveAuction(auctionID, 0, itemInfo.callings, itemInfo.rarity, itemInfo.level, itemInfo.category, itemInfo.name, auctionInfo.buy)
+			auctionTable[itemType].auctions[auctionID].rbe = 2
+			auctionSearcher:AddAuction(itemType, auctionID, 2, itemInfo.callings, itemInfo.rarity, itemInfo.level, itemInfo.category, itemInfo.name, auctionInfo.buy)
+		end
+		auctionTable[itemType].auctions[auctionID].obg = 1
+		AuctionDataEvent("playerbuy", {auctionID}, {}, {}, {auctionID}, {auctionID})
+	end
+end
+
+function InternalInterface.AHMonitoringService.AuctionBidCallback(auctionID, amount, failed)
+	if failed then return end
+	
+	local itemType = cachedAuctions[auctionID]
+	local itemInfo = itemType and auctionTable[itemType] or nil
+	local auctionInfo = itemInfo and itemInfo.auctions[auctionID] or nil
+	
+	if auctionInfo then
+		if auctionInfo.buy and auctionInfo.buy > 0 and amount >= auctionInfo.buy then
+			InternalInterface.AHMonitoringService.AuctionBuyCallback(auctionID)
+		else
+			auctionTable[itemType].auctions[auctionID].bdd = 1
+			auctionTable[itemType].auctions[auctionID].bid = amount
+			auctionTable[itemType].auctions[auctionID].obd = 1
+			AuctionDataEvent("playerbid", {auctionID}, {}, {auctionID}, {}, {})
+		end
+	end
+end
+
+function InternalInterface.AHMonitoringService.AuctionPostCallback(itemType, tim, timestamp, bid, buyout, failed)
+	if not failed then
+		TryMatchPost(itemType, tim, timestamp, bid, buyout)
+	end
 end
 
 local function OnAddonLoaded(addonId)
