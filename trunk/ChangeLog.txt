@@ -1,3 +1,6 @@
+	Alpha r44
+- Auctions tab preview, not functional yet	
+
 	Alpha r43
 - Right click undercutting now considers auctions posted by other characters in your account as self instead of competition
 - Added option to configure the score ranges in the Config Tab

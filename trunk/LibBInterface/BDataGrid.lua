@@ -38,7 +38,8 @@ end
 --  * FontSize
 --   + fontSize
 local function TextRenderer(name, parent)
-	local textCell = UI.CreateFrame("Text", name, parent)
+	local cell = UI.CreateFrame("Frame", name, parent)
+	local textCell = UI.CreateFrame("Text", name .. ".Text", cell)
 	
 	function textCell:SetValue(key, value, width, extra)
 		-- Apply Formatter
@@ -57,15 +58,14 @@ local function TextRenderer(name, parent)
 		end
 		
 		-- Apply alignment
-		local anchor, _, offset = self:ReadPoint(0, nil)
+		local offset = 0
 		if extra and extra.Alignment == "center" then
 			offset = offset + (width - self:GetWidth()) / 2
 		elseif extra and extra.Alignment == "right" then
 			offset = offset + width - self:GetWidth()
 		end
 		self:ClearAll()
-		self:SetPoint("TOPLEFT", anchor, "TOPLEFT", offset, 0)
-		self:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", offset, 0)
+		self:SetPoint("CENTERLEFT", cell, "CENTERLEFT", offset, 0)
 		
 		-- Apply Color
 		if extra and type(extra.Color) == "table" then
@@ -75,7 +75,9 @@ local function TextRenderer(name, parent)
 		end
 	end
 	
-	return textCell
+	function cell:SetValue(key, value, width, extra) textCell:SetValue(key, value, width, extra) end
+	
+	return cell
 end
 Library.LibBInterface.RegisterGridRenderer("Text", TextRenderer)
 
