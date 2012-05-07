@@ -55,6 +55,7 @@ RunOnStartup =
 	"PriceMatchers/SelfMatcher.lua",
 	"PriceMatchers/Vendor.lua",
 	"PostingFrame.lua",
+	"AuctionsFrame.lua",
 	"ConfigFrame.lua",
 	"Main.lua",
 }

@@ -75,6 +75,11 @@ local function UnpackAuctionTable(packedDB)
 		local rarity = dictionary[itemData[3]]
 		local level = tonumber(dictionary[itemData[4]], 16)
 		local category = dictionary[itemData[5]]
+		-- In r44 I've added more item data to category, because I'm dumb and didn't left space for it :(
+		category = { category:match((category:gsub("[^:]*:", "([^:]*):"))) }
+		local icon = category[2] or ""
+		category = category[1]
+		
 		local callings = tonumber(dictionary[itemData[6]], 16)
 		callings = { warrior = bit.band(callings, 8) > 0 and true or nil, cleric = bit.band(callings, 4) > 0 and true or nil, rogue = bit.band(callings, 2) > 0 and true or nil, mage = bit.band(callings, 1) > 0 and true or nil, }
 		
@@ -99,6 +104,7 @@ local function UnpackAuctionTable(packedDB)
 		unpackedDB[itemType] =
 		{
 			name = name,
+			icon = icon,
 			rarity = rarity,
 			level = level,
 			category = category,
@@ -175,7 +181,7 @@ local function PackAuctionTable()
 				EncodeWhenRepeated(itemData.name),
 				EncodeWhenRepeated(itemData.rarity),
 				EncodeAlways(itemData.level),
-				EncodeWhenRepeated(itemData.category),
+				EncodeWhenRepeated(itemData.category .. ":" .. (itemData.icon or "")) .. ":", -- Oops! Seems I didn't leave space for more item data... Will add them here and hope they don't break anything
 				EncodeAlways((itemData.callings.warrior and 8 or 0) + (itemData.callings.cleric and 4 or 0) + (itemData.callings.rogue and 2 or 0) + (itemData.callings.mage and 1 or 0)),
 				packedAuctions,
 			}
@@ -215,6 +221,7 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 		cachedItemTypes[itemType] = true
 
 		local name = itemDetail.name
+		local icon = itemDetail.icon
 		local rarity = itemDetail.rarity or ""
 		local level = itemDetail.requiredLevel or 1
 		local category = itemDetail.category or ""
@@ -231,6 +238,7 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 			auctionTable[itemType] =
 			{
 				name = name,
+				icon = icon,
 				rarity = rarity,
 				level = level,
 				category = category,
@@ -241,13 +249,15 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 			local oldData = auctionTable[itemType]
 			
 			local oldName = oldData.name
+			local oldIcon = oldData.icon
 			local oldRarity = oldData.rarity
 			local oldLevel = oldData.level
 			local oldCategory = oldData.category
 			local oldCallings = oldData.callings
 			
-			if name ~= oldName or rarity ~= oldRarity  or level ~= oldLevel or category ~= oldCategory or callings.warrior ~= oldCallings.warrior or callings.cleric ~= oldCallings.cleric or callings.rogue ~= oldCallings.rogue or callings.mage ~= oldCallings.mage then
+			if name ~= oldName or icon ~= oldIcon or rarity ~= oldRarity  or level ~= oldLevel or category ~= oldCategory or callings.warrior ~= oldCallings.warrior or callings.cleric ~= oldCallings.cleric or callings.rogue ~= oldCallings.rogue or callings.mage ~= oldCallings.mage then
 				auctionTable[itemType].name = name
+				auctionTable[itemType].icon = icon
 				auctionTable[itemType].rarity = rarity
 				auctionTable[itemType].level = level
 				auctionTable[itemType].category = category
@@ -440,6 +450,9 @@ local function SearchAuctions(activeOnly, calling, rarity, levelMin, levelMax, c
 		auctions[auctionID] =
 		{
 			itemType = itemType,
+			itemName = auctionTable[itemType].name,
+			itemIcon = auctionTable[itemType].icon,
+			itemRarity = auctionTable[itemType].rarity,
 			stack = auctionData.stk,
 			bidPrice = auctionData.bid,
 			buyoutPrice = auctionData.buy ~= 0 and auctionData.buy or nil,
@@ -475,6 +488,9 @@ local function GetAllAuctionData(item)
 		auctions[auctionID] =
 		{
 			itemType = itemType,
+			itemName = auctionTable[itemType].name,
+			itemIcon = auctionTable[itemType].icon,
+			itemRarity = auctionTable[itemType].rarity,
 			stack = auctionData.stk,
 			bidPrice = auctionData.bid,
 			buyoutPrice = auctionData.buy ~= 0 and auctionData.buy or nil,
@@ -512,6 +528,9 @@ local function GetActiveAuctionData(item)
 			auctions[auctionID] =
 			{
 				itemType = itemType,
+				itemName = auctionTable[itemType].name,
+				itemIcon = auctionTable[itemType].icon,
+				itemRarity = auctionTable[itemType].rarity,
 				stack = auctionData.stk,
 				bidPrice = auctionData.bid,
 				buyoutPrice = auctionData.buy ~= 0 and auctionData.buy or nil,

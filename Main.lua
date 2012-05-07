@@ -26,6 +26,7 @@ local function InitializeLayout()
 	local postText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.PostTab.Text", postTab:GetContent())
 	local postFrame = InternalInterface.UI.PostingFrame(addonID .. ".UI.MainWindow.PostFrame", mainPanel:GetContent())
 	local auctionsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.AuctionsTab.Text", auctionsTab:GetContent())
+	local auctionsFrame = InternalInterface.UI.AuctionsFrame(addonID .. ".UI.MainWindow.AuctionsFrame", mainPanel:GetContent())
 	local bidsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.BidsTab.Text", bidsTab:GetContent())
 	local historyText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.HistoryTab.Text", historyTab:GetContent())
 	local configText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.ConfigTab.Text", configTab:GetContent())
@@ -136,8 +137,13 @@ local function InitializeLayout()
 	auctionsText:SetText(L["General/menuAuctions"])
 	auctionsText:SetFontSize(16)
 	auctionsText:SetShadowOffset(2, 2)
-	auctionsText:SetFontColor(0.5, 0.5, 0.5, 1)
+	auctionsText:SetFontColor(0.75, 0.75, 0.5, 1)
 	auctionsTab:SetWidth(auctionsText:GetWidth() + 60)
+	auctionsTab.text = auctionsText
+	
+	auctionsFrame:SetAllPoints()
+	auctionsFrame:SetVisible(false)
+	auctionsTab.frame = auctionsFrame	
 	
 	bidsText:SetPoint("CENTER", bidsTab, "CENTER", 0, 2)
 	bidsText:SetText(L["General/menuBids"])
@@ -254,6 +260,9 @@ local function InitializeLayout()
 	postTab.Event.MouseIn = TabMouseIn
 	postTab.Event.MouseOut = TabMouseOut
 	postTab.Event.LeftClick = TabLeftClick
+	auctionsTab.Event.MouseIn = TabMouseIn
+	auctionsTab.Event.MouseOut = TabMouseOut
+	auctionsTab.Event.LeftClick = TabLeftClick
 	configTab.Event.MouseIn = TabMouseIn
 	configTab.Event.MouseOut = TabMouseOut
 	configTab.Event.LeftClick = TabLeftClick

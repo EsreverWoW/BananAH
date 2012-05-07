@@ -16,6 +16,23 @@ local function GetRarityColor(rarity)
 	end
 end
 
+local function RemainingTimeFormatter(value)
+	local diff = value - os.time()
+	if diff <= 0 then return "" end
+	local hours = math.floor(diff / 3600)
+	local minutes = math.floor(math.floor(diff % 3600) / 60)
+	local seconds = math.floor(diff % 60)
+	if hours > 0 then
+		return hours .. " h " .. minutes .. " m" -- LOCALIZE
+	elseif minutes > 0 then
+		return minutes .. " m " .. seconds .. " s" -- LOCALIZE
+	else
+		return seconds .. " s" -- LOCALIZE
+	end
+end	
+
+
+
 local function GetOutput()
 	return outputFunction
 end
@@ -33,6 +50,7 @@ InternalInterface.AHMonitoringService = InternalInterface.AHMonitoringService or
 InternalInterface.PricingModelService = InternalInterface.PricingModelService or {}
 InternalInterface.Utility = InternalInterface.Utility or {}
 InternalInterface.Utility.GetRarityColor = GetRarityColor
+InternalInterface.Utility.RemainingTimeFormatter = RemainingTimeFormatter
 InternalInterface.Utility.GetOutput = GetOutput
 InternalInterface.Utility.SetOutput = SetOutput
 InternalInterface.AccountSettings = InternalInterface.AccountSettings or {}

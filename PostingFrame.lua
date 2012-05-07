@@ -122,6 +122,8 @@ local function AuctionCachedRenderer(name, parent)
 	
 	return cachedCell
 end
+Library.LibBInterface.RegisterGridRenderer("AuctionCachedRenderer", AuctionCachedRenderer)
+
 local function AuctionRenderer(name, parent)
 	local auctionCell = UI.CreateFrame("Frame", name, parent)
 	
@@ -139,24 +141,27 @@ local function AuctionRenderer(name, parent)
 	
 	return auctionCell
 end
+Library.LibBInterface.RegisterGridRenderer("AuctionRenderer", AuctionRenderer)
 
 -- MoneyRenderer
 local function MoneyRenderer(name, parent)
-	local moneyCell = UI.CreateFrame("BMoneyDisplay", name, parent)
+	local renderCell = UI.CreateFrame("Frame", name, parent)
+	local moneyCell = UI.CreateFrame("BMoneyDisplay", name .. ".MoneyDisplay", renderCell)
+
+	moneyCell:SetPoint("CENTERLEFT", renderCell, "CENTERLEFT")
+	moneyCell:SetPoint("CENTERRIGHT", renderCell, "CENTERRIGHT")
+	moneyCell:SetHeight(20)
+	renderCell.moneyCell = moneyCell
 	
-	local oldSetValue = moneyCell.SetValue
-	function moneyCell:SetValue(key, value, width, extra)
-		oldSetValue(self, value)
+	function renderCell:SetValue(key, value, width, extra)
 		self:SetWidth(width)
-		if extra and extra.Compare then
-			self:SetCompareValue(extra.Compare())
-		else
-			self:SetCompareValue(nil)
-		end
+		self.moneyCell:SetValue(value)
 	end
 	
-	return moneyCell
+	return renderCell
 end
+Library.LibBInterface.RegisterGridRenderer("MoneyRenderer", MoneyRenderer)
+
 
 -- QueueManagerRenderer
 local function QueueManagerRenderer(name, parent)
@@ -679,36 +684,15 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:SetRowMargin(0)
 	auctionGrid:SetUnselectedRowBackgroundColor(0.2, 0.2, 0.2, 0.25)
 	auctionGrid:SetSelectedRowBackgroundColor(0.6, 0.6, 0.6, 0.25)
-	auctionGrid:AddColumn("", 20, AuctionCachedRenderer)
+	auctionGrid:AddColumn("", 20, "AuctionCachedRenderer")
 	auctionGrid:AddColumn(L["PostingPanel/columnSeller"], 140, "Text", true, "sellerName", { Alignment = "left", Formatter = "none" })
 	auctionGrid:AddColumn(L["PostingPanel/columnStack"], 60, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
-	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 130, MoneyRenderer, true, "bidPrice")
-	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 130, MoneyRenderer, true, "buyoutPrice")
-	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, MoneyRenderer, true, "bidUnitPrice")--, { Compare = function() return CompareFunction()[1] end })
-	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, MoneyRenderer, true, "buyoutUnitPrice")--, { Compare = function() return CompareFunction()[2] end })
-	local function LocalizedDateFormatter(value)
-		--return GetLocalizedDateString("%a %X", value)
-		local diff = value - os.time()
-		if diff <= 0 then return "" end
-		local hours = math.floor(diff / 3600)
-		local minutes = math.floor(math.floor(diff % 3600) / 60)
-		local seconds = math.floor(diff % 60)
-		if hours > 0 then
-			return hours .. " h " .. minutes .. " m"
-		elseif minutes > 0 then
-			return minutes .. " m " .. seconds .. " s"
-		else
-			return seconds .. " s"
-		end
-		--return diff <= 0 and "" or math.floor(diff / 3600) .. " h " .. math.floor(math.floor(diff % 3600) / 60) .. " m " .. math.floor(diff % 60) .. " s"
-		-- if diff <= 0 then return ""
-		-- elseif diff <= 60 then return diff .. " s"
-		-- elseif diff <= 3600 then return math.floor(diff / 60) .. " m"
-		-- else return math.floor(diff / 3600) .. " h"
-		-- end
-	end	
-	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 90, "Text", true, "minExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
-	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 90, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = LocalizedDateFormatter })
+	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 130, "MoneyRenderer", true, "bidPrice")
+	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 130, "MoneyRenderer", true, "buyoutPrice")
+	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, "MoneyRenderer", true, "bidUnitPrice")--, { Compare = function() return CompareFunction()[1] end })
+	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, "MoneyRenderer", true, "buyoutUnitPrice")--, { Compare = function() return CompareFunction()[2] end })
+	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 90, "Text", true, "minExpireTime", { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
+	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 90, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	local function ScoreValue(value)
 		local prices = {}
 		for _, itemPrice in ipairs(itemPrices) do
@@ -730,7 +714,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		return { r, g, b, 0.1 }
 	end
 	auctionGrid:AddColumn("Score", 60, "Text", true, "buyoutUnitPrice", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor }) -- LOCALIZE
-	auctionGrid:AddColumn("", 0, AuctionRenderer, false, "buyoutUnitPrice", { Color = ScoreColor })
+	auctionGrid:AddColumn("", 0, "AuctionRenderer", false, "buyoutUnitPrice", { Color = ScoreColor })
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 
 	paddingLeft, _, paddingRight, paddingBottom = auctionGrid:GetPadding()
