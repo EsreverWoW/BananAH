@@ -138,7 +138,6 @@ local function SetRowContent(self, row, key, value)
 		cell:SetValue(key, not binding and value or value[binding], columnData.size, extra)
 		filledWidth = filledWidth + columnData.size
 	end
-	
 end
 
 local function ApplyOrderAndFilter(self)
@@ -462,7 +461,11 @@ function Library.LibBInterface.BDataGrid(name, parent)
 
 	local internalPanelContent = internalPanel:GetContent()
 	function internalPanelContent.Event:Size()
-		ResetRows(bDataGrid)
+		if not self.mw or not self.mh or self.mw < self:GetWidth() or self.mh < self:GetHeight() then
+			self.mw = math.max(self.mw or 0, self:GetWidth())
+			self.mh = math.max(self.mh or 0, self:GetHeight())
+			ResetRows(bDataGrid)
+		end
 	end
 	function internalPanelContent.Event:WheelForward()
 		local minRange = verticalScrollBar:GetRange()

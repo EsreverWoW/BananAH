@@ -155,7 +155,7 @@ function InternalInterface.UI.ScoreColorByIndex(index)
 	return { 0.75, 0.5, 0.75 }
 end
 
-function InternalInterface.UI.ScoreColorByScore(score)
+function InternalInterface.UI.ScoreIndexByScore(score)
 	local index = nil
 	local limits = InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits or { 85, 85, 115, 115 }
 	if score then
@@ -166,7 +166,11 @@ function InternalInterface.UI.ScoreColorByScore(score)
 		else index = 5
 		end
 	end
-	return InternalInterface.UI.ScoreColorByIndex(index)
+	return index
+end
+
+function InternalInterface.UI.ScoreColorByScore(score)
+	return InternalInterface.UI.ScoreColorByIndex(InternalInterface.UI.ScoreIndexByScore(score))
 end
 
 _G[addonID].GetPricingModel = GetPricingModel
