@@ -90,7 +90,7 @@ local function BuildSettings()
 	}
 	InternalInterface.AccountSettings.PriceMatchers = InternalInterface.AccountSettings.PriceMatchers or {}
 
-	InternalInterface.ShardSettings.Posting = InternalInterface.ShardSettings.Posting or {}
+--	InternalInterface.ShardSettings.Posting = InternalInterface.ShardSettings.Posting or {}
 	
 	InternalInterface.CharacterSettings.Posting = InternalInterface.CharacterSettings.Posting or {}
 	InternalInterface.CharacterSettings.Posting.HiddenItems = InternalInterface.CharacterSettings.Posting.HiddenItems or {}

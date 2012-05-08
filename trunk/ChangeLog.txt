@@ -1,3 +1,7 @@
+	Alpha r45
+- Auctions tab implemented
+- Fixed a bug that corrupted the auction DB when you saw an specific item from the new 1.8 raid in the Auction House. Unfortunately this will empty your current DB :(
+
 	Alpha r44
 - Auctions tab preview, not functional yet	
 

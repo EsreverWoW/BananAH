@@ -53,19 +53,19 @@ local function TryMatchPost(itemType, tim, timestamp, bid, buyout)
 end
 
 local function UnpackAuctionTable(packedDB)
-	if type(packedDB) ~= "table" or not packedDB.DICT then return packedDB end
+	if type(packedDB) ~= "table" or not packedDB.DICT2 then return packedDB end
 	
 	local unpackedDB = {}
 
 	local dictionary = {}
-	local sDictionary = (packedDB.DICT or "") .. "#"
-	sDictionary:gsub("([^#]*)#", function(c) dictionary[#dictionary + 1] = c end)
+	local sDictionary = (packedDB.DICT2 or "") .. "►"
+	sDictionary:gsub("([^►]*)►", function(c) dictionary[#dictionary + 1] = c end)
 	setmetatable(dictionary, { __index = function(tab, key) return rawget(tab, tonumber(key, 16)) or key end, })
 	
 	for _, itemPackedData in ipairs(packedDB) do
 		local itemData = {}
-		local sItemData = itemPackedData .. "#"
-		sItemData:gsub("([^#]*)#", function(c) itemData[#itemData + 1] = c end)
+		local sItemData = itemPackedData
+		sItemData:gsub("([^◄]*)◄", function(c) itemData[#itemData + 1] = c end)
 		
 		local itemType = itemData[1] .. ","
 		itemType = { itemType:match((itemType:gsub("[^,]*,", "([^,]*),"))) }
@@ -75,17 +75,17 @@ local function UnpackAuctionTable(packedDB)
 		local rarity = dictionary[itemData[3]]
 		local level = tonumber(dictionary[itemData[4]], 16)
 		local category = dictionary[itemData[5]]
-		-- In r44 I've added more item data to category, because I'm dumb and didn't left space for it :(
-		category = { category:match((category:gsub("[^:]*:", "([^:]*):"))) }
-		local icon = category[2] or ""
-		category = category[1]
-		
-		local callings = tonumber(dictionary[itemData[6]], 16)
+		local icon = dictionary[itemData[6]]
+		local callings = tonumber(dictionary[itemData[7]], 16)
 		callings = { warrior = bit.band(callings, 8) > 0 and true or nil, cleric = bit.band(callings, 4) > 0 and true or nil, rogue = bit.band(callings, 2) > 0 and true or nil, mage = bit.band(callings, 1) > 0 and true or nil, }
+
+		local auctionData = {}
+		local sAuctionData = itemPackedData .. "►"
+		sAuctionData:gsub("([^►]*)►", function(c) auctionData[#auctionData + 1] = c end)
 		
 		local auctions = {}
-		for index = 7, #itemData do
-			local auctionData = itemData[index] .. ","
+		for index = 2, #auctionData do
+			local auctionData = auctionData[index] .. ","
 			auctionData = { auctionData:match((auctionData:gsub("[^,]+,", "([^,]*),"))) }
 			
 			local auctionID = string.format("o%08s%08s", dictionary[auctionData[1]], auctionData[2])
@@ -97,7 +97,8 @@ local function UnpackAuctionTable(packedDB)
 				stk = tonumber(auctionData[3], 16), bid = tonumber(dictionary[auctionData[4]], 16), 	
 				fst = tonumber(dictionary[auctionData[7]], 16), lst = tonumber(dictionary[auctionData[8]], 16),
 				met = tonumber(dictionary[auctionData[9]], 16), xet = tonumber(dictionary[auctionData[10]], 16),
-				own = tonumber(auctionData[13]), obd = tonumber(auctionData[14]), obg = tonumber(auctionData[15])
+				own = tonumber(auctionData[13]), obd = tonumber(auctionData[14]), obg = tonumber(auctionData[15]),
+				ccl = tonumber(auctionData[16]),
 			}
 		end
 
@@ -157,6 +158,7 @@ local function PackAuctionTable()
 				auctionData.own or 0,
 				auctionData.obd or 0,
 				auctionData.obg or 0,
+				auctionData.ccl or 0,
 			}
 			table.insert(packedAuctions, packedAuctionData)					
 		end
@@ -181,7 +183,8 @@ local function PackAuctionTable()
 				EncodeWhenRepeated(itemData.name),
 				EncodeWhenRepeated(itemData.rarity),
 				EncodeAlways(itemData.level),
-				EncodeWhenRepeated(itemData.category .. ":" .. (itemData.icon or "")) .. ":", -- Oops! Seems I didn't leave space for more item data... Will add them here and hope they don't break anything
+				EncodeWhenRepeated(itemData.category),
+				EncodeWhenRepeated(itemData.icon or ""),
 				EncodeAlways((itemData.callings.warrior and 8 or 0) + (itemData.callings.cleric and 4 or 0) + (itemData.callings.rogue and 2 or 0) + (itemData.callings.mage and 1 or 0)),
 				packedAuctions,
 			}
@@ -197,19 +200,21 @@ local function PackAuctionTable()
 	setmetatable(encodeAlways, { __index = function(tab, key) return rawget(tab, key) or key end })
 	
 	for index, packedItemData in ipairs(packedDB) do
-		packedDB[index][1] = table.concat({ encodeAlways[packedItemData[1][1]], packedItemData[1][2], encodeAlways[packedItemData[1][3]], encodeAlways[packedItemData[1][4]], encodeAlways[packedItemData[1][5]], encodeAlways[packedItemData[1][6]], encodeAlways[packedItemData[1][7]], packedItemData[1][8], }, ",")
-		packedDB[index][2] = encodeAlways[packedItemData[2]]
-		packedDB[index][3] = encodeAlways[packedItemData[3]]
-		packedDB[index][4] = encodeAlways[packedItemData[4]]
-		packedDB[index][5] = encodeAlways[packedItemData[5]]
-		packedDB[index][6] = encodeAlways[packedItemData[6]]
-		for aIndex, packedAuctionData in ipairs(packedItemData[7]) do
-			packedDB[index][7][aIndex] = table.concat({ encodeAlways[packedAuctionData[1]], packedAuctionData[2], packedAuctionData[3], encodeAlways[packedAuctionData[4]], encodeAlways[packedAuctionData[5]], encodeAlways[packedAuctionData[6]], encodeAlways[packedAuctionData[7]], encodeAlways[packedAuctionData[8]], encodeAlways[packedAuctionData[9]], encodeAlways[packedAuctionData[10]], packedAuctionData[11], packedAuctionData[12], packedAuctionData[13], packedAuctionData[14], packedAuctionData[15], }, ",")
+		packedDB[index][1] = table.concat({ encodeAlways[packedItemData[1][1]], packedItemData[1][2], encodeAlways[packedItemData[1][3]], encodeAlways[packedItemData[1][4]], encodeAlways[packedItemData[1][5]], encodeAlways[packedItemData[1][6]], encodeAlways[packedItemData[1][7]], packedItemData[1][8], }, ",") -- ItemType
+		packedDB[index][2] = encodeAlways[packedItemData[2]] -- Name
+		packedDB[index][3] = encodeAlways[packedItemData[3]] -- Rarity
+		packedDB[index][4] = encodeAlways[packedItemData[4]] -- Level
+		packedDB[index][5] = encodeAlways[packedItemData[5]] -- Category
+		packedDB[index][6] = encodeAlways[packedItemData[6]] -- Icon
+		packedDB[index][7] = encodeAlways[packedItemData[7]] -- Callings
+		for aIndex, packedAuctionData in ipairs(packedItemData[8]) do
+			packedDB[index][8][aIndex] = table.concat({ encodeAlways[packedAuctionData[1]], packedAuctionData[2], packedAuctionData[3], encodeAlways[packedAuctionData[4]], encodeAlways[packedAuctionData[5]], encodeAlways[packedAuctionData[6]], encodeAlways[packedAuctionData[7]], encodeAlways[packedAuctionData[8]], encodeAlways[packedAuctionData[9]], encodeAlways[packedAuctionData[10]], packedAuctionData[11], packedAuctionData[12], packedAuctionData[13], packedAuctionData[14], packedAuctionData[15], packedAuctionData[16], }, ",")
 		end
-		packedDB[index][7] = table.concat(packedDB[index][7], "#")
-		packedDB[index] = table.concat(packedDB[index], "#")
+		packedDB[index][8] = "►" .. table.concat(packedDB[index][8], "►")
+		packedDB[index] = table.concat(packedDB[index], "◄")
+		-- ItemType ◄ Name ◄ Rarity ◄ ... ◄ Callings ◄► Auction1 ► Auction 2 ► ... ► Auction N
 	end
-	packedDB.DICT = table.concat(encodeWhenRepeated, "#")
+	packedDB.DICT2 = table.concat(encodeWhenRepeated, "►")
 		
 	return packedDB
 end
@@ -284,6 +289,7 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 		own = auctionDetail.seller == Inspect.Unit.Detail("player").name and 1 or 0,
 		obd = 0,
 		obg = 0,
+		ccl = 0,
 	}
 		
 	cachedAuctions[auctionID] = itemType
@@ -410,8 +416,13 @@ local function LoadAuctionTable(addonId)
 		end
 
 		for itemType, itemData in pairs(auctionTable) do
-			for auctionID, auctionData in pairs(itemData.auctions) do
-				auctionSearcher:AddAuction(itemType, auctionID, auctionData.rbe, itemData.callings, itemData.rarity, itemData.level, itemData.category, itemData.name, auctionData.buy)
+			if itemData.auctions then
+				for auctionID, auctionData in pairs(itemData.auctions) do
+					auctionSearcher:AddAuction(itemType, auctionID, auctionData.rbe, itemData.callings, itemData.rarity, itemData.level, itemData.category, itemData.name, auctionData.buy)
+				end
+			else
+				auctionTable = {}
+				break
 			end
 		end
 
@@ -608,6 +619,24 @@ end
 function InternalInterface.AHMonitoringService.AuctionPostCallback(itemType, tim, timestamp, bid, buyout, failed)
 	if not failed then
 		TryMatchPost(itemType, tim, timestamp, bid, buyout)
+	end
+end
+
+function InternalInterface.AHMonitoringService.AuctionCancelCallback(auctionID, failed)
+	if failed then return end
+	
+	local itemType = cachedAuctions[auctionID]
+	local itemInfo = itemType and auctionTable[itemType] or nil
+	local auctionInfo = itemInfo and itemInfo.auctions[auctionID] or nil
+	
+	if auctionInfo then
+		if auctionTable[itemType].auctions[auctionID].rbe == 0 then
+			auctionSearcher:RemoveAuction(auctionID, 0, itemInfo.callings, itemInfo.rarity, itemInfo.level, itemInfo.category, itemInfo.name, auctionInfo.buy)
+			auctionTable[itemType].auctions[auctionID].rbe = 2
+			auctionSearcher:AddAuction(itemType, auctionID, 2, itemInfo.callings, itemInfo.rarity, itemInfo.level, itemInfo.category, itemInfo.name, auctionInfo.buy)
+		end
+		auctionTable[itemType].auctions[auctionID].ccl = 1
+		AuctionDataEvent("playercancel", {auctionID}, {}, {}, {auctionID}, {auctionID})
 	end
 end
 
