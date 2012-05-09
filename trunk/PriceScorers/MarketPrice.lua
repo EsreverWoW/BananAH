@@ -4,7 +4,7 @@ local addonID = addonInfo.identifier
 local L = InternalInterface.Localization.L
 
 local PRICE_SCORER_ID = "market"
-local PRICE_SCORER_NAME = "Market price" -- LOCALIZE
+local PRICE_SCORER_NAME = L["PriceScorer/marketName"]
 
 local configFrame = nil
 
@@ -107,7 +107,7 @@ local function ConfigFrame(parent)
 	
 	title:SetPoint("TOPCENTER", configFrame, "TOPCENTER", 0, 10)
 	title:SetFontSize(14)
-	title:SetText("Pricing model weights") -- LOCALIZE
+	title:SetText(L["PriceScorer/marketWeights"])
 	
 	ResetModelFrames()
 	table.insert(Event[addonID].PricingModelAdded, { ResetModelFrames, addonID, "MarketPrice.PricingModelAdded" })

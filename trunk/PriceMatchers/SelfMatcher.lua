@@ -4,7 +4,7 @@ local addonID = addonInfo.identifier
 local L = InternalInterface.Localization.L
 
 local PRICE_MATCHER_ID = "self"
-local PRICE_MATCHER_NAME = "Self matcher" -- LOCALIZE
+local PRICE_MATCHER_NAME = L["PriceMatcher/selfName"]
 
 local configFrame = nil
 
@@ -57,7 +57,7 @@ local function ConfigFrame(parent)
 	
 	rangeText:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, 10)
 	rangeText:SetFontSize(14)
-	rangeText:SetText(L["ConfigPanel/priceMatcherSelfRange"]) -- RELOCALIZE
+	rangeText:SetText(L["PriceMatcher/selfRange"])
 
 	rangeSlider:SetPoint("CENTERLEFT", rangeText, "CENTERRIGHT", 20, 8)	
 	rangeSlider:SetPoint("TOPRIGHT", configFrame, "TOPRIGHT", -10, 10)

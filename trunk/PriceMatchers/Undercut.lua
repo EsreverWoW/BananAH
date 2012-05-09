@@ -4,8 +4,7 @@ local addonID = addonInfo.identifier
 local L = InternalInterface.Localization.L
 
 local PRICE_MATCHER_ID = "undercut"
-local PRICE_MATCHER_NAME = "Competition undercut" -- LOCALIZE
-
+local PRICE_MATCHER_NAME = L["PriceMatcher/undercutName"]
 local configFrame = nil
 
 local function DefaultConfig()
@@ -61,7 +60,7 @@ local function ConfigFrame(parent)
 	
 	rangeText:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, 10)
 	rangeText:SetFontSize(14)
-	rangeText:SetText(L["ConfigPanel/priceMatcherUndercutRange"]) -- RELOCALIZE
+	rangeText:SetText(L["PriceMatcher/undercutRange"])
 
 	rangeSlider:SetPoint("CENTERLEFT", rangeText, "CENTERRIGHT", 20, 8)	
 	rangeSlider:SetPoint("TOPRIGHT", configFrame, "TOPRIGHT", -10, 10)
