@@ -713,7 +713,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		local r, g, b = unpack(InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(nil, value, prices)))
 		return { r, g, b, 0.1 }
 	end
-	auctionGrid:AddColumn("Score", 60, "Text", true, "buyoutUnitPrice", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor }) -- LOCALIZE
+	auctionGrid:AddColumn(L["AuctionsPanel/columnScore"], 60, "Text", true, "buyoutUnitPrice", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor })
 	auctionGrid:AddColumn("", 0, "AuctionRenderer", false, "buyoutUnitPrice", { Color = ScoreColor })
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 
@@ -916,37 +916,37 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	queueCancelButton:SetEnabled(false)
 	
 	infoStacksLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 95)
-	infoStacksLabel:SetText("Stacks:") -- LOCALIZE
+	infoStacksLabel:SetText(L["PostingPanel/InfoStacks"])
 	infoStacksLabel:SetFontSize(14)
 	infoStacksLabel:SetFontColor(1, 1, 0.75, 1)
 	infoStacksLabel:SetShadowOffset(2, 2)	
 
 	totalBidLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 125)
-	totalBidLabel:SetText("Total bid:") -- LOCALIZE
+	totalBidLabel:SetText(L["PostingPanel/InfoTotalBid"])
 	totalBidLabel:SetFontSize(14)
 	totalBidLabel:SetFontColor(1, 1, 0.75, 1)
 	totalBidLabel:SetShadowOffset(2, 2)	
 
 	totalBuyLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 155)
-	totalBuyLabel:SetText("Total buyout:") -- LOCALIZE
+	totalBuyLabel:SetText(L["PostingPanel/InfoTotalBuy"])
 	totalBuyLabel:SetFontSize(14)
 	totalBuyLabel:SetFontColor(1, 1, 0.75, 1)
 	totalBuyLabel:SetShadowOffset(2, 2)	
 	
 	depositLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 185)
-	depositLabel:SetText("Deposit:") -- LOCALIZE
+	depositLabel:SetText(L["PostingPanel/InfoDeposit"])
 	depositLabel:SetFontSize(14)
 	depositLabel:SetFontColor(1, 1, 0.75, 1)
 	depositLabel:SetShadowOffset(2, 2)	
 
 	discountBidLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 215)
-	discountBidLabel:SetText("Adjusted bid:") -- LOCALIZE
+	discountBidLabel:SetText(L["PostingPanel/InfoDiscountBid"])
 	discountBidLabel:SetFontSize(14)
 	discountBidLabel:SetFontColor(1, 1, 0.75, 1)
 	discountBidLabel:SetShadowOffset(2, 2)	
 
 	discountBuyLabel:SetPoint("CENTERLEFT", postingFrame, "TOPRIGHT", -275, 245)
-	discountBuyLabel:SetText("Adjusted buyout:") -- LOCALIZE
+	discountBuyLabel:SetText(L["PostingPanel/InfoDiscountBuy"])
 	discountBuyLabel:SetFontSize(14)
 	discountBuyLabel:SetFontColor(1, 1, 0.75, 1)
 	discountBuyLabel:SetShadowOffset(2, 2)	

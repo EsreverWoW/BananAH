@@ -36,14 +36,14 @@ local function GeneralSettings(parent)
 	
 	autoCloseText:SetPoint("CENTERLEFT", autoCloseCheck, "CENTERRIGHT", 5, 0)
 	autoCloseText:SetFontSize(14)
-	autoCloseText:SetText("Close the addon window when the native Auction House window is closed") -- LOCALIZE
+	autoCloseText:SetText(L["ConfigPanel/autoCloseWindow"])
 	
 	disableMonitorCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 130)
 	disableMonitorCheck:SetChecked(InternalInterface.AccountSettings.General.disableBackgroundScanner or false)
 	
 	disableMonitorText:SetPoint("CENTERLEFT", disableMonitorCheck, "CENTERRIGHT", 5, 0)
 	disableMonitorText:SetFontSize(14)
-	disableMonitorText:SetText("Disable background scanner at start") -- LOCALIZE
+	disableMonitorText:SetText(L["ConfigPanel/DisableScanner"])
 	
 	function showMapIconCheck.Event:CheckboxChange()
 		InternalInterface.AccountSettings.General.showMapIcon = self:GetChecked()
@@ -164,19 +164,19 @@ local function PostingSettings(parent)
 	
 	rarityFilterText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 90)
 	rarityFilterText:SetFontSize(14)
-	rarityFilterText:SetText("Minimum rarity filter:") -- LOCALIZE
+	rarityFilterText:SetText(L["ConfigPanel/RarityFilter"])
 	
 	rarityFilterDropdown:SetPoint("CENTERLEFT", rarityFilterText, "CENTERRIGHT", 10, 0)
 	rarityFilterDropdown:SetPoint("TOPRIGHT", frame, "TOPCENTER", -20, 83)
 	rarityFilterDropdown:SetValues({
-		{ displayName = "Sellable", rarity = "sellable", }, -- LOCALIZE
-		{ displayName = "Common", rarity = nil, }, -- LOCALIZE
-		{ displayName = "Uncommon", rarity = "uncommon", }, -- LOCALIZE
-		{ displayName = "Rare", rarity = "rare", }, -- LOCALIZE
-		{ displayName = "Epic", rarity = "epic", }, -- LOCALIZE
-		{ displayName = "Relic", rarity = "relic", }, -- LOCALIZE
-		{ displayName = "Transcendant", rarity = "transcendant", }, -- LOCALIZE
-		{ displayName = "Quest", rarity = "quest", }, -- LOCALIZE
+		{ displayName = L["General/Rarity1"], rarity = "sellable", },
+		{ displayName = L["General/Rarity2"], rarity = nil, },
+		{ displayName = L["General/Rarity3"], rarity = "uncommon", },
+		{ displayName = L["General/Rarity4"], rarity = "rare", },
+		{ displayName = L["General/Rarity5"], rarity = "epic", },
+		{ displayName = L["General/Rarity6"], rarity = "relic", },
+		{ displayName = L["General/Rarity7"], rarity = "transcendant", },
+		{ displayName = L["General/Rarity0"], rarity = "quest", },
 	})
 	rarityFilterDropdown:SetSelectedIndex(InternalInterface.AccountSettings.Posting.rarityFilter or 1)
 	
@@ -185,14 +185,14 @@ local function PostingSettings(parent)
 	
 	defaultPriceMatchingText:SetPoint("CENTERLEFT", defaultPriceMatchingCheck, "CENTERRIGHT", 5, 0)
 	defaultPriceMatchingText:SetFontSize(14)
-	defaultPriceMatchingText:SetText(L["ConfigPanel/defaultPriceMatching"]) -- RELOCALIZE
+	defaultPriceMatchingText:SetText(L["ConfigPanel/defaultPriceMatching"])
 	
 	defaultBindPricesCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 210)
 	defaultBindPricesCheck:SetChecked(InternalInterface.AccountSettings.Posting.DefaultConfig.bindPrices or false)
 	
 	defaultBindPricesText:SetPoint("CENTERLEFT", defaultBindPricesCheck, "CENTERRIGHT", 5, 0)
 	defaultBindPricesText:SetFontSize(14)
-	defaultBindPricesText:SetText(L["ConfigPanel/defaultBindPrices"]) -- RELOCALIZE
+	defaultBindPricesText:SetText(L["ConfigPanel/defaultBindPrices"])
 	
 	pricingModelGrid:SetPoint("TOPLEFT", frame, "TOPCENTER", 10, 30)
 	pricingModelGrid:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -30, 195)
@@ -206,7 +206,7 @@ local function PostingSettings(parent)
 	
 	pricingModelTitle:SetPoint("BOTTOMCENTER", pricingModelGrid, "TOPCENTER", 0, -5)
 	pricingModelTitle:SetFontSize(13)
-	pricingModelTitle:SetText("Default pricing model order") -- LOCALIZE
+	pricingModelTitle:SetText(L["ConfigPanel/DefaultPricingModelOrder"])
 	
 	pricingModelUp:SetPoint("BOTTOMLEFT", pricingModelGrid, "CENTERRIGHT", 5, -10)
 	pricingModelUp:SetTexture(addonID, "Textures/MoveUp.png")
@@ -232,7 +232,7 @@ local function PostingSettings(parent)
 
 	priceMatcherTitle:SetPoint("BOTTOMCENTER", priceMatcherGrid, "TOPCENTER", 0, -5)
 	priceMatcherTitle:SetFontSize(13)
-	priceMatcherTitle:SetText("Price matchers order") -- LOCALIZE
+	priceMatcherTitle:SetText(L["ConfigPanel/DefaultPriceMatcherOrder"])
 
 	priceMatcherUp:SetPoint("BOTTOMLEFT", priceMatcherGrid, "CENTERRIGHT", 5, -10)
 	priceMatcherUp:SetTexture(addonID, "Textures/MoveUp.png")
@@ -461,6 +461,155 @@ local function PostingSettings(parent)
 	return frame
 end
 
+local function AuctionsSettings(parent)
+	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".AuctionsSettings", parent)
+
+	local allowLeftCancelCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".allowLeftCancelCheck", frame)
+	local allowLeftCancelText = UI.CreateFrame("Text", frame:GetName() .. ".allowLeftCancelText", frame)
+
+	local filterCharacterCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".FilterCharacterCheck", frame)
+	local filterCharacterText = UI.CreateFrame("Text", frame:GetName() .. ".FilterCharacterText", frame)
+	
+	local filterCompetitionText = UI.CreateFrame("Text", frame:GetName() .. ".FilterCompetitionText", frame)
+	local filterCompetitionSelector = UI.CreateFrame("BDropdown", frame:GetName() .. ".FilterCompetitionSelector", frame)
+	
+	local filterBelowText = UI.CreateFrame("Text", frame:GetName() .. ".FilterBelowText", frame)
+	local filterBelowSlider = UI.CreateFrame("BSlider", frame:GetName() .. ".FilterBelowSlider", frame)
+
+	local filterScoreTitle = UI.CreateFrame("Text", frame:GetName() .. ".FilterScoreTitle", frame)
+	local filterFrame = UI.CreateFrame("Frame", frame:GetName() .. ".FilterFrame", frame)
+	
+	local filterScoreNilCheck = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScoreNilCheck", filterFrame)
+	local filterScoreNilText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScoreNilText", filterFrame)
+	local filterScore1Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore1Check", filterFrame)
+	local filterScore1Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore1Text", filterFrame)
+	local filterScore2Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore2Check", filterFrame)
+	local filterScore2Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore2Text", filterFrame)
+	local filterScore3Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore3Check", filterFrame)
+	local filterScore3Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore3Text", filterFrame)
+	local filterScore4Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore4Check", filterFrame)
+	local filterScore4Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore4Text", filterFrame)
+	local filterScore5Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore5Check", filterFrame)
+	local filterScore5Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore5Text", filterFrame)
+	
+	frame:SetVisible(false)
+
+	allowLeftCancelCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 10)
+	allowLeftCancelCheck:SetChecked(InternalInterface.AccountSettings.Auctions.allowLeftCancel or false)
+	
+	allowLeftCancelText:SetPoint("CENTERLEFT", allowLeftCancelCheck, "CENTERRIGHT", 5, 0)
+	allowLeftCancelText:SetFontSize(14)
+	allowLeftCancelText:SetText(L["ConfigPanel/AuctionLeftCancel"])
+	
+	filterCharacterCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 70)
+	filterCharacterCheck:SetChecked(InternalInterface.AccountSettings.Auctions.restrictCharacterFilter or false)
+	
+	filterCharacterText:SetPoint("CENTERLEFT", filterCharacterCheck, "CENTERRIGHT", 5, 0)
+	filterCharacterText:SetFontSize(14)
+	filterCharacterText:SetText(L["ConfigPanel/AuctionSellerFilterDefault"])
+
+	filterCompetitionText:SetPoint("TOPLEFT", frame, "TOPLEFT", 5, 120)
+	filterCompetitionText:SetFontSize(14)
+	filterCompetitionText:SetText(L["ConfigPanel/AuctionCompetitionFilterDefault"])
+	
+	filterBelowText:SetPoint("TOPLEFT", frame, "TOPLEFT", 5, 170)
+	filterBelowText:SetFontSize(14)
+	filterBelowText:SetText(L["ConfigPanel/AuctionBelowFilterDefault"])
+
+	filterScoreTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 5, 220)
+	filterScoreTitle:SetFontSize(14)
+	filterScoreTitle:SetText(L["ConfigPanel/AuctionScoreFilterDefault"])
+	
+	local offset = math.max(filterScoreTitle:GetWidth(), math.max(filterCompetitionText:GetWidth(), filterBelowText:GetWidth())) + 10
+	
+	filterCompetitionSelector:SetPoint("CENTERLEFT", filterCompetitionText, "CENTERRIGHT", offset - filterCompetitionText:GetWidth(), 0)
+	filterCompetitionSelector:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 113)
+	filterCompetitionSelector:SetValues({
+		{ displayName = L["AuctionsPanel/CompetitionName1"], },
+		{ displayName = L["AuctionsPanel/CompetitionName2"], },
+		{ displayName = L["AuctionsPanel/CompetitionName3"], },
+		{ displayName = L["AuctionsPanel/CompetitionName4"], },
+		{ displayName = L["AuctionsPanel/CompetitionName5"], },
+	})
+	filterCompetitionSelector:SetSelectedIndex(InternalInterface.AccountSettings.Auctions.defaultCompetitionFilter or 1)
+
+	filterBelowSlider:SetPoint("CENTERLEFT", filterBelowText, "CENTERRIGHT", offset - filterBelowText:GetWidth(), 0)
+	filterBelowSlider:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", 0, 185)
+	filterBelowSlider:SetRange(0, 20)
+	filterBelowSlider:SetPosition(InternalInterface.AccountSettings.Auctions.defaultBelowFilter or 0)
+
+	filterFrame:SetPoint("CENTERLEFT", filterScoreTitle, "CENTERRIGHT", offset - filterScoreTitle:GetWidth(), 0)
+	filterFrame:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 205)
+	
+	filterScoreNilCheck:SetPoint("CENTERLEFT", filterFrame, 0, 0.5)
+	filterScoreNilCheck:SetChecked(InternalInterface.AccountSettings.Auctions.defaultScoreFilter[1] or false)
+	filterScore1Check:SetPoint("CENTERLEFT", filterFrame, 1 / 6, 0.5)
+	filterScore1Check:SetChecked(InternalInterface.AccountSettings.Auctions.defaultScoreFilter[2] or false)
+	filterScore2Check:SetPoint("CENTERLEFT", filterFrame, 2 / 6, 0.5)
+	filterScore2Check:SetChecked(InternalInterface.AccountSettings.Auctions.defaultScoreFilter[3] or false)
+	filterScore3Check:SetPoint("CENTERLEFT", filterFrame, 3 / 6, 0.5)
+	filterScore3Check:SetChecked(InternalInterface.AccountSettings.Auctions.defaultScoreFilter[4] or false)
+	filterScore4Check:SetPoint("CENTERLEFT", filterFrame, 4 / 6, 0.5)
+	filterScore4Check:SetChecked(InternalInterface.AccountSettings.Auctions.defaultScoreFilter[5] or false)
+	filterScore5Check:SetPoint("CENTERLEFT", filterFrame, 5 / 6, 0.5)
+	filterScore5Check:SetChecked(InternalInterface.AccountSettings.Auctions.defaultScoreFilter[6] or false)
+	
+	filterScoreNilText:SetPoint("CENTERLEFT", filterScoreNilCheck, "CENTERRIGHT", 5, 0)
+	filterScoreNilText:SetText(L["General/ScoreName0"])
+	filterScore1Text:SetPoint("CENTERLEFT", filterScore1Check, "CENTERRIGHT", 5, 0)
+	filterScore1Text:SetText(L["General/ScoreName1"])
+	filterScore2Text:SetPoint("CENTERLEFT", filterScore2Check, "CENTERRIGHT", 5, 0)
+	filterScore2Text:SetText(L["General/ScoreName2"])
+	filterScore3Text:SetPoint("CENTERLEFT", filterScore3Check, "CENTERRIGHT", 5, 0)
+	filterScore3Text:SetText(L["General/ScoreName3"])
+	filterScore4Text:SetPoint("CENTERLEFT", filterScore4Check, "CENTERRIGHT", 5, 0)
+	filterScore4Text:SetText(L["General/ScoreName4"])
+	filterScore5Text:SetPoint("CENTERLEFT", filterScore5Check, "CENTERRIGHT", 5, 0)
+	filterScore5Text:SetText(L["General/ScoreName5"])
+	
+	function allowLeftCancelCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.allowLeftCancel = self:GetChecked()
+	end
+	
+	function filterCharacterCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.restrictCharacterFilter = self:GetChecked()
+	end
+	
+	function filterCompetitionSelector.Event:SelectionChanged()
+		InternalInterface.AccountSettings.Auctions.defaultCompetitionFilter = self:GetSelectedIndex()
+	end
+	
+	function filterBelowSlider.Event:PositionChanged(position)
+		InternalInterface.AccountSettings.Auctions.defaultBelowFilter = position
+	end
+
+	function filterScoreNilCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.defaultScoreFilter[1] = self:GetChecked()
+	end
+	
+	function filterScore1Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.defaultScoreFilter[2] = self:GetChecked()
+	end
+	
+	function filterScore2Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.defaultScoreFilter[3] = self:GetChecked()
+	end
+	
+	function filterScore3Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.defaultScoreFilter[4] = self:GetChecked()
+	end
+	
+	function filterScore4Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.defaultScoreFilter[5] = self:GetChecked()
+	end
+	
+	function filterScore5Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.defaultScoreFilter[6] = self:GetChecked()
+	end
+	
+	return frame
+end
+
 local function PriceScoreSettings(parent)
 	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".PriceScoreSettings", parent)
 	
@@ -537,7 +686,7 @@ local function PriceScoreSettings(parent)
 
 	defaultPriceScorerText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 10)
 	defaultPriceScorerText:SetFontSize(14)
-	defaultPriceScorerText:SetText("Default price scorer:") -- LOCALIZE
+	defaultPriceScorerText:SetText(L["ConfigPanel/DefaultPriceScorer"])
 	
 	defaultPriceScorerDropdown:SetPoint("CENTERLEFT", defaultPriceScorerText, "CENTERRIGHT", 10, 0)
 	defaultPriceScorerDropdown:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 3)
@@ -574,27 +723,27 @@ local function PriceScoreSettings(parent)
 	
 	colorNilText:SetPoint("CENTERLEFT", colorNilSample, "CENTERRIGHT", 10, 0)
 	colorNilText:SetFontSize(14)
-	colorNilText:SetText("No score") -- LOCALIZE
+	colorNilText:SetText(L["General/ScoreName0"])
 	
 	color1Text:SetPoint("CENTERLEFT", color1Sample, "CENTERRIGHT", 10, 0)
 	color1Text:SetFontSize(14)
-	color1Text:SetText("Very low") -- LOCALIZE
+	color1Text:SetText(L["General/ScoreName1"])
 	
 	color2Text:SetPoint("CENTERLEFT", color2Sample, "CENTERRIGHT", 10, 0)
 	color2Text:SetFontSize(14)
-	color2Text:SetText("Low") -- LOCALIZE
+	color2Text:SetText(L["General/ScoreName2"])
 	
 	color3Text:SetPoint("CENTERLEFT", color3Sample, "CENTERRIGHT", 10, 0)
 	color3Text:SetFontSize(14)
-	color3Text:SetText("Medium") -- LOCALIZE
+	color3Text:SetText(L["General/ScoreName3"])
 	
 	color4Text:SetPoint("CENTERLEFT", color4Sample, "CENTERRIGHT", 10, 0)
 	color4Text:SetFontSize(14)
-	color4Text:SetText("High") -- LOCALIZE
+	color4Text:SetText(L["General/ScoreName4"])
 	
 	color5Text:SetPoint("CENTERLEFT", color5Sample, "CENTERRIGHT", 10, 0)
 	color5Text:SetFontSize(14)
-	color5Text:SetText("Very high") -- LOCALIZE
+	color5Text:SetText(L["General/ScoreName5"])
 	
 	color1Limit:SetPoint("TOPLEFT", color1Sample, "BOTTOMRIGHT", 200, 0)
 	color1Limit:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -10, 190)
@@ -686,10 +835,10 @@ local function PriceScoreSettings(parent)
 end
 
 local function LoadConfigScreens(self, configDisplay)
-	local postingChildren =
-	{
-		{ title = "\t" .. L["ConfigPanel/subcategoryPostingSettings"], frame = PostingSettings(configDisplay), order = 31 },
-	}
+	-- local postingChildren =
+	-- {
+		-- { title = "\t" .. L["ConfigPanel/subcategoryPostingSettings"], frame = PostingSettings(configDisplay), order = 31 },
+	-- }
 	
 	local pricingModels = InternalInterface.PricingModelService.GetAllPricingModels()
 	local pricingModelsChilden = { }
@@ -702,7 +851,7 @@ local function LoadConfigScreens(self, configDisplay)
 	end
 	
 	local priceScorers = InternalInterface.PricingModelService.GetAllPriceScorers()
-	local priceScorersChildren = {{ title = "\t" .. "Score settings", frame = PriceScoreSettings(configDisplay), order = 201 }} -- LOCALIZE
+	local priceScorersChildren = {{ title = "\t" .. L["ConfigPanel/subcategoryScoreSettings"], frame = PriceScoreSettings(configDisplay), order = 201 }}
 	count = 2
 	for priceScorerId, priceScorerData in pairs(priceScorers) do
 		if priceScorerData.configFrameConstructor then
@@ -722,10 +871,11 @@ local function LoadConfigScreens(self, configDisplay)
 	end
 	
 	table.insert(self.screens, { title = L["ConfigPanel/categoryGeneral"], frame = GeneralSettings(configDisplay), order = 10 })
-	table.insert(self.screens, { title = L["ConfigPanel/categoryPosting"], children = postingChildren, order = 30 })
+	table.insert(self.screens, { title = L["ConfigPanel/categoryPosting"], frame = PostingSettings(configDisplay), order = 30 })
+	table.insert(self.screens, { title = L["ConfigPanel/categoryAuctions"], frame = AuctionsSettings(configDisplay), order = 40 })
 	table.insert(self.screens, { title = L["ConfigPanel/categoryPricingModels"], children = pricingModelsChilden, order = 100 })
-	table.insert(self.screens, { title = "Price scorers", children = priceScorersChildren, order = 200 }) -- LOCALIZE
-	table.insert(self.screens, { title = L["ConfigPanel/subcategoryPostingPriceMatchers"], children = priceMatchersChilden, order = 300 }) -- RELOCALIZE
+	table.insert(self.screens, { title = L["ConfigPanel/categoryPriceScorers"], children = priceScorersChildren, order = 200 })
+	table.insert(self.screens, { title = L["ConfigPanel/categoryPriceMatchers"], children = priceMatchersChilden, order = 300 })
 end
 
 function InternalInterface.UI.ConfigFrame(name, parent)

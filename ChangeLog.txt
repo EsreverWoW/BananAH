@@ -1,3 +1,8 @@
+	Alpha r46
+- Auctions config screen added
+- Added icons to the auctions in the Auction Tab to show if they've been posted by another character, and if they have been bidded.
+- Added the new localization phrases to the localization system
+
 	Alpha r45
 - Auctions tab implemented
 - Fixed a bug that corrupted the auction DB when you saw an specific item from the new 1.8 raid in the Auction House. Unfortunately this will empty your current DB :(

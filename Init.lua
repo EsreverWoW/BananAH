@@ -23,11 +23,11 @@ local function RemainingTimeFormatter(value)
 	local minutes = math.floor(math.floor(diff % 3600) / 60)
 	local seconds = math.floor(diff % 60)
 	if hours > 0 then
-		return hours .. " h " .. minutes .. " m" -- LOCALIZE
+		return hours .. " h " .. minutes .. " m"
 	elseif minutes > 0 then
-		return minutes .. " m " .. seconds .. " s" -- LOCALIZE
+		return minutes .. " m " .. seconds .. " s"
 	else
-		return seconds .. " s" -- LOCALIZE
+		return seconds .. " s"
 	end
 end	
 
@@ -81,6 +81,14 @@ local function BuildSettings()
 		duration = 3,
 	}
 	InternalInterface.AccountSettings.Posting.HiddenItems = InternalInterface.AccountSettings.Posting.HiddenItems or {}
+	InternalInterface.AccountSettings.Auctions = InternalInterface.AccountSettings.Auctions or 
+	{
+		allowLeftCancel = false,
+		restrictCharacterFilter = false,
+		defaultCompetitionFilter = 1,
+		defaultBelowFilter = 0,
+		defaultScoreFilter = { true, true, true, true, true, true },
+	}
 	InternalInterface.AccountSettings.PricingModels = InternalInterface.AccountSettings.PricingModels or {}
 	InternalInterface.AccountSettings.PriceScorers = InternalInterface.AccountSettings.PriceScorers or {}
 	InternalInterface.AccountSettings.PriceScorers.Settings = InternalInterface.AccountSettings.PriceScorers.Settings or
@@ -89,8 +97,6 @@ local function BuildSettings()
 		colorLimits = { 85, 85, 115, 115 },
 	}
 	InternalInterface.AccountSettings.PriceMatchers = InternalInterface.AccountSettings.PriceMatchers or {}
-
---	InternalInterface.ShardSettings.Posting = InternalInterface.ShardSettings.Posting or {}
 	
 	InternalInterface.CharacterSettings.Posting = InternalInterface.CharacterSettings.Posting or {}
 	InternalInterface.CharacterSettings.Posting.HiddenItems = InternalInterface.CharacterSettings.Posting.HiddenItems or {}

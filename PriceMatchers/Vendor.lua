@@ -4,7 +4,7 @@ local addonID = addonInfo.identifier
 local L = InternalInterface.Localization.L
 
 local PRICE_MATCHER_ID = "vendor"
-local PRICE_MATCHER_NAME = "Vendor minimum" -- LOCALIZE
+local PRICE_MATCHER_NAME = L["PriceMatcher/vendorName"]
 local AUCTION_FEE_REDUCTION = 0.95
 
 local configFrame = nil
@@ -55,7 +55,7 @@ local function ConfigFrame(parent)
 	
 	enabledText:SetPoint("CENTERLEFT", enabledCheck, "CENTERRIGHT", 5, 0)
 	enabledText:SetFontSize(14)
-	enabledText:SetText("Enable") -- LOCALIZE
+	enabledText:SetText(L["PriceMatcher/vendorEnable"])
 	
 	function enabledCheck.Event:CheckboxChange()
 		InternalInterface.AccountSettings.PriceMatchers[PRICE_MATCHER_ID].enabled = self:GetChecked()
