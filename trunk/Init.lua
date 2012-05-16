@@ -31,7 +31,23 @@ local function RemainingTimeFormatter(value)
 	end
 end	
 
+local function CopyTableSimple(tab)
+	local copy = { }
+	for k, v in pairs(tab) do copy[k] = v end
+	return copy
+end
 
+local function CopyTableRecursive(tab)
+	local copy = { }
+	for k, v in pairs(tab) do
+		if type(v) == "table" then
+			copy[k] = CopyTableRecursive(v)
+		else
+			copy[k] = v 
+		end
+	end
+	return copy
+end
 
 local function GetOutput()
 	return outputFunction
@@ -51,6 +67,8 @@ InternalInterface.PricingModelService = InternalInterface.PricingModelService or
 InternalInterface.Utility = InternalInterface.Utility or {}
 InternalInterface.Utility.GetRarityColor = GetRarityColor
 InternalInterface.Utility.RemainingTimeFormatter = RemainingTimeFormatter
+InternalInterface.Utility.CopyTableSimple = CopyTableSimple
+InternalInterface.Utility.CopyTableRecursive = CopyTableRecursive
 InternalInterface.Utility.GetOutput = GetOutput
 InternalInterface.Utility.SetOutput = SetOutput
 InternalInterface.AccountSettings = InternalInterface.AccountSettings or {}
@@ -77,7 +95,7 @@ local function BuildSettings()
 		priceMatcherOrder = { "undercut", "self", "vendor", },
 		usePriceMatching = false,
 		bindPrices = false,
-		stackSize = 1,
+		stackSize = 100,
 		duration = 3,
 	}
 	InternalInterface.AccountSettings.Posting.HiddenItems = InternalInterface.AccountSettings.Posting.HiddenItems or {}

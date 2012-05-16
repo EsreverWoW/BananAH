@@ -835,11 +835,6 @@ local function PriceScoreSettings(parent)
 end
 
 local function LoadConfigScreens(self, configDisplay)
-	-- local postingChildren =
-	-- {
-		-- { title = "\t" .. L["ConfigPanel/subcategoryPostingSettings"], frame = PostingSettings(configDisplay), order = 31 },
-	-- }
-	
 	local pricingModels = InternalInterface.PricingModelService.GetAllPricingModels()
 	local pricingModelsChilden = { }
 	local count = 1

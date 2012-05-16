@@ -1,3 +1,10 @@
+	Alpha r47
+- Reverted default stack size to MAX
+- Fixed some bugs
+- Cleaned up code
+- Removed the PDF documentation from the addon ZIP package.
+- Added sample pricing model for developers
+
 	Alpha r46
 - Auctions config screen added
 - Added icons to the auctions in the Auction Tab to show if they've been posted by another character, and if they have been bidded.

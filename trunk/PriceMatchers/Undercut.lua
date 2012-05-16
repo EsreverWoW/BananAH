@@ -23,9 +23,9 @@ local function PriceMatcher(item, activeAuctions, bid, buy)
 
 	for auctionId, auctionData in pairs(activeAuctions) do
 		local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / bid)
-		if not auctionData.own and bidRelDev <= undercutRange and undercutRange > 0 then table.insert(bidsRange, auctionData.bidUnitPrice) end -- FIXME
+		if not auctionData.own and bidRelDev <= undercutRange and undercutRange > 0 then table.insert(bidsRange, auctionData.bidUnitPrice) end
 		local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / buy) or (undercutRange + 1)
-		if not auctionData.own and buyRelDev <= undercutRange and undercutRange > 0 then table.insert(buysRange, auctionData.buyoutUnitPrice) end -- FIXME
+		if not auctionData.own and buyRelDev <= undercutRange and undercutRange > 0 then table.insert(buysRange, auctionData.buyoutUnitPrice) end
 	end
 
 	table.sort(bidsRange)

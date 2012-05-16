@@ -173,7 +173,7 @@ local function CancelPostingByIndex(index)
 end
 
 local function GetPostingQueue()
-	return postingQueue -- FIXME Return copy!
+	return InternalInterface.Utility.CopyTableRecursive(postingQueue)
 end
 
 local function GetPostingQueueStatus()
@@ -206,7 +206,6 @@ local function SetPostingQueuePaused(pause)
 	QueueStatusChangedEvent()
 end
 
---
 local function OnWaitingUnlock()
 	if waitingUpdate then
 		waitingUpdate = false
@@ -223,7 +222,7 @@ table.insert(Event.Item.Update, { OnWaitingUnlock, addonID, "AHPostingService.On
 
 local function OnInteractionChanged(interaction, state)
 	if interaction == "auction" then
-		QueueStatusChangedEvent() -- FIXME Check if it has really changed
+		QueueStatusChangedEvent()
 		if not state and cronRunning and cronTask then 
 			Library.LibCron.pause(cronTask) 
 			cronRunning = false 
@@ -237,7 +236,7 @@ table.insert(Event.Interaction, { OnInteractionChanged, addonID, "AHPostingServi
 
 local function OnGlobalQueueChanged(queue)
 	if queue == "global" then
-		QueueStatusChangedEvent() -- FIXME Check if it has really changed
+		QueueStatusChangedEvent()
 		if not Inspect.Queue.Status("global") and cronRunning and cronTask then 
 			Library.LibCron.pause(cronTask) 
 			cronRunning = false 
@@ -256,7 +255,6 @@ local function OnAddonLoaded(addonId)
 end
 table.insert(Event.Addon.Load.End, { OnAddonLoaded, addonID, "AHPostingService.OnAddonLoaded" })
 
---
 _G[addonID].PostItem = PostItem
 _G[addonID].CancelPostingByIndex = CancelPostingByIndex
 _G[addonID].GetPostingQueue = GetPostingQueue

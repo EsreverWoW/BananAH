@@ -33,7 +33,9 @@ local function TryMatchAuction(auctionID)
 			return
 		end
 	end
-	auctionTable[itemType].auctions[auctionID].postPending = true
+	if not backgroundScannerDisabled then
+		auctionTable[itemType].auctions[auctionID].postPending = true
+	end
 end
 
 local function TryMatchPost(itemType, tim, timestamp, bid, buyout)
@@ -48,8 +50,10 @@ local function TryMatchPost(itemType, tim, timestamp, bid, buyout)
 			return
 		end
 	end
-	pendingPosts[itemType] = pendingPosts[itemType] or {}
-	table.insert(pendingPosts[itemType], { tim = tim, timestamp = timestamp, bid = bid, buy = buyout })
+	if not backgroundScannerDisabled then
+		pendingPosts[itemType] = pendingPosts[itemType] or {}
+		table.insert(pendingPosts[itemType], { tim = tim, timestamp = timestamp, bid = bid, buy = buyout })
+	end
 end
 
 local function UnpackAuctionTable(packedDB)
@@ -304,7 +308,8 @@ local function UpsertAuction(auctionID, auctionDetail, auctionScanTime, expireTi
 		auctionTable[itemType].auctions[auctionID].lst = auctionScanTime
 		auctionTable[itemType].auctions[auctionID].met = math.max(auctionTable[itemType].auctions[auctionID].met, expireTimes[1])
 		auctionTable[itemType].auctions[auctionID].xet = math.min(auctionTable[itemType].auctions[auctionID].xet, expireTimes[2])
-		auctionTable[itemType].auctions[auctionID].own = auctionDetail.seller == Inspect.Unit.Detail("player").name and 1 or 0
+		auctionTable[itemType].auctions[auctionID].own = (auctionTable[itemType].auctions[auctionID].own == 1 or auctionDetail.seller == Inspect.Unit.Detail("player").name) and 1 or 0
+		auctionTable[itemType].auctions[auctionID].bdd = (auctionTable[itemType].auctions[auctionID].bdd == 1 or (auctionDetail.bidder and auctionDetail.bidder ~= "0")) and 1 or 0
 		
 		if auctionTable[itemType].auctions[auctionID].bid == auctionDetail.bid then
 			return itemType, false
@@ -366,9 +371,33 @@ local function OnAuctionData(criteria, auctions)
 				end
 			end
 		end
+	elseif criteria.type == "bids" then
+		for auctionID, auctionDetail in pairs(auctionsDetail) do
+			local itemType = cachedAuctions[auctionID]
+			auctionTable[itemType].auctions[auctionID].bdd = 1
+			auctionTable[itemType].auctions[auctionID].obd = 1
+		end
+	elseif criteria.type == "mine" then
+		local activeAuctions = _G[addonID].SearchAuctions(true)
+		local playerName = Inspect.Unit.Detail("player").name
+		for auctionID, auctionData in pairs(activeAuctions) do
+			if auctionData.sellerName == playerName and not auctions[auctionID] then
+				table.insert(removedAuctions, auctionID)
+
+				local itemData = auctionTable[auctionData.itemType]
+				auctionSearcher:RemoveAuction(auctionID, 0, itemData.callings, itemData.rarity, itemData.level, itemData.category, itemData.name, auctionData.buyoutPrice or 0)
+					
+				if auctionScanTime < auctionData.minExpireTime then
+					auctionTable[auctionData.itemType].auctions[auctionID].rbe = 2
+					table.insert(beforeExpireAuctions, auctionID)
+					else
+					auctionTable[auctionData.itemType].auctions[auctionID].rbe = 1
+				end
+				
+				auctionSearcher:AddAuction(auctionData.itemType, auctionID, auctionTable[auctionData.itemType].auctions[auctionID].rbe, itemData.callings, itemData.rarity, itemData.level, itemData.category, itemData.name, auctionData.buyoutPrice or 0)
+			end
+		end
 	end
-	-- TODO Mark auctions as removed when criteria.type == "mine" and they're not seen. Dont use OWN as those could be from an alter!!! Use SLN instead
-	-- TODO Mark auctions OBD = 1 and BDD = 1 when criteria.type == "bids"
 	
 	if criteria.sort and criteria.sort == "time" and criteria.sortOrder then
 		if criteria.sortOrder == "descending" then
@@ -401,7 +430,7 @@ local function OnAuctionData(criteria, auctions)
 	end
 	
 	scanNext = false
-	AuctionDataEvent(criteria.type, totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions)
+	AuctionDataEvent(criteria.type .. (criteria.type == "search" and ((not criteria.index or (criteria.index == 0 and #totalAuctions < 50)) and "full" or "item") or ""), totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions)
 end
 table.insert(Event.Auction.Scan, { OnAuctionData, addonID, "AHMonitoringService.OnAuctionData" })
 
