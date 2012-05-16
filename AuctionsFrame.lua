@@ -80,19 +80,6 @@ local function MineItemRenderer(name, parent)
 		alterNameLabel:SetWidth(0)
 	end
 	
-	-- function biddedTexture.Event:MouseIn()
-		-- if self:GetVisible() and mineCell.seller then
-			-- biddedNameLabel:ClearWidth()
-			-- biddedNameLabel:SetText(mineCell.seller)
-		-- end
-	-- end
-	
-	-- function biddedTexture.Event:MouseOut()
-		-- biddedNameLabel:SetText("")
-		-- biddedNameLabel:SetWidth(0)
-	-- end
-	
-	
 	return mineCell
 end
 
@@ -111,7 +98,7 @@ local function CancellableRenderer(name, parent)
 	
 	function cancellableCell:SetValue(key, value, width, extra)
 		self.auctionID = key
-		self.usable = _G[addonID].GetAuctionCached(key) and value.sellerName == Inspect.Unit.Detail("player").name and Inspect.Interaction("auction")
+		self.usable = _G[addonID].GetAuctionCached(key) and value.sellerName == Inspect.Unit.Detail("player").name and Inspect.Interaction("auction") and not value.bidded and true or false
 		self:SetTexture(addonID, self.usable and "Textures/DeleteEnabled.png" or "Textures/DeleteDisabled.png")
 	end
 	
@@ -329,7 +316,7 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 			ResetMineGrid()
 		end
 		
-		if refreshMode == REFRESH_MINEFILTER then -- If ResetMineGrid was called, it isn't necessary to force update
+		if refreshMode == REFRESH_MINEFILTER then
 			mineGrid:ForceUpdate()
 		end
 		

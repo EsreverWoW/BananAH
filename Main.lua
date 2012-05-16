@@ -99,7 +99,6 @@ local function InitializeLayout()
 	
 	statusPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMLEFT", 5, -35)
 	statusPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
---	statusPanel:SetInvertedBorder(true)
 	statusPanel:GetContent():SetBackgroundColor(0.2, 0.2, 0.2, 0.5)
 	
 	scannerButton:SetTexture(addonID, _G[addonID].GetBackgroundScannerEnabled() and "Textures/SearchIcon.png" or "Textures/DontSearchIcon.png")
@@ -277,8 +276,9 @@ local function InitializeLayout()
 	end
 	table.insert(Event.Interaction, { OnInteractionChanged, addonID, "OnInteractionChanged" })
 	
-	local function ReportAuctionData(full, total, new, updated, removed, before)
-		local fullOrPartialMessage = full and L["General/scanTypeFull"] or L["General/scanTypePartial"]
+	local function ReportAuctionData(scanType, total, new, updated, removed, before)
+		if scanType ~= "searchitem" and scanType ~= "searchfull" then return end
+		local fullOrPartialMessage = scanType == "searchfull" and L["General/scanTypeFull"] or L["General/scanTypePartial"]
 		local newMessage = (#new > 0) and string.format(L["General/scanNewCount"], #new) or ""
 		local updatedMessage = (#updated > 0) and string.format(L["General/scanUpdatedCount"], #updated) or ""
 		local removedMessage = (#removed > 0) and string.format(L["General/scanRemovedCount"], #removed, #before) or ""

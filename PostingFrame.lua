@@ -132,11 +132,6 @@ local function AuctionRenderer(name, parent)
 		self:SetAllPoints()
 		self:SetLayer(self:GetParent():GetLayer() - 1)
 		self:SetBackgroundColor(unpack(extra.Color(value)))
-		-- if _G[addonID].GetAuctionCached(key) then
-			-- self:SetBackgroundColor(0, 0.75, 0.75, 0.1)
-		-- else
-			-- self:SetBackgroundColor(0.75, 0, 0, 0.1)
-		-- end
 	end
 	
 	return auctionCell
@@ -584,7 +579,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			ResetItems()
 		end
 		
-		if refreshMode == REFRESH_ITEMFILTER then -- If ResetItems was called, it isn't necessary to force update
+		if refreshMode == REFRESH_ITEMFILTER then
 			itemGrid:ForceUpdate()
 		end
 		
@@ -689,8 +684,8 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:AddColumn(L["PostingPanel/columnStack"], 60, "Text", true, "stack", { Alignment = "center", Formatter = "none" })
 	auctionGrid:AddColumn(L["PostingPanel/columnBid"], 130, "MoneyRenderer", true, "bidPrice")
 	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 130, "MoneyRenderer", true, "buyoutPrice")
-	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, "MoneyRenderer", true, "bidUnitPrice")--, { Compare = function() return CompareFunction()[1] end })
-	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, "MoneyRenderer", true, "buyoutUnitPrice")--, { Compare = function() return CompareFunction()[2] end })
+	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, "MoneyRenderer", true, "bidUnitPrice")
+	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, "MoneyRenderer", true, "buyoutUnitPrice")
 	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 90, "Text", true, "minExpireTime", { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 90, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	local function ScoreValue(value)

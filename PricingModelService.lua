@@ -10,24 +10,26 @@ local priceScorers = {}
 local priceMatchers = {}
 
 function InternalInterface.PricingModelService.GetAllPricingModels()
-	return pricingModels -- FIXME Return copy
+	return InternalInterface.Utility.CopyTableRecursive(pricingModels)
 end
 
 function InternalInterface.PricingModelService.GetAllPriceScorers()
-	return priceScorers -- FIXME Return copy
+	return InternalInterface.Utility.CopyTableRecursive(priceScorers)
 end
 
 function InternalInterface.PricingModelService.GetAllPriceMatchers()
-	return priceMatchers -- FIXME Return copy
+	return InternalInterface.Utility.CopyTableRecursive(priceMatchers)
 end
 
 local function GetPricingModel(id)
-	return pricingModels[id] or priceScorers[id] or nil -- FIXME Return copy
+	if pricingModels[id] then return InternalInterface.Utility.CopyTableRecursive(pricingModels[id]) end
+	if priceScorers[id] then return InternalInterface.Utility.CopyTableRecursive(priceScorers[id]) end
+	return nil
 end
 
 local function GetPriceMatcher(id)
 	if not priceMatchers[id] then return nil end
-	return priceMatchers[id] -- FIXME Return copy
+	return InternalInterface.Utility.CopyTableRecursive(priceMatchers[id])
 end
 
 local function RegisterPricingModel(id, displayName, pricingFunction, callbackFunction, configFrameConstructor)
