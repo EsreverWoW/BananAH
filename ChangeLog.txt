@@ -1,78 +1,39 @@
-	Alpha r47
-- Reverted default stack size to MAX
-- Fixed some bugs
-- Cleaned up code
-- Removed the PDF documentation from the addon ZIP package.
-- Added sample pricing model for developers
-
-	Alpha r46
-- Auctions config screen added
-- Added icons to the auctions in the Auction Tab to show if they've been posted by another character, and if they have been bidded.
-- Added the new localization phrases to the localization system
-
-	Alpha r45
-- Auctions tab implemented
-- Fixed a bug that corrupted the auction DB when you saw an specific item from the new 1.8 raid in the Auction House. Unfortunately this will empty your current DB :(
-
-	Alpha r44
-- Auctions tab preview, not functional yet	
-
-	Alpha r43
-- Right click undercutting now considers auctions posted by other characters in your account as self instead of competition
-- Added option to configure the score ranges in the Config Tab
-- The "Market price" price scorer can be configured now
-- Bought auctions are deleted from the auction list without having to rescan
-- Bidded auctions are updated in the auction list without having to rescan
-- Posted auctions expire times are more accurate now
-
-	Alpha r42
-- All old options from Config Tab are available now
-- Added "Vendor minimum" price matcher (prevents prices going below what the vendor pays for them)
-- The "Self matcher" price matcher now considers auctions as "self" when the seller is another character in your account
-- The "Undercut competition" price matcher no longer considers auctions as "competition" when the seller is another character in your account
-- The "Buy < Vendor" warning now takes into account the 5% auction house fee
-- The "You're the seller" warning is now also displayed when the auctions seller is another character in your account
-- The items shown in the Post tab can be filtered by rarity now
-- New option to select the order in which the price matchers are applied
-
-	Alpha r41
-- Size increased for some columns in the auctions grid
-
-	Alpha r40
-- The global 'hide item' filtered items are saved per account now (they were stored per shard)
-- Added experimental code to estimate more accurately the expiration times
-- Started fixing the Config Tab
-- Added option to close the addon window when the native auction window is closed
-- Added option to disable the background scanner on start
-
-	Alpha r39
-- Solved another bug	
-
-	Alpha r38
-- Fixed some bugs
-
-	Alpha r37
-- Reworked auction score (again)
-- Added status bar
-
-	Alpha r36
-- Added extra info on the auction being posted
-- Reworked auction score
-- Added option to disable background scanner
-
-	Alpha r35
+	Release 0.3
 - Updated to Rift 1.8
-- Redesigned Auction DB
-- Scanning speed has been improved
-- CPU usage has been reduced
-- Added 'market price' pricing model
-- Auction price are now compared to the 'market price' and color coded (cyan: very cheap, green: cheap, yellow: average, orange: expensive, red: very expensive)
-- The Posting queue now displays the number of tasks queued
-- Posting & Autoposting config are stored per character now
-- The 'hide item' filter has been reworked and now allows also hiding item only for some characters (right click)
-- The 'post' button now has a 0.5 cooldown to prevent accidental posting
-- Temporarily disabled config tab
-- Testing new way to display expire times
+
+- Background scanner changes:
+ + Scanning speed improved
+ + The background scanner can be temporarily disabled now
+ + Expiration times are estimated more accurately
+
+- Post Tab changes:
+ + Added extra info on the auction being posted
+ + Added new pricing models & price matchers
+ + Added score column that compares auction prices with the reference prices
+ + Auctions are color coded by score
+ 
+- New Auctions Tab:
+ + Keeps track of all your characters' auctions
+ + Shows competition for your posted auctions
+ + The auction list is filterable to help you locate your auctions without having to scroll hundreds of pages
+ + Faster auction cancelling functionality than the native AH window
+ 
+- Other minor changes & features:
+ + Added option to close the addon window when the native auction window is closed
+ + Added status bar: Scan results & error messages are shown in the status bar now, instead of being dumped to the chat
+ + The 'Hide item' filter has been improved: Now you can also hide items only for some characters
+ + Items shown in the Post tab can be filtered by rarity now
+ + The 'Post' button now has a 0.5 cooldown to prevent accidental posting
+ + Posting & Autoposting configs are saved per character now
+ + The "Buy < Vendor" warning now takes into account the 5% auction house fee
+ + The Posting queue now displays the number of tasks queued
+ + Expiration times are shown as time remaining now
+ + New option to select the order in which the price matchers are applied
+ + Undercutting and other features consider auctions posted by your other characters as own
+ 
+- Fixed a lot of bugs
+
+- Documentation is no longer included in the addon package. Check our website instead: http://www.bananah.net
 
 	Beta 0.2.2
 - Reduced the auction database size so it doesn't get truncated
