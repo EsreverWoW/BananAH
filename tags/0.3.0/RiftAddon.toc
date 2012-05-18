@@ -1,0 +1,62 @@
+Identifier = "BananAH"
+Name =
+{
+	English = "BananAH",
+	French = "BananAH",
+	German = "BananAH",
+}
+NameShort = "BananAH"
+Description =
+{
+	English = "Auction house addon for RIFT.\n\n* Work in progress *\n\nPosting features:\n - Auto splitting of item stacks\n - Auto posting\n - Undercut on right click\n - Posting queue management\n\nOwn auctions tracking features:\n - Tracks all your characters' auctions\n - Shows competition for your auctions\n - Fast auction cancel\n\n**Use /bah or /bananah to show the window.**\n\nMore features will come soon!\n\nWebsite: http://www.bananah.net",
+}
+Author = "Baanano"
+Version = "0.3.0"
+Email = "baanano.rift@gmail.com"
+Website = "http://www.bananah.net/"
+Environment = "1.8"
+Embed =
+{
+	LibBInterface = true,
+	LibCron = true,
+}
+Dependencies =
+{
+	LibBInterface = {"required", "before"},
+	LibCron = {"required", "before"},
+}
+SavedVariables =
+{
+	BananAHAuctionTable = "shard",
+	BananAHAccountSettings = "account",
+	BananAHShardSettings = "shard",
+	BananAHCharacterSettings = "character",	
+}
+RunOnStartup =
+{
+	"Init.lua",
+	"LocalizationService.lua",
+	"Locale/English.lua",
+	"Locale/French.lua",
+	"Locale/German.lua",
+	"Locale/Korean.lua",
+	"Locale/Russian.lua",
+	"AuctionTree.lua",
+	"AHMonitoringService.lua",
+	"AHPostingService.lua",
+	"PricingModelService.lua",
+	"PricingModels/Vendor.lua",
+	"PricingModels/UserDefined.lua",
+	"PricingModels/Average.lua",
+	"PricingModels/StandardDeviation.lua",
+	"PricingModels/Median.lua",
+	"PricingModels/IPR.lua",
+	"PriceScorers/MarketPrice.lua",
+	"PriceMatchers/Undercut.lua",
+	"PriceMatchers/SelfMatcher.lua",
+	"PriceMatchers/Vendor.lua",
+	"PostingFrame.lua",
+	"AuctionsFrame.lua",
+	"ConfigFrame.lua",
+	"Main.lua",
+}

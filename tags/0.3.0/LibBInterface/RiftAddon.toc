@@ -1,0 +1,30 @@
+Identifier = "LibBInterface"
+Name =
+{
+	English = "LibBInterface",
+	French = "LibBInterface",
+	German = "LibBInterface",
+}
+NameShort = "LibBInterface"
+Description =
+{
+	English = "UI library for BananAH",
+}
+Author = "Baanano"
+Version = "0.3.0"
+Email = "baanano.rift@gmail.com"
+Environment = "1.7"
+RunOnStartup =
+{
+	"Init.lua",
+	"BEventHandler.lua",
+	"BPanel.lua",
+	"BShadowedText.lua",
+	"BDropdown.lua",
+	"BMoneyDisplay.lua",
+	"BMoneySelector.lua",
+	"BSlider.lua",
+	"BDataGrid.lua",
+	"BWindow.lua",
+	"RegisterUI.lua",
+}

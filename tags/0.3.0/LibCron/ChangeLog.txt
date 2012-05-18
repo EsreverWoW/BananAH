@@ -1,0 +1,17 @@
+2012/04/19:
+	* (Baanano) Many changes:
+	  - only public API is exposed
+	  - no reuse of Task IDs
+	  - use Utility.Dispatch to credit execution time correctly
+	  - ... thus, don't do the error handling
+	  - allow for protecting tasks from deletion
+	  - allow a fixed number of recurrences
+	  - pause/resume tasks
+	  - new creation method
+	  - LibGetOpt now optional
+	  - don't rerun tasks in a given frame, even if their time specified
+	    was less than zero.
+	* (seebs) Check that in and bump version.
+
+2012/04/01:
+	* (seebs) New project!
