@@ -181,7 +181,6 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 	local collapsed = true
 	local refreshMode = REFRESH_NONE
 	local refreshTask
-	local itemPrices = {}
 	
 	local function ResetMineGrid()
 		local ownAuctions = _G[addonID].GetActiveAuctionData()

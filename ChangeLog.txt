@@ -1,3 +1,6 @@
+	Alpha r49
+- Testing Search frame	
+
 	Release 0.3
 - Updated to Rift 1.8
 

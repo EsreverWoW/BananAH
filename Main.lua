@@ -23,6 +23,7 @@ local function InitializeLayout()
 	local scannerButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.ScannerButton", statusPanel:GetContent())
 	local refreshButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
 	local searchText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.SearchTab.Text", searchTab:GetContent())
+	local searchFrame = InternalInterface.UI.SearchFrame(addonID .. ".UI.MainWindow.SearchFrame", mainPanel:GetContent())
 	local postText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.PostTab.Text", postTab:GetContent())
 	local postFrame = InternalInterface.UI.PostingFrame(addonID .. ".UI.MainWindow.PostFrame", mainPanel:GetContent())
 	local auctionsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.AuctionsTab.Text", auctionsTab:GetContent())
@@ -117,8 +118,13 @@ local function InitializeLayout()
 	searchText:SetText(L["General/menuSearch"])
 	searchText:SetFontSize(16)
 	searchText:SetShadowOffset(2, 2)
-	searchText:SetFontColor(0.5, 0.5, 0.5, 1)
+	searchText:SetFontColor(0.75, 0.75, 0.5, 1)
 	searchTab:SetWidth(searchText:GetWidth() + 60)
+	searchTab.text = searchText
+	
+	searchFrame:SetAllPoints()
+	searchFrame:SetVisible(false)
+	searchTab.frame = searchFrame
 	
 	postText:SetPoint("CENTER", postTab, "CENTER", 0, 2)
 	postText:SetText(L["General/menuPost"])
@@ -256,6 +262,9 @@ local function InitializeLayout()
 		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame)
 	end
 	
+	searchTab.Event.MouseIn = TabMouseIn
+	searchTab.Event.MouseOut = TabMouseOut
+	searchTab.Event.LeftClick = TabLeftClick
 	postTab.Event.MouseIn = TabMouseIn
 	postTab.Event.MouseOut = TabMouseOut
 	postTab.Event.LeftClick = TabLeftClick
@@ -265,7 +274,7 @@ local function InitializeLayout()
 	configTab.Event.MouseIn = TabMouseIn
 	configTab.Event.MouseOut = TabMouseOut
 	configTab.Event.LeftClick = TabLeftClick
-	mainWindow.selectedTab = postTab
+	mainWindow.selectedTab = searchTab
 	mainWindow.selectedTab.text:SetFontColor(1, 1, 1, 1)
 	
 	local function OnInteractionChanged(interaction, state)
