@@ -1,6 +1,6 @@
 local _, InternalInterface = ...
 
-local Rarities = { sellable = 1, [""] = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, quest = 8, }
+local Rarities = { sellable = 1, [""] = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, transcendant = 7, quest = 8, }
 
 function InternalInterface.Utility.BuildAuctionTree()
 	local auctionTree = {}
