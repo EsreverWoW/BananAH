@@ -1,4 +1,7 @@
-	Alpha r49
+	Alpha r51
+- Forgot to upload the main new file in r50 :P
+
+	Alpha r50
 - Testing Search frame	
 
 	Release 0.3
