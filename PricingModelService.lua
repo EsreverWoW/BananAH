@@ -4,10 +4,12 @@ local addonID = addonInfo.identifier
 local PricingModelAddedEvent = Utility.Event.Create(addonID, "PricingModelAdded")
 local PriceScorerAddedEvent = Utility.Event.Create(addonID, "PriceScorerAdded")
 local PriceMatcherAddedEvent = Utility.Event.Create(addonID, "PriceMatcherAdded")
+local AuctionSearcherAddedEvent = Utility.Event.Create(addonID, "AuctionSearcherAdded")
 
 local pricingModels = {}
 local priceScorers = {}
 local priceMatchers = {}
+local auctionSearchers = {}
 
 function InternalInterface.PricingModelService.GetAllPricingModels()
 	return InternalInterface.Utility.CopyTableRecursive(pricingModels)
@@ -21,6 +23,10 @@ function InternalInterface.PricingModelService.GetAllPriceMatchers()
 	return InternalInterface.Utility.CopyTableRecursive(priceMatchers)
 end
 
+function InternalInterface.PricingModelService.GetAllAuctionSearchers()
+	return InternalInterface.Utility.CopyTableRecursive(auctionSearchers)
+end
+
 local function GetPricingModel(id)
 	if pricingModels[id] then return InternalInterface.Utility.CopyTableRecursive(pricingModels[id]) end
 	if priceScorers[id] then return InternalInterface.Utility.CopyTableRecursive(priceScorers[id]) end
@@ -30,6 +36,11 @@ end
 local function GetPriceMatcher(id)
 	if not priceMatchers[id] then return nil end
 	return InternalInterface.Utility.CopyTableRecursive(priceMatchers[id])
+end
+
+local function GetAuctionSearcher(id)
+	if not auctionSearchers[id] then return nil end
+	return InternalInterface.Utility.CopyTableRecursive(auctionSearchers[id])
 end
 
 local function RegisterPricingModel(id, displayName, pricingFunction, callbackFunction, configFrameConstructor)
@@ -75,6 +86,28 @@ local function RegisterPriceMatcher(id, displayName, matchingFunction, configFra
 			configFrameConstructor = configFrameConstructor,
 		}
 		PriceMatcherAddedEvent(id)
+		return true
+	end
+	return false
+end
+
+local function RegisterAuctionSearcher(id, displayName, online, searchFunction, filterFunction, clearFunction, snipeFunction, searchFrameConstructor, extraButtonsConstructor, configFrameConstructor)
+	if not auctionSearchers[id] then
+		auctionSearchers[id] =
+		{
+			auctionSearcherID = id,
+			displayName = displayName,
+			online = online,
+			searchFunction = searchFunction,
+			filterFunction = filterFunction,
+			clearFunction = clearFunction,
+			snipeFunction = snipeFunction,
+			searchFrameConstructor = searchFrameConstructor,
+			extraButtonsConstructor = extraButtonsConstructor,
+			configFrameConstructor = configFrameConstructor,
+		}
+		AuctionSearcherAddedEvent(id)
+		return true
 	end
 	return false
 end
@@ -180,6 +213,7 @@ _G[addonID].GetPriceMatcher = GetPriceMatcher
 _G[addonID].RegisterPricingModel = RegisterPricingModel
 _G[addonID].RegisterPriceScorer = RegisterPriceScorer
 _G[addonID].RegisterPriceMatcher = RegisterPriceMatcher
+_G[addonID].RegisterAuctionSearcher = RegisterAuctionSearcher
 _G[addonID].GetPricings = GetPricings
 _G[addonID].MatchPrice = MatchPrice
 _G[addonID].ScorePrice = ScorePrice

@@ -41,6 +41,30 @@ local function SearchRenderer(name, parent)
 	return searchCell
 end
 
+local function ProfitRenderer(name, parent)
+	local renderCell = UI.CreateFrame("Frame", name, parent)
+	local bidCell = UI.CreateFrame("BMoneyDisplay", name .. ".BidDisplay", renderCell)
+	local buyCell = UI.CreateFrame("BMoneyDisplay", name .. ".BuyDisplay", renderCell)
+
+	bidCell:SetPoint("CENTERLEFT", renderCell, 0, 0.25)
+	bidCell:SetPoint("CENTERRIGHT", renderCell, 1, 0.25)
+	bidCell:SetHeight(20)
+	renderCell.bidCell = bidCell
+	
+	buyCell:SetPoint("CENTERLEFT", renderCell, 0, 0.75)
+	buyCell:SetPoint("CENTERRIGHT", renderCell, 1, 0.75)
+	buyCell:SetHeight(20)
+	renderCell.buyCell = buyCell
+	
+	function renderCell:SetValue(key, value, width, extra)
+		self:SetWidth(width)
+		self.bidCell:SetValue(value.bidProfit or 0)
+		self.buyCell:SetValue(value.buyProfit or 0)
+	end
+	
+	return renderCell
+end
+
 local function SearchBackgroundRenderer(name, parent)
 	local backgroundCell = UI.CreateFrame("Texture", name, parent)
 	
@@ -63,25 +87,8 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	local itemNameField = UI.CreateFrame("RiftTextfield", name .. ".ItemNameField", itemNamePanel:GetContent())
 	local searchButton = UI.CreateFrame("RiftButton", name .. ".SearchButton", searchFrame)
 	local clearButton = UI.CreateFrame("RiftButton", name .. ".ClearButton", searchFrame)
+	local searcherDropdown = UI.CreateFrame("BDropdown", name .. ".SearcherDropdown", searchFrame)
 	
-	local filterFrame = UI.CreateFrame("Frame", name .. ".FilterFrame", searchFrame)
-	local callingsText = UI.CreateFrame("Text", filterFrame:GetName() .. ".CallingsText", filterFrame)
-	local rarityText = UI.CreateFrame("Text", filterFrame:GetName() .. ".RarityText", filterFrame)
-	local categoryText = UI.CreateFrame("Text", filterFrame:GetName() .. ".CategoryText", filterFrame)
-	local usableText = UI.CreateFrame("Text", filterFrame:GetName() .. ".UsableText", filterFrame)
-	local minLevelText = UI.CreateFrame("Text", filterFrame:GetName() .. ".MinLevelText", filterFrame)
-	local maxLevelText = UI.CreateFrame("Text", filterFrame:GetName() .. ".MaxLevelText", filterFrame)
-	local minPriceText = UI.CreateFrame("Text", filterFrame:GetName() .. ".MinPriceText", filterFrame)
-	local maxPriceText = UI.CreateFrame("Text", filterFrame:GetName() .. ".MaxPriceText", filterFrame)
-	local searcherText = UI.CreateFrame("Text", filterFrame:GetName() .. ".SearcherText", filterFrame)
-	local callingsDropdown = UI.CreateFrame("BDropdown", filterFrame:GetName() .. ".CallingsDropdown", filterFrame)
-	local rarityDropdown = UI.CreateFrame("BDropdown", filterFrame:GetName() .. ".RarityDropdown", filterFrame)
-	local categoryDropdown = UI.CreateFrame("BDropdown", filterFrame:GetName() .. ".CategoryDropdown", filterFrame)
-	local searcherDropdown = UI.CreateFrame("BDropdown", filterFrame:GetName() .. ".SearcherDropdown", filterFrame)
-	local minPriceSelector = UI.CreateFrame("BMoneySelector", filterFrame:GetName() .. ".MinPriceSelector", filterFrame)
-	local maxPriceSelector = UI.CreateFrame("BMoneySelector", filterFrame:GetName() .. ".MaxPriceSelector", filterFrame)
-	local usableCheck = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".UsableCheck", filterFrame)
-
 	local searchAnchor = UI.CreateFrame("Frame", name .. ".SearchAnchor", searchFrame)
 	local searchGrid = UI.CreateFrame("BDataGrid", name .. ".SearchGrid", searchFrame)
 	local controlFrame = UI.CreateFrame("Frame", name .. ".ControlFrame", searchGrid.externalPanel:GetContent())
@@ -97,10 +104,14 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	local lastSearch = nil
 	local refreshMode = REFRESH_NONE
 	local refreshTask
+	local activeSearcherFrame = nil
 	
 	local function ResetSearchGrid()
+		local _, value = searcherDropdown:GetSelectedValue()
+		-- TODO Change behavior when online
 		if lastSearch then
 			local activeAuctions = _G[addonID].SearchAuctions(true, lastSearch.calling, lastSearch.rarity, lastSearch.levelMin, lastSearch.levelMax, lastSearch.category, lastSearch.priceMin, lastSearch.priceMax, lastSearch.name)
+			if value and value.filterFunction then activeAuctions = value.filterFunction(activeAuctions) or {} end
 			prices = {}
 			for auctionID, auctionData in pairs(activeAuctions) do
 				if not prices[auctionData.itemType] then
@@ -196,12 +207,47 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	refreshTask = Library.LibCron.new(addonID, 0, true, true, DoRefresh)
 	Library.LibCron.pause(refreshTask)	
 	
-	local function SearchGridFilter(key, value)
-		-- local filterText = string.upper(itemNameField:GetText())
-		-- local upperName = string.upper(value.itemName)
-		-- if not string.find(upperName, filterText) then return false end
+	local function ResetGridAnchor()
+		searchAnchor:ClearAll()
+		searchAnchor:SetPoint("BOTTOMLEFT", (collapsed or not activeSearcherFrame) and collapseButton or activeSearcherFrame, "BOTTOMLEFT")
+		searchGrid:SetRowHeight(searchGrid:GetRowHeight())
+		if activeSearcherFrame then activeSearcherFrame:SetVisible(not collapsed) end
+	end
+	
+	local function ResetActiveSearcher()
+		if activeSearcherFrame then activeSearcherFrame:SetVisible(false) end
+		local _, value = searcherDropdown:GetSelectedValue()
+		activeSearcherFrame = value and value.searcherFrame or nil
+		-- TODO Show/hide online controls & activate/deactivate the search button
+		ResetGridAnchor()
+	end
+	
+	local function ResetSearcherSelector()
+		local _, value = searcherDropdown:GetSelectedValue()
+		value = value and value.auctionSearcherID or nil
 
-		return true
+		local lastIndex = nil
+		local searchersTable = {}
+		local searchers = InternalInterface.PricingModelService.GetAllAuctionSearchers()
+		for _, searcher in pairs(searchers) do 
+			if searcher.searchFrameConstructor then
+				local searcherFrame, prefHeight = searcher.searchFrameConstructor(searchFrame)
+				if searcherFrame then
+					searcherFrame:SetVisible(false)
+					searcherFrame:ClearAll()
+					searcherFrame:SetPoint("TOPRIGHT", searchFrame, "TOPRIGHT", -5, 35)
+					searcherFrame:SetPoint("TOPLEFT", searchFrame, "TOPLEFT", 5, 35)
+					searcherFrame:SetHeight(prefHeight or 0)
+					searcher.searcherFrame = searcherFrame
+				end
+			end
+			table.insert(searchersTable, searcher)
+			if value and searcher.auctionSearcherID == value then lastIndex = #searchersTable end
+		end
+		
+		searcherDropdown:SetValues(searchersTable)
+		searcherDropdown:SetSelectedIndex(lastIndex or 1)
+		ResetActiveSearcher()
 	end
 	
 	local function ScoreValue(value)
@@ -217,7 +263,11 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	collapseButton:SetPoint("TOPLEFT", searchFrame, "TOPLEFT", 5, 5)
 	collapseButton:SetTexture(addonID, "Textures/FilterHide.png")
 
-	clearButton:SetPoint("TOPRIGHT", searchFrame, "TOPRIGHT", -5, 0)
+	searcherDropdown:SetPoint("TOPRIGHT", searchFrame, "TOPRIGHT", -5, 1)
+	searcherDropdown:SetPoint("BOTTOMLEFT", searchFrame, "TOPRIGHT", -255, 34)
+	ResetSearcherSelector()
+	
+	clearButton:SetPoint("CENTERRIGHT", searcherDropdown, "CENTERLEFT", -5, 0)
 	clearButton:SetText("Clear") -- LOCALIZE
 	
 	searchButton:SetPoint("TOPRIGHT", clearButton, "TOPLEFT", 10, 0)
@@ -232,88 +282,6 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	itemNameField:SetPoint("CENTERRIGHT", itemNamePanel:GetContent(), "CENTERRIGHT", -2, 1)
 	itemNameField:SetText("")
 	
-	filterFrame:SetPoint("TOPRIGHT", searchFrame, "TOPRIGHT", -5, 35)
-	filterFrame:SetPoint("TOPLEFT", searchFrame, "TOPLEFT", 5, 35)
-	filterFrame:SetHeight(80)
-	filterFrame:SetVisible(false)
-	
-	callingsText:SetPoint("CENTERLEFT", filterFrame, 0, 0.25)
-	callingsText:SetText("Calling:") -- LOCALIZE
-	
-	rarityText:SetPoint("CENTERLEFT", filterFrame, 0.25, 0.25)
-	rarityText:SetText("Min. rarity:") -- LOCALIZE
-	
-	categoryText:SetPoint("CENTERLEFT", filterFrame, 0.5, 0.25)
-	categoryText:SetText("Category:") -- LOCALIZE
-
-	usableCheck:SetPoint("CENTERRIGHT", filterFrame, 1, 0.25)
-	usableCheck:SetEnabled(false)
-	
-	usableText:SetPoint("CENTERRIGHT", usableCheck, "CENTERLEFT", -5, 0)
-	usableText:SetText("Usable only") -- LOCALIZE
-	
-	minLevelText:SetPoint("CENTERLEFT", filterFrame, 0, 0.75)
-	minLevelText:SetText("Min. level:") -- LOCALIZE
-	
-	maxLevelText:SetPoint("CENTERLEFT", filterFrame, 0.125, 0.75)
-	maxLevelText:SetText("Max. level:") -- LOCALIZE
-	
-	minPriceText:SetPoint("CENTERLEFT", filterFrame, 0.25, 0.75)
-	minPriceText:SetText("Min. price:") -- LOCALIZE
-	
-	maxPriceText:SetPoint("CENTERLEFT", filterFrame, 0.5, 0.75)
-	maxPriceText:SetText("Max. price:") -- LOCALIZE
-	
-	searcherText:SetPoint("CENTERLEFT", filterFrame, 0.75, 0.75)
-	searcherText:SetText("Searcher:") -- LOCALIZE
-	
-	local align2Offset = math.max(rarityText:GetWidth(), minPriceText:GetWidth())
-	local align3Offset = math.max(categoryText:GetWidth(), maxPriceText:GetWidth())
-	
-	callingsDropdown:SetPoint("CENTERLEFT", callingsText, "CENTERRIGHT", 5, 0)
-	callingsDropdown:SetPoint("CENTERRIGHT", rarityText, "CENTERLEFT", -5, 0)
-	callingsDropdown:SetHeight(34)
-	callingsDropdown:SetValues({
-		{ displayName = "All", calling = nil }, -- LOCALIZE
-		{ displayName = "Warrior", calling = "warrior" }, -- LOCALIZE
-		{ displayName = "Cleric", calling = "cleric" }, -- LOCALIZE
-		{ displayName = "Rogue", calling = "rogue" }, -- LOCALIZE
-		{ displayName = "Mage", calling = "mage" }, -- LOCALIZE
-	})
-
-	rarityDropdown:SetPoint("CENTERLEFT", rarityText, "CENTERLEFT", align2Offset + 5, 0)
-	rarityDropdown:SetPoint("CENTERRIGHT", categoryText, "CENTERLEFT", -5, 0)
-	rarityDropdown:SetHeight(34)
-	rarityDropdown:SetValues({
-		{ displayName = L["General/Rarity1"], rarity = "sellable", },
-		{ displayName = L["General/Rarity2"], rarity = "", },
-		{ displayName = L["General/Rarity3"], rarity = "uncommon", },
-		{ displayName = L["General/Rarity4"], rarity = "rare", },
-		{ displayName = L["General/Rarity5"], rarity = "epic", },
-		{ displayName = L["General/Rarity6"], rarity = "relic", },
-		{ displayName = L["General/Rarity7"], rarity = "transcendant", },
-		{ displayName = L["General/Rarity0"], rarity = "quest", },
-	})
-	
-
-	categoryDropdown:SetPoint("CENTERLEFT", categoryText, "CENTERLEFT", align3Offset + 5, 0)
-	categoryDropdown:SetPoint("CENTERRIGHT", filterFrame, 0.875, 0.25)
-	categoryDropdown:SetHeight(34)
-
-	searcherDropdown:SetPoint("CENTERLEFT", searcherText, "CENTERRIGHT", 5, 0)
-	searcherDropdown:SetPoint("CENTERRIGHT", filterFrame, 1, 0.75)
-	searcherDropdown:SetHeight(34)
-	searcherDropdown:SetValues({
-		{ displayName = "Basic", searcher = nil }, -- TODO Take name & id from searchers
-	})
-
-	minPriceSelector:SetPoint("CENTERLEFT", minPriceText, "CENTERLEFT", align2Offset + 5, 0)
-	minPriceSelector:SetPoint("CENTERRIGHT", maxPriceText, "CENTERLEFT", -5, 0)
-	minPriceSelector:SetHeight(34)
-	
-	maxPriceSelector:SetPoint("CENTERLEFT", maxPriceText, "CENTERLEFT", align3Offset + 5, 0)
-	maxPriceSelector:SetPoint("CENTERRIGHT", searcherText, "CENTERLEFT", -5, 0)
-	maxPriceSelector:SetHeight(34)
 
 	searchAnchor:SetPoint("BOTTOMLEFT", collapseButton, "BOTTOMLEFT")
 	
@@ -325,18 +293,29 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	searchGrid:SetHeadersVisible(true)
 	searchGrid:SetUnselectedRowBackgroundColor(0.15, 0.1, 0.1, 1)
 	searchGrid:SetSelectedRowBackgroundColor(0.45, 0.3, 0.3, 1)
-	searchGrid:AddColumn(L["AuctionsPanel/columnItem"], 310, SearchRenderer, function(a, b, direction) local auctions = searchGrid:GetData() return ((auctions[a].itemName < auctions[b].itemName or (auctions[a].itemName == auctions[b].itemName and a < b)) and -1 or 1) * direction <= 0 end)
-	searchGrid:AddColumn(L["PostingPanel/columnSeller"], 168, "Text", true, "sellerName")
+	-- searchGrid:AddColumn(L["AuctionsPanel/columnItem"], 310, SearchRenderer, function(a, b, direction) local auctions = searchGrid:GetData() return ((auctions[a].itemName < auctions[b].itemName or (auctions[a].itemName == auctions[b].itemName and a < b)) and -1 or 1) * direction <= 0 end)
+	-- searchGrid:AddColumn(L["PostingPanel/columnSeller"], 168, "Text", true, "sellerName")
+	-- local searchOrderColumn = searchGrid:AddColumn(L["PostingPanel/columnMinExpire"], 100, "Text", true, "minExpireTime", { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
+	-- searchGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 100, "Text", true, "maxExpireTime", { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
+	-- searchGrid:AddColumn(L["PostingPanel/columnBid"], 130, "MoneyRenderer", true, "bidPrice")
+	-- searchGrid:AddColumn(L["PostingPanel/columnBuy"], 130, "MoneyRenderer", true, "buyoutPrice")
+	-- searchGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, "MoneyRenderer", true, "bidUnitPrice")
+	-- searchGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, "MoneyRenderer", true, "buyoutUnitPrice")
+	-- searchGrid:AddColumn(L["AuctionsPanel/columnScore"], 80, "Text", true, "score", { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor })
+	searchGrid:AddColumn("", 0, SearchBackgroundRenderer)
+	searchGrid:AddColumn(L["AuctionsPanel/columnItem"], 270, SearchRenderer, function(a, b, direction) local auctions = searchGrid:GetData() return ((auctions[a].itemName < auctions[b].itemName or (auctions[a].itemName == auctions[b].itemName and a < b)) and -1 or 1) * direction <= 0 end)
+	searchGrid:AddColumn(L["PostingPanel/columnSeller"], 120, "Text", true, "sellerName")
 	local searchOrderColumn = searchGrid:AddColumn(L["PostingPanel/columnMinExpire"], 100, "Text", true, "minExpireTime", { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	searchGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 100, "Text", true, "maxExpireTime", { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
-	searchGrid:AddColumn(L["PostingPanel/columnBid"], 130, "MoneyRenderer", true, "bidPrice")
-	searchGrid:AddColumn(L["PostingPanel/columnBuy"], 130, "MoneyRenderer", true, "buyoutPrice")
-	searchGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, "MoneyRenderer", true, "bidUnitPrice")
-	searchGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, "MoneyRenderer", true, "buyoutUnitPrice")
+	searchGrid:AddColumn(L["PostingPanel/columnBid"], 120, "MoneyRenderer", true, "bidPrice")
+	searchGrid:AddColumn(L["PostingPanel/columnBuy"], 120, "MoneyRenderer", true, "buyoutPrice")
+	searchGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, "MoneyRenderer", true, "bidUnitPrice")
+	searchGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 120, "MoneyRenderer", true, "buyoutUnitPrice")
 	searchGrid:AddColumn(L["AuctionsPanel/columnScore"], 80, "Text", true, "score", { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor })
+	searchGrid:AddColumn("Profit", 120, ProfitRenderer, function(a, b, direction) local auctions = searchGrid:GetData() return (((auctions[a].buyProfit or 0) < (auctions[b].buyProfit or 0) or ((auctions[a].buyProfit or 0) == (auctions[b].buyProfit or 0) and a < b)) and -1 or 1) * direction <= 0 end) -- LOCALIZE
 	searchGrid:AddColumn("", 0, SearchBackgroundRenderer)
-	searchGrid:SetFilteringFunction(SearchGridFilter)		
 	searchOrderColumn.Event.LeftClick(searchOrderColumn)
+	-- 38 + 40
 	
 	paddingLeft, _, paddingRight, paddingBottom = searchGrid:GetPadding()
 	controlFrame:SetPoint("TOPLEFT", searchGrid.externalPanel:GetContent(), "BOTTOMLEFT", paddingLeft + 2, 2 - paddingBottom)
@@ -370,11 +349,8 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	noBidLabel:SetPoint("CENTER", bidButton, "CENTERLEFT", -115, 0)
 	
 	function collapseButton.Event:LeftClick()
-		filterFrame:SetVisible(collapsed)
 		collapsed = not collapsed
-		searchAnchor:ClearAll()
-		searchAnchor:SetPoint("BOTTOMLEFT", collapsed and collapseButton or filterFrame, "BOTTOMLEFT")
-		searchGrid:SetRowHeight(searchGrid:GetRowHeight())
+		ResetGridAnchor()
 		self:SetTexture(addonID, collapsed and "Textures/FilterHide.png" or "Textures/FilterShow.png")
 	end
 	
@@ -396,38 +372,19 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	end
 	
 	function searchButton.Event:LeftPress()
-		local _, calling = callingsDropdown:GetSelectedValue()
-		local _, rarity = rarityDropdown:GetSelectedValue()
-		local priceMin = minPriceSelector:GetValue()
-		local priceMax = maxPriceSelector:GetValue()
-		priceMin = priceMin > 0 and priceMin or nil
-		priceMax = priceMax > 0 and priceMax or nil
-		if priceMin and priceMax and priceMin > priceMax then
-			priceMin = nil
-			minPriceSelector:SetValue(0)
+		local _, value = searcherDropdown:GetSelectedValue()
+		if value and value.searchFunction then
+			local itemText = itemNameField:GetText()
+			lastSearch = value.searchFunction(itemText)
+			-- TODO If online, call Command.Auction.Scan
+			SetRefreshMode(REFRESH_AUCTIONS)
 		end
-		
-		lastSearch = 
-		{
-			calling = calling.calling,
-			rarity = rarity.rarity,
-			levelMin = nil,
-			levelMax = nil,
-			category = nil,
-			priceMin = priceMin,
-			priceMax = priceMax,
-			name = itemNameField:GetText()
-		}
-		SetRefreshMode(REFRESH_AUCTIONS)
 	end
 	
 	function clearButton.Event:LeftPress()
 		itemNameField:SetText("")
-		callingsDropdown:SetSelectedIndex(1)
-		rarityDropdown:SetSelectedIndex(1)
-		--categoryDropdown:SetSelectedIndex(1)
-		minPriceSelector:SetValue(0)
-		maxPriceSelector:SetValue(0)
+		local _, value = searcherDropdown:GetSelectedValue()
+		if value and value.clearFunction then value.clearFunction() end
 	end
 	
 	function searchGrid.Event:SelectionChanged()
@@ -451,10 +408,15 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	
 	table.insert(Event[addonID].AuctionData, { function() SetRefreshMode(REFRESH_AUCTIONS) end, addonID, "SearchFrame.OnAuctionData" })
 	table.insert(Event.Interaction, { function(interaction) if interaction == "auction" then SetRefreshMode(REFRESH_AUCTION) end end, addonID, "SearchFrame.OnInteraction" })
+	-- TODO Subscribe to searcheradded event
 	
 	function searchFrame:Show(hEvent)
 		SetRefreshMode(REFRESH_AUCTIONS)
-	end	
+	end
+	
+	function searcherDropdown.Event:SelectionChanged()
+		ResetActiveSearcher()
+	end
 	
 
 	return searchFrame

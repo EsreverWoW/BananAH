@@ -115,6 +115,7 @@ local function BuildSettings()
 		colorLimits = { 85, 85, 115, 115 },
 	}
 	InternalInterface.AccountSettings.PriceMatchers = InternalInterface.AccountSettings.PriceMatchers or {}
+	InternalInterface.AccountSettings.AuctionSearchers = InternalInterface.AccountSettings.AuctionSearchers or {}
 	
 	InternalInterface.CharacterSettings.Posting = InternalInterface.CharacterSettings.Posting or {}
 	InternalInterface.CharacterSettings.Posting.HiddenItems = InternalInterface.CharacterSettings.Posting.HiddenItems or {}
