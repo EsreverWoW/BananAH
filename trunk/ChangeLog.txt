@@ -1,3 +1,6 @@
+	Alpha r52
+- Added "Vendor" auction searcher
+
 	Alpha r51
 - Forgot to upload the main new file in r50 :P
 
