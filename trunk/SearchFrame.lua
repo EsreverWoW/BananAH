@@ -36,6 +36,15 @@ local function SearchRenderer(name, parent)
 		local name = value.itemName .. (value.stack > 1 and " (" .. value.stack .. ")" or "")
 		self.itemNameLabel:SetText(name)
 		self.itemNameLabel:SetFontColor(GetRarityColor(value.itemRarity))
+		itemTexture.itemType = value.itemType
+	end
+	
+	function itemTexture.Event:MouseIn()
+		Command.Tooltip(self.itemType)
+	end
+	
+	function itemTexture.Event:MouseOut()
+		Command.Tooltip(nil)
 	end
 	
 	return searchCell
@@ -111,7 +120,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 		-- TODO Change behavior when online
 		if lastSearch then
 			local activeAuctions = _G[addonID].SearchAuctions(true, lastSearch.calling, lastSearch.rarity, lastSearch.levelMin, lastSearch.levelMax, lastSearch.category, lastSearch.priceMin, lastSearch.priceMax, lastSearch.name)
-			if value and value.filterFunction then activeAuctions = value.filterFunction(activeAuctions) or {} end
+			if value and value.filterFunction then activeAuctions = value.filterFunction(activeAuctions, lastSearch) or {} end
 			prices = {}
 			for auctionID, auctionData in pairs(activeAuctions) do
 				if not prices[auctionData.itemType] then

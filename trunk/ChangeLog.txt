@@ -1,3 +1,7 @@
+	Alpha r53
+- Added "Extended" auction searcher
+- Testing item tooltips (search tab only)
+
 	Alpha r52
 - Added "Vendor" auction searcher
 
