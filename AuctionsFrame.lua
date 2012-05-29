@@ -66,7 +66,16 @@ local function MineItemRenderer(name, parent)
 			alterTexture:SetVisible(false)
 		end
 		biddedTexture:SetVisible(value.bidded or false)
+		itemTexture.itemType = value.itemType
 	end
+	
+	function itemTexture.Event:MouseIn()
+		Command.Tooltip(self.itemType)
+	end
+	
+	function itemTexture.Event:MouseOut()
+		Command.Tooltip(nil)
+	end	
 	
 	function alterTexture.Event:MouseIn()
 		if self:GetVisible() and mineCell.seller then

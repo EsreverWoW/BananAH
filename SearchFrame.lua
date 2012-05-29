@@ -321,7 +321,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	searchGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 120, "MoneyRenderer", true, "bidUnitPrice")
 	searchGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 120, "MoneyRenderer", true, "buyoutUnitPrice")
 	searchGrid:AddColumn(L["AuctionsPanel/columnScore"], 80, "Text", true, "score", { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor })
-	searchGrid:AddColumn("Profit", 120, ProfitRenderer, function(a, b, direction) local auctions = searchGrid:GetData() return (((auctions[a].buyProfit or 0) < (auctions[b].buyProfit or 0) or ((auctions[a].buyProfit or 0) == (auctions[b].buyProfit or 0) and a < b)) and -1 or 1) * direction <= 0 end) -- LOCALIZE
+	searchGrid:AddColumn("Profit", 120, ProfitRenderer, function(a, b, direction) local auctions = searchGrid:GetData() return (((auctions[a][direction > 0 and "bidProfit" or "buyProfit"] or 0) > (auctions[b][direction > 0 and "bidProfit" or "buyProfit"] or 0) or ((auctions[a][direction > 0 and "bidProfit" or "buyProfit"] or 0) == (auctions[b][direction > 0 and "bidProfit" or "buyProfit"] or 0) and a > b)) and -1 or 1) <= 0 end) -- LOCALIZE
 	searchGrid:AddColumn("", 0, SearchBackgroundRenderer)
 	searchOrderColumn.Event.LeftClick(searchOrderColumn)
 	-- 38 + 40
