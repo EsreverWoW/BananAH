@@ -57,6 +57,7 @@ RunOnStartup =
 	"PriceMatchers/Vendor.lua",
 	"AuctionSearchers/Basic.lua",
 	"AuctionSearchers/Extended.lua",
+	"AuctionSearchers/Resell.lua",
 	"AuctionSearchers/Vendor.lua",
 	"SearchFrame.lua",
 	"PostingFrame.lua",

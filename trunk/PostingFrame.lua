@@ -19,8 +19,6 @@ local GetOutput = InternalInterface.Utility.GetOutput
 local function out(value) GetOutput()(value) end
 local GetLocalizedDateString = InternalInterface.Localization.GetLocalizedDateString
 
-local visibilityMode = false
-
 -- ItemRenderer
 local function ItemRenderer(name, parent)
 	local itemCell = UI.CreateFrame("Texture", name, parent)
@@ -31,6 +29,8 @@ local function ItemRenderer(name, parent)
 	local visibilityIcon = UI.CreateFrame("Texture", name .. ".VisibilityIcon", itemCell)
 	local itemStackLabel = UI.CreateFrame("Text", name .. ".ItemStackLabel", itemCell)
 	local autoPostingLabel = UI.CreateFrame("Text", name .. ".AutoPostingLabel", itemCell)
+	
+	local resetGridFunction = nil
 	
 	itemTextureBackground:SetPoint("CENTERLEFT", itemCell, "CENTERLEFT", 4, 0)
 	itemTextureBackground:SetWidth(50)
@@ -47,7 +47,6 @@ local function ItemRenderer(name, parent)
 	
 	visibilityIcon:SetTexture(addonID, "Textures/ShowIcon.png")
 	visibilityIcon:SetPoint("BOTTOMLEFT", itemTextureBackground, "BOTTOMRIGHT", 5, -5)
-	visibilityIcon:SetVisible(visibilityMode)
 	itemCell.visibilityIcon = visibilityIcon
 	
 	itemStackLabel:SetPoint("BOTTOMRIGHT", itemCell, "BOTTOMRIGHT", -4, -4)
@@ -74,7 +73,7 @@ local function ItemRenderer(name, parent)
 			visibilityIcon:SetTexture(addonID, "Textures/ShowIcon.png")
 		end
 		self.visibilityIcon.itemType = value.itemType
-		self.visibilityIcon:SetVisible(visibilityMode)
+		resetGridFunction = extra and extra.ResetGridFunction or nil
 
 		self.autoPostingLabel:SetVisible(InternalInterface.CharacterSettings.Posting.AutoConfig[value.itemType] and true or false)
 	end
@@ -91,6 +90,7 @@ local function ItemRenderer(name, parent)
 			InternalInterface.AccountSettings.Posting.HiddenItems[self.itemType] = true
 		end
 		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
+		if resetGridFunction then resetGridFunction() end
 	end
 	
 	function visibilityIcon.Event:RightClick()
@@ -104,7 +104,16 @@ local function ItemRenderer(name, parent)
 			visibilityIcon:SetTexture(addonID, "Textures/CharacterHideIcon.png")
 			InternalInterface.CharacterSettings.Posting.HiddenItems[self.itemType] = true
 		end
+		if resetGridFunction then resetGridFunction() end
 	end
+	
+	function itemTexture.Event:MouseIn()
+		Command.Tooltip(visibilityIcon.itemType)
+	end
+	
+	function itemTexture.Event:MouseOut()
+		Command.Tooltip(nil)
+	end	
 	
 	return itemCell
 end
@@ -199,6 +208,7 @@ local function QueueManagerRenderer(name, parent)
 		self:SetWidth(width)
 		self.itemTextureBackground:SetBackgroundColor(GetRarityColor(itemDetail.rarity))
 		self.itemTexture:SetTexture("Rift", itemDetail.icon)
+		self.itemTexture.itemType = value.itemType
 		self.itemNameLabel:SetText(itemDetail.name)
 		self.itemNameLabel:SetFontColor(GetRarityColor(itemDetail.rarity))
 		
@@ -217,6 +227,15 @@ local function QueueManagerRenderer(name, parent)
 		self.bidMoneyDisplay:SetValue(value.amount * (value.unitBidPrice or 0))
 		self.buyMoneyDisplay:SetValue(value.amount * (value.unitBuyoutPrice or 0))
 	end
+	
+	function itemTexture.Event:MouseIn()
+		Command.Tooltip(self.itemType)
+	end
+	
+	function itemTexture.Event:MouseOut()
+		Command.Tooltip(nil)
+	end
+	
 	
 	return queueManagerCell
 end
@@ -289,6 +308,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	local infoDiscountBid = UI.CreateFrame("BMoneyDisplay", name .. "IinfoDiscountBid", postingFrame)
 	local infoDiscountBuy = UI.CreateFrame("BMoneyDisplay", name .. "IinfoDiscountBuy", postingFrame)
 	
+	local visibilityMode = false
 	local autoPostingMode = false
 	local pricesSetByModel = false
 	local refreshMode = REFRESH_NONE
@@ -471,6 +491,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			itemTexturePanel:GetContent():SetBackgroundColor(GetRarityColor(itemInfo.rarity))
 			itemTexture:SetVisible(true)
 			itemTexture:SetTexture("Rift", itemInfo.icon)
+			itemTexture.itemType = itemInfo.itemType
 			itemNameLabel:SetText(itemInfo.name)
 			itemNameLabel:SetFontColor(GetRarityColor(itemInfo.rarity))
 			itemNameLabel:SetVisible(true)
@@ -624,7 +645,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	itemGrid:SetRowMargin(2)
 	itemGrid:SetUnselectedRowBackgroundColor(0.2, 0.15, 0.2, 1)
 	itemGrid:SetSelectedRowBackgroundColor(0.6, 0.45, 0.6, 1)
-	itemGrid:AddColumn("Item", 248, ItemRenderer, function(a, b) local items = itemGrid:GetData() return string.upper(items[a].name) < string.upper(items[b].name) end)
+	itemGrid:AddColumn("Item", 248, ItemRenderer, function(a, b) local items = itemGrid:GetData() return string.upper(items[a].name) < string.upper(items[b].name) end, nil, { ResetGridFunction = function() SetRefreshMode(REFRESH_ITEMFILTER) end })
 	local function ItemGridFilter(key, value)
 		local rarity = value.rarity or "common"
 		rarity = ({ sellable = 1, common = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, quest = 8 })[rarity] or 1
@@ -665,7 +686,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	filterTextPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
 
 	visibilityIcon:SetPoint("CENTERRIGHT", filterTextPanel:GetContent(), "CENTERRIGHT", -5, 0)
-	visibilityIcon:SetTexture(addonID, "Textures/ShowIcon.png")
+	visibilityIcon:SetTexture(addonID, "Textures/HideIcon.png")
 	
 	filterTextField:SetPoint("CENTERLEFT", filterTextPanel:GetContent(), "CENTERLEFT", 2, 1)
 	filterTextField:SetPoint("CENTERRIGHT", visibilityIcon, "CENTERLEFT", -2, 1)
@@ -1000,6 +1021,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	
 	function visibilityIcon.Event:LeftClick()
 		visibilityMode = not visibilityMode
+		visibilityIcon:SetTexture(addonID, visibilityMode and "Textures/ShowIcon.png" or "Textures/HideIcon.png")
 		SetRefreshMode(REFRESH_ITEMFILTER)
 	end
 	
@@ -1288,6 +1310,14 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		local _, selectedInfo = itemGrid:GetSelectedData()
 		buyPriceWarning:SetVisible((selectedInfo and newValue > 0 and newValue < math.ceil((selectedInfo.sell or 0) / AUCTION_FEE_REDUCTION)) or false)
 		SetRefreshMode(REFRESH_INFO)
+	end
+	
+	function itemTexture.Event:MouseIn()
+		Command.Tooltip(self.itemType)
+	end
+	
+	function itemTexture.Event:MouseOut()
+		Command.Tooltip(nil)
 	end
 
 

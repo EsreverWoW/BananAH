@@ -596,6 +596,18 @@ local function GetAuctionCached(auctionID)
 	return cachedAuctions[auctionID] and true or false
 end
 
+local function GetAuctionsItemTypes(auctionIDTable)
+	if type(auctionIDTable) == "string" then auctionIDTable = { auctionIDTable } end
+	if type(auctionIDTable) == "table" then
+		local returnTable = {}
+		for _, auctionID in ipairs(auctionIDTable) do
+			returnTable[auctionID] = cachedAuctions[auctionID]
+		end
+		return returnTable
+	end
+	return {}
+end
+
 local function GetBackgroundScannerEnabled()
 	return not backgroundScannerDisabled
 end
@@ -680,5 +692,6 @@ _G[addonID].SearchAuctions = SearchAuctions
 _G[addonID].GetAllAuctionData = GetAllAuctionData
 _G[addonID].GetActiveAuctionData = GetActiveAuctionData
 _G[addonID].GetAuctionCached = GetAuctionCached
+_G[addonID].GetAuctionsItemTypes = GetAuctionsItemTypes
 _G[addonID].GetBackgroundScannerEnabled = GetBackgroundScannerEnabled
 _G[addonID].SetBackgroundScannerEnabled = SetBackgroundScannerEnabled
