@@ -1,3 +1,6 @@
+	Alpha r55
+- Fixed bug in the "User defined" pricing model
+
 	Alpha r54
 - Added item tooltips to all tabs
 - Added "Resell" auction searcher

@@ -392,8 +392,10 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			if key == prevKey then newIndex = #itemPrices end
 		end
 		
+		pricesSetByModel = true
 		bidMoneySelector:SetCompareFunction(function(value) return InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
 		buyMoneySelector:SetCompareFunction(function(value) return InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
+		pricesSetByModel = false
 		
 		pricingModelSelector:SetValues(itemPrices)
 		if newIndex then pricingModelSelector:SetSelectedIndex(newIndex) end
