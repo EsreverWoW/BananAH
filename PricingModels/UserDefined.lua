@@ -1,3 +1,11 @@
+-- ***************************************************************************************************************************************************
+-- * PricingModels/UserDefined.lua                                                                                                                   *
+-- ***************************************************************************************************************************************************
+-- * Fixed pricing model                                                                                                                             *
+-- ***************************************************************************************************************************************************
+-- * 0.4.0  / 2012.06.17 / Baanano: Rewritten for 1.9                                                                                                *
+-- ***************************************************************************************************************************************************
+
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
@@ -6,11 +14,11 @@ local L = InternalInterface.Localization.L
 local PRICING_MODEL_ID = "fixed"
 local PRICING_MODEL_NAME = L["PricingModel/fixedName"]
 
-local function PricingModel(item, auctions, autoMode)
+local function PricingModel(callback, item, autoMode)
 	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
 
 	if not ok or not itemDetail then
-		return 0, 0
+		return callback(0, 0)
 	end
 	
 	local itemType = itemDetail.type
@@ -22,7 +30,7 @@ local function PricingModel(item, auctions, autoMode)
 	local autoPrices = InternalInterface.CharacterSettings.Posting.AutoPrices[itemType]
 	local prices = autoMode and autoPrices or savedPrices or { bid = 0, buy = 0, }
 	
-	return prices.bid, prices.buy
+	callback(prices.bid, prices.buy)
 end
 
 local function SaveConfig(itemType, bid, buyout, auto)

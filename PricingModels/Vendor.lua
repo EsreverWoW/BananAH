@@ -1,6 +1,16 @@
+-- ***************************************************************************************************************************************************
+-- * PricingModels/Vendor.lua                                                                                                                        *
+-- ***************************************************************************************************************************************************
+-- * Vendor pricing model                                                                                                                            *
+-- ***************************************************************************************************************************************************
+-- * 0.4.0  / 2012.06.17 / Baanano: Rewritten for 1.9                                                                                                *
+-- ***************************************************************************************************************************************************
+
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local MFloor = math.floor
+local MMin = math.min
 local L = InternalInterface.Localization.L
 
 local PRICING_MODEL_ID = "vendor"
@@ -16,16 +26,16 @@ local function DefaultConfig()
 	}
 end
 
-local function PricingModel(item, auctions, autoMode)
+local function PricingModel(callback, item, autoMode)
 	local ok, itemDetail = pcall(Inspect.Item.Detail, item)
 	
 	DefaultConfig()
 	
 	local sellPrice = ok and itemDetail and itemDetail.sell or 1
-	local bid = math.floor(sellPrice * InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].bidMultiplier)
-	local buyout = math.floor(sellPrice * InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].buyMultiplier)
+	local bid = MFloor(sellPrice * InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].bidMultiplier)
+	local buyout = MFloor(sellPrice * InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].buyMultiplier)
 	
-	return math.min(bid, buyout), buyout
+	callback(MMin(bid, buyout), buyout)
 end
 
 local function ConfigFrame(parent)

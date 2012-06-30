@@ -16,7 +16,7 @@ local function DefaultConfig()
 	}
 end
 
-local function PriceMatcher(item, activeAuctions, bid, buy)
+local function PriceMatcher(callback, item, bid, buy)
 	DefaultConfig()
 
 	if not InternalInterface.AccountSettings.PriceMatchers[PRICE_MATCHER_ID].enabled then
@@ -28,7 +28,7 @@ local function PriceMatcher(item, activeAuctions, bid, buy)
 	local sellPrice = ok and itemDetail and itemDetail.sell
 	
 	if not sellPrice then 
-		return bid, buy 
+		return callback(bid, buy)
 	end
 	
 	sellPrice = math.ceil(sellPrice / AUCTION_FEE_REDUCTION)
@@ -36,7 +36,7 @@ local function PriceMatcher(item, activeAuctions, bid, buy)
 	bid = math.max(bid, sellPrice)
 	buy = math.max(buy, sellPrice)
 	
-	return math.min(bid, buy), buy
+	callback(math.min(bid, buy), buy)
 end
 
 local function ConfigFrame(parent)

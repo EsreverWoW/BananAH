@@ -1,8 +1,8 @@
 Identifier = "LibCron"
 
-Version = "0.2-120419-21:00:27"
+Version = "0.3-120622-22:38:02"
 
-Email = "seebs@seebs.net"
+Email = "addon-LibCron@seebs.net"
 
 Dependencies = { LibGetOpt = { "optional", "before" } }
 
@@ -22,5 +22,5 @@ RunOnStartup = {
   "LibCron.lua"
 }
 
-Environment = { "1.8" }
+Environment = { "1.8", "1.9" }
 

@@ -14,37 +14,50 @@ local function DefaultConfig()
 	}
 end
 
-local function PriceMatcher(item, activeAuctions, bid, buy)
-	local bidsRange = {}
-	local buysRange = {}
-	
-	DefaultConfig()
-	local undercutRange = (InternalInterface.AccountSettings.PriceMatchers[PRICE_MATCHER_ID].range or 25) / 100
-
-	for auctionId, auctionData in pairs(activeAuctions) do
-		local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / bid)
-		if not auctionData.own and bidRelDev <= undercutRange and undercutRange > 0 then table.insert(bidsRange, auctionData.bidUnitPrice) end
-		local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / buy) or (undercutRange + 1)
-		if not auctionData.own and buyRelDev <= undercutRange and undercutRange > 0 then table.insert(buysRange, auctionData.buyoutUnitPrice) end
-	end
-
-	table.sort(bidsRange)
-	if #bidsRange > 0 then
-		bid = math.max(bidsRange[1] - 1, 1)
+local function PriceMatcher(callback, item, bid, buy)
+	local itemType
+	if item:sub(1, 1) == "I" then
+			itemType = item
 	else
-		bid = math.floor(bid * (1 + undercutRange))
+		local ok, itemDetail = pcall(IIDetail, item)
+		itemType = ok and itemDetail and itemDetail.type or nil
+	end
+	if not itemType then return callback() end
+	
+	local function CalcPrice(activeAuctions)
+		local bidsRange = {}
+		local buysRange = {}
+		
+		DefaultConfig()
+		local undercutRange = (InternalInterface.AccountSettings.PriceMatchers[PRICE_MATCHER_ID].range or 25) / 100
+
+		for auctionId, auctionData in pairs(activeAuctions) do
+			local bidRelDev = math.abs(1 - auctionData.bidUnitPrice / bid)
+			if not auctionData.own and bidRelDev <= undercutRange and undercutRange > 0 then table.insert(bidsRange, auctionData.bidUnitPrice) end
+			local buyRelDev = auctionData.buyoutUnitPrice and math.abs(1 - auctionData.buyoutUnitPrice / buy) or (undercutRange + 1)
+			if not auctionData.own and buyRelDev <= undercutRange and undercutRange > 0 then table.insert(buysRange, auctionData.buyoutUnitPrice) end
+		end
+
+		table.sort(bidsRange)
+		if #bidsRange > 0 then
+			bid = math.max(bidsRange[1] - 1, 1)
+		else
+			bid = math.floor(bid * (1 + undercutRange))
+		end
+
+		table.sort(buysRange)
+		if #buysRange > 0 then
+			buy = math.max(buysRange[1] - 1, 1)
+		else
+			buy = math.floor(buy * (1 + undercutRange))
+		end
+		
+		bid = math.min(bid, buy)	
+		
+		callback(bid, buy)
 	end
 
-	table.sort(buysRange)
-	if #buysRange > 0 then
-		buy = math.max(buysRange[1] - 1, 1)
-	else
-		buy = math.floor(buy * (1 + undercutRange))
-	end
-	
-	bid = math.min(bid, buy)	
-	
-	return bid, buy
+	_G[addonID].GetActiveAuctionData(CalcPrice, itemType)	
 end
 
 local function ConfigFrame(parent)

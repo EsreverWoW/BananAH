@@ -6,16 +6,19 @@ local function ResetMoneySelector(self)
 	local gold = math.floor(self.value / 100) % 100
 	local platinum = math.floor(self.value / 10000)
 
-	self.secretLabel:SetText(string.format("%d", silver))
-	self.silverInput:SetText(self.secretLabel:GetText())
+	local text = string.format("%d", silver)
+	self.secretLabel:SetText(text)
+	self.silverInput:SetText(text)
 	self.silverInput:SetWidth(self.secretLabel:GetWidth() + 10)	
 
-	self.secretLabel:SetText(string.format("%d", gold))
-	self.goldInput:SetText(self.secretLabel:GetText())
+	text = string.format("%d", gold)
+	self.secretLabel:SetText(text)
+	self.goldInput:SetText(text)
 	self.goldInput:SetWidth(self.secretLabel:GetWidth() + 10)	
 
-	self.secretLabel:SetText(string.format("%d", platinum))
-	self.platinumInput:SetText(self.secretLabel:GetText())
+	text = string.format("%d", platinum)
+	self.secretLabel:SetText(text)
+	self.platinumInput:SetText(text)
 	self.platinumInput:SetWidth(self.secretLabel:GetWidth() + 10)
 	
 	local color = { 0, 0, 0 }
@@ -97,7 +100,7 @@ local function GetValue(self)
 end
 
 local function SetValue(self, value)
-	value = math.min(math.max(value, 0), 999999999)
+	value = math.min(math.max(value or 0, 0), 999999999)
 	if value ~= self.value then
 		self.value = value
 		ResetMoneySelector(self)

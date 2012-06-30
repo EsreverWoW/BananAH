@@ -1,6 +1,16 @@
+-- ***************************************************************************************************************************************************
+-- * PricingModels/Average.lua                                                                                                                       *
+-- ***************************************************************************************************************************************************
+-- * Average pricing model                                                                                                                           *
+-- ***************************************************************************************************************************************************
+-- * 0.4.0  / 2012.06.17 / Baanano: Rewritten for 1.9                                                                                                *
+-- ***************************************************************************************************************************************************
+
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local IIDetail = Inspect.Item.Detail
+local OTime = os.time
 local L = InternalInterface.Localization.L
 
 local DAY_LENGTH = 86400
@@ -8,6 +18,7 @@ local PRICING_MODEL_ID = "mean"
 local PRICING_MODEL_NAME = L["PricingModel/meanName"]
 
 local configFrame = nil
+local memoizedPrices = {}
 
 local function DefaultConfig()
 	InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID] = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID] or
@@ -17,40 +28,77 @@ local function DefaultConfig()
 	}
 end
 
-local function PricingModel(item, auctions, autoMode)
+local function PricingModel(callback, item)
 	DefaultConfig()
 	
-	local weighted = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].weight or false
 	local days = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].days or 3
 	
-	local minTime = os.time() - DAY_LENGTH * days
+	local currentTime = OTime()
+	local itemType
+	if item:sub(1, 1) == "I" then
+			itemType = item
+	else
+		local ok, itemDetail = pcall(IIDetail, item)
+		itemType = ok and itemDetail and itemDetail.type or nil
+	end
+	if not itemType then return callback() end
 	
-	local bidT = 0
-	local bidW = 0
-	local buyT = 0
-	local buyW = 0
+	local memoizedPrice = memoizedPrices[itemType]
+	if memoizedPrice and memoizedPrice[1] >= currentTime then
+		return callback(memoizedPrice[2], memoizedPrice[3])
+	end
 	
-	for auctionId, auctionData in pairs(auctions) do
-		if auctionData.lastSeenTime >= minTime or (days <= 0 and auctionData.removedBeforeExpiration == nil) then
+	local function CalcAverage(auctions)
+		local weighted = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].weight or false
+
+		local bidT = 0
+		local bidW = 0
+		local buyT = 0
+		local buyW = 0
+		local expire = math.huge
+		
+		for auctionId, auctionData in pairs(auctions) do
 			local weight = weighted and auctionData.stack or 1
-			
+			expire = days > 0 and math.min(expire, auctionData.lastSeenTime) or expire
+				
 			bidT = bidT + auctionData.bidUnitPrice * weight
 			bidW = bidW + weight
-			
+				
 			if auctionData.buyoutUnitPrice then
 				buyT = buyT + auctionData.buyoutUnitPrice * weight
 				buyW = buyW + weight
 			end
 		end
+		
+		if bidW <= 0 then return callback() end
+		
+		buyT = buyW > 0 and math.floor(buyT / buyW) or nil
+		bidT = math.floor(bidT / bidW)
+		bidT = buyT and math.min(bidT, buyT) or bidT
+		
+		memoizedPrices[itemType] = { expire + DAY_LENGTH * days, bidT, buyT }
+		callback(bidT, buyT)
 	end
-	
-	if bidW <= 0 or buyW <= 0 then return nil end
-	
-	bidT = math.floor(bidT / bidW)
-	buyT = math.floor(buyT / buyW)
-	
-	return math.min(bidT, buyT), buyT
+
+	if days > 0 then
+		_G[addonID].GetAllAuctionData(CalcAverage, itemType, currentTime - DAY_LENGTH * days)
+	else
+		_G[addonID].GetActiveAuctionData(CalcAverage, itemType)
+	end
 end
+
+local function PurgeMemoizedPrices(scanType, totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions, totalItemTypes, newItemTypes, updatedItemTypes, removedItemTypes, modifiedItemTypes)
+	DefaultConfig()
+	local days = InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].days or 3
+
+	local itemTypes = {}
+	for itemType in pairs(newItemTypes) do itemTypes[itemType] = true end
+	for itemType in pairs(updatedItemTypes) do itemTypes[itemType] = true end
+	if days <= 0 then for itemType in pairs(removedItemTypes) do itemTypes[itemType] = true end end
+	
+	for itemType in pairs(itemTypes) do memoizedPrices[itemType] = nil end
+end
+table.insert(Event[addonID].AuctionData, { PurgeMemoizedPrices, addonID, "PricingModels." .. PRICING_MODEL_ID .. ".PurgeMemoizedPrices" })
 
 local function ConfigFrame(parent)
 	if configFrame then return configFrame end
@@ -83,10 +131,12 @@ local function ConfigFrame(parent)
 	
 	function weightedCheck.Event:CheckboxChange()
 		InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].weight = self:GetChecked()
+		memoizedPrices = {}
 	end
 	
 	function daysSlider.Event:PositionChanged(position)
 		InternalInterface.AccountSettings.PricingModels[PRICING_MODEL_ID].days = position
+		memoizedPrices = {}
 	end
 	
 	return configFrame

@@ -15,8 +15,9 @@ local function DefaultConfig()
 	}
 end
 
-local function PricingModel(item, auctions, autoMode, prices)
+local function PricingModel(callback, item, autoMode, prices)
 	DefaultConfig()
+	
 	local marketPricePricingModels = InternalInterface.AccountSettings.PriceScorers[PRICE_SCORER_ID].pricingWeights
 	
 	local marketPriceBidT = 0
@@ -33,20 +34,17 @@ local function PricingModel(item, auctions, autoMode, prices)
 		marketPriceBuyW = marketPriceBuyW + (priceData.buy and weight or 0)
 	end
 	
-	if marketPriceBidW <= 0 or marketPriceBuyW <= 0 then
-		return nil, nil
-	end
+	if marketPriceBidW <= 0 then return callback() end
 	
-	local bid = math.floor(marketPriceBidT / marketPriceBidW)
-	local buyout = marketPriceBuyW > 0 and math.floor(marketPriceBuyT / marketPriceBuyW) or 0
-	
-	return math.min(bid, buyout), buyout
+	local buyout = marketPriceBuyW > 0 and math.floor(marketPriceBuyT / marketPriceBuyW) or nil
+	local bid = math.min(math.floor(marketPriceBidT / marketPriceBidW), buyout or math.huge)
+	callback(bid, buyout)
 end
 
-local function PriceScorer(item, value, prices)
-	if not prices[PRICE_SCORER_ID] then return nil end
-	local buy = prices[PRICE_SCORER_ID].buy
-	return math.min(999, value * 100 / buy)
+local function PriceScorer(callback, item, value, prices)
+	if not prices[PRICE_SCORER_ID] then return callback() end
+	local buy = prices[PRICE_SCORER_ID].buy or 1
+	callback(math.min(999, value * 100 / buy))
 end
 
 local function ConfigFrame(parent)
@@ -61,7 +59,7 @@ local function ConfigFrame(parent)
 	
 	local modelFrames = {}
 	local function ResetModelFrames()
-		local pricingModels = InternalInterface.PricingModelService.GetAllPricingModels()
+		local pricingModels = InternalInterface.Modules.GetAllPricingModels()
 		
 		for pricingModelID, pricingModelData in pairs(pricingModels) do
 			if pricingModelID ~= "fixed" then

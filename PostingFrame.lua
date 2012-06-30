@@ -3,34 +3,46 @@ local addonID = addonInfo.identifier
 
 local AUCTION_FEE_REDUCTION = 0.95
 
-local REFRESH_ITEMS = 8
-local REFRESH_ITEMFILTER = 7
-local REFRESH_ITEM = 6
-local REFRESH_POSTING = 5
-local REFRESH_AUCTIONS = 4
-local REFRESH_AUCTION = 3
-local REFRESH_PRICES = 2
-local REFRESH_INFO = 1
-local REFRESH_NONE = 0
+local CABid = Command.Auction.Bid
+local CAScan = Command.Auction.Scan
+local CTooltip = Command.Tooltip
+local IInteraction = Inspect.Interaction
+local IIDetail = Inspect.Item.Detail
+local IIList = Inspect.Item.List
+local ITReal = Inspect.Time.Real
+local MCeil = math.ceil
+local MFloor = math.floor
+local MMax = math.max
+local MMin = math.min
+local SFind = string.find
+local SFormat = string.format
+local SLen = string.len
+local SUpper = string.upper
+local TInsert = table.insert
+local UICreateFrame = UI.CreateFrame
+local UISInventory = Utility.Item.Slot.Inventory
 
 local L = InternalInterface.Localization.L
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
-local GetOutput = InternalInterface.Utility.GetOutput
-local function out(value) GetOutput()(value) end
-local GetLocalizedDateString = InternalInterface.Localization.GetLocalizedDateString
+local RemainingTimeFormatter = InternalInterface.Utility.RemainingTimeFormatter
+local ScoreColorByScore = InternalInterface.UI.ScoreColorByScore
+local GetLocalizedDateString = InternalInterface.Utility.GetLocalizedDateString
+local out = InternalInterface.Output.Write
 
 -- ItemRenderer
 local function ItemRenderer(name, parent)
-	local itemCell = UI.CreateFrame("Texture", name, parent)
+	local itemCell = UICreateFrame("Texture", name, parent)
 	itemCell:SetTexture(addonID, "Textures/ItemRowBackground.png")
-	local itemTextureBackground = UI.CreateFrame("Frame", name .. ".ItemTextureBackground", itemCell)
-	local itemTexture = UI.CreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
-	local itemNameLabel = UI.CreateFrame("BShadowedText", name .. ".ItemNameLabel", itemCell)
-	local visibilityIcon = UI.CreateFrame("Texture", name .. ".VisibilityIcon", itemCell)
-	local itemStackLabel = UI.CreateFrame("Text", name .. ".ItemStackLabel", itemCell)
-	local autoPostingLabel = UI.CreateFrame("Text", name .. ".AutoPostingLabel", itemCell)
+
+	local itemTextureBackground = UICreateFrame("Frame", name .. ".ItemTextureBackground", itemCell)
+	local itemTexture = UICreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
+	local itemNameLabel = UICreateFrame("BShadowedText", name .. ".ItemNameLabel", itemCell)
+	local visibilityIcon = UICreateFrame("Texture", name .. ".VisibilityIcon", itemCell)
+	local itemStackLabel = UICreateFrame("Text", name .. ".ItemStackLabel", itemCell)
+	local autoPostingLabel = UICreateFrame("Text", name .. ".AutoPostingLabel", itemCell)
 	
 	local resetGridFunction = nil
+
 	
 	itemTextureBackground:SetPoint("CENTERLEFT", itemCell, "CENTERLEFT", 4, 0)
 	itemTextureBackground:SetWidth(50)
@@ -108,103 +120,54 @@ local function ItemRenderer(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		Command.Tooltip(visibilityIcon.itemType)
+		CTooltip(visibilityIcon.itemType)
 	end
 	
 	function itemTexture.Event:MouseOut()
-		Command.Tooltip(nil)
+		CTooltip(nil)
 	end	
 	
 	return itemCell
 end
 
--- AuctionRenderer
-local function AuctionCachedRenderer(name, parent)
-	local cachedCell = UI.CreateFrame("Texture", name, parent)
-	
-	cachedCell:SetTexture(addonID, "Textures/AuctionUnavailable.png")
-	cachedCell:SetVisible(false)
-	
-	function cachedCell:SetValue(key, value, width, extra)
-		self:SetVisible(not _G[addonID].GetAuctionCached(key))
-	end
-	
-	return cachedCell
-end
-Library.LibBInterface.RegisterGridRenderer("AuctionCachedRenderer", AuctionCachedRenderer)
-
-local function AuctionRenderer(name, parent)
-	local auctionCell = UI.CreateFrame("Frame", name, parent)
-	
-	function auctionCell:SetValue(key, value, width, extra)
-		self:ClearAll()
-		self:SetAllPoints()
-		self:SetLayer(self:GetParent():GetLayer() - 1)
-		self:SetBackgroundColor(unpack(extra.Color(value)))
-	end
-	
-	return auctionCell
-end
-Library.LibBInterface.RegisterGridRenderer("AuctionRenderer", AuctionRenderer)
-
--- MoneyRenderer
-local function MoneyRenderer(name, parent)
-	local renderCell = UI.CreateFrame("Frame", name, parent)
-	local moneyCell = UI.CreateFrame("BMoneyDisplay", name .. ".MoneyDisplay", renderCell)
-
-	moneyCell:SetPoint("CENTERLEFT", renderCell, "CENTERLEFT")
-	moneyCell:SetPoint("CENTERRIGHT", renderCell, "CENTERRIGHT")
-	moneyCell:SetHeight(20)
-	renderCell.moneyCell = moneyCell
-	
-	function renderCell:SetValue(key, value, width, extra)
-		self:SetWidth(width)
-		self.moneyCell:SetValue(value)
-	end
-	
-	return renderCell
-end
-Library.LibBInterface.RegisterGridRenderer("MoneyRenderer", MoneyRenderer)
-
-
 -- QueueManagerRenderer
 local function QueueManagerRenderer(name, parent)
-	local queueManagerCell = UI.CreateFrame("Texture", name, parent)
+	local queueManagerCell = UICreateFrame("Texture", name, parent)
 	queueManagerCell:SetTexture(addonID, "Textures/ItemRowBackground.png")
 	
-	local itemTextureBackground = UI.CreateFrame("Frame", name .. ".ItemTextureBackground", queueManagerCell)
+	local itemTextureBackground = UICreateFrame("Frame", name .. ".ItemTextureBackground", queueManagerCell)
+	local itemTexture = UICreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
+	local itemNameLabel = UICreateFrame("BShadowedText", name .. ".ItemNameLabel", queueManagerCell)
+	local itemStackLabel = UICreateFrame("Text", name .. ".ItemStackLabel", queueManagerCell)
+	local bidMoneyDisplay = UICreateFrame("BMoneyDisplay", name .. ".BidMoneyDisplay", queueManagerCell)
+	local buyMoneyDisplay = UICreateFrame("BMoneyDisplay", name .. ".BuyMoneyDisplay", queueManagerCell)
+
 	itemTextureBackground:SetPoint("CENTERLEFT", queueManagerCell, "CENTERLEFT", 4, 0)
 	itemTextureBackground:SetWidth(50)
 	itemTextureBackground:SetHeight(50)
 	queueManagerCell.itemTextureBackground = itemTextureBackground
 	
-	local itemTexture = UI.CreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
 	itemTexture:SetPoint("TOPLEFT", itemTextureBackground, "TOPLEFT", 1.5, 1.5)
 	itemTexture:SetPoint("BOTTOMRIGHT", itemTextureBackground, "BOTTOMRIGHT", -1.5, -1.5)
 	queueManagerCell.itemTexture = itemTexture
 	
-	local itemNameLabel = UI.CreateFrame("BShadowedText", name .. ".ItemNameLabel", queueManagerCell)
 	itemNameLabel:SetFontSize(13)
 	itemNameLabel:SetPoint("TOPLEFT", queueManagerCell, "TOPLEFT", 58, 0)
 	queueManagerCell.itemNameLabel = itemNameLabel	
 	
-	local itemStackLabel = UI.CreateFrame("Text", name .. ".ItemStackLabel", queueManagerCell)
 	itemStackLabel:SetPoint("BOTTOMLEFT", queueManagerCell, "BOTTOMLEFT", 58, 0)
 	queueManagerCell.itemStackLabel = itemStackLabel
 	
-	local bidMoneyDisplay = UI.CreateFrame("BMoneyDisplay", name .. ".BidMoneyDisplay", queueManagerCell)
 	bidMoneyDisplay:SetPoint("TOPLEFT", queueManagerCell, "BOTTOMRIGHT", -120, -40)
 	bidMoneyDisplay:SetPoint("BOTTOMRIGHT", queueManagerCell, "BOTTOMRIGHT", 0, -20)
 	queueManagerCell.bidMoneyDisplay = bidMoneyDisplay
 	
-	local buyMoneyDisplay = UI.CreateFrame("BMoneyDisplay", name .. ".BuyMoneyDisplay", queueManagerCell)
 	buyMoneyDisplay:SetPoint("TOPLEFT", queueManagerCell, "BOTTOMRIGHT", -120, -20)
 	buyMoneyDisplay:SetPoint("BOTTOMRIGHT", queueManagerCell, "BOTTOMRIGHT", 0, 0)
 	queueManagerCell.buyMoneyDisplay = buyMoneyDisplay
-	
-	
+
 	function queueManagerCell:SetValue(key, value, width, extra)
-		local itemDetail = Inspect.Item.Detail(value.itemType)
+		local itemDetail = IIDetail(value.itemType)
 		self:SetWidth(width)
 		self.itemTextureBackground:SetBackgroundColor(GetRarityColor(itemDetail.rarity))
 		self.itemTexture:SetTexture("Rift", itemDetail.icon)
@@ -212,13 +175,13 @@ local function QueueManagerRenderer(name, parent)
 		self.itemNameLabel:SetText(itemDetail.name)
 		self.itemNameLabel:SetFontColor(GetRarityColor(itemDetail.rarity))
 		
-		local fullStacks = math.floor(value.amount / value.stackSize)
+		local fullStacks = MFloor(value.amount / value.stackSize)
 		local oddStack = value.amount % value.stackSize
 		local stack = ""
 		if fullStacks > 0 and oddStack > 0 then
-			stack = string.format("%d x %d + %d", fullStacks, value.stackSize, oddStack)
+			stack = SFormat("%d x %d + %d", fullStacks, value.stackSize, oddStack)
 		elseif fullStacks > 0 then
-			stack = string.format("%d x %d", fullStacks, value.stackSize)
+			stack = SFormat("%d x %d", fullStacks, value.stackSize)
 		else
 			stack = tostring(oddStack)
 		end
@@ -229,91 +192,88 @@ local function QueueManagerRenderer(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		Command.Tooltip(self.itemType)
+		CTooltip(self.itemType)
 	end
 	
 	function itemTexture.Event:MouseOut()
-		Command.Tooltip(nil)
+		CTooltip(nil)
 	end
-	
 	
 	return queueManagerCell
 end
 
 -- PostingFrame
 function InternalInterface.UI.PostingFrame(name, parent)
-	local postingFrame = UI.CreateFrame("Frame", name, parent)
+	local postingFrame = UICreateFrame("Frame", name, parent)
 	
-	local itemGrid = UI.CreateFrame("BDataGrid", name .. ".ItemGrid", postingFrame)
-	local filterFrame = UI.CreateFrame("Frame", name .. ".FilterFrame", itemGrid.externalPanel:GetContent())
-	local filterTextPanel = UI.CreateFrame("BPanel", filterFrame:GetName() .. ".FilterTextPanel", filterFrame)
-	local visibilityIcon = UI.CreateFrame("Texture", filterFrame:GetName() .. ".VisibilityIcon", filterTextPanel:GetContent())
-	local filterTextField = UI.CreateFrame("RiftTextfield", filterFrame:GetName() .. ".FilterTextField", filterTextPanel:GetContent())
+	local itemGrid = UICreateFrame("BDataGrid", name .. ".ItemGrid", postingFrame)
+	local filterFrame = UICreateFrame("Frame", name .. ".FilterFrame", itemGrid.externalPanel:GetContent())
+	local filterTextPanel = UICreateFrame("BPanel", filterFrame:GetName() .. ".FilterTextPanel", filterFrame)
+	local visibilityIcon = UICreateFrame("Texture", filterFrame:GetName() .. ".VisibilityIcon", filterTextPanel:GetContent())
+	local filterTextField = UICreateFrame("RiftTextfield", filterFrame:GetName() .. ".FilterTextField", filterTextPanel:GetContent())
 	
-	local auctionGrid = UI.CreateFrame("BDataGrid", name .. ".AuctionGrid", postingFrame)
-	local controlFrame = UI.CreateFrame("Frame", name .. ".ControlFrame", auctionGrid.externalPanel:GetContent())
-	local buyButton = UI.CreateFrame("RiftButton", name .. ".BuyButton", controlFrame)
-	local bidButton = UI.CreateFrame("RiftButton", name .. ".BidButton", controlFrame)
-	local auctionMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".AuctionMoneySelector", controlFrame)
-	local noBidLabel = UI.CreateFrame("BShadowedText", name .. ".NoBidLabel", controlFrame)
-	local refreshPanel = UI.CreateFrame("BPanel", name .. ".RefreshPanel", controlFrame)
-	local refreshButton = UI.CreateFrame("Texture", name .. ".RefreshButton", refreshPanel:GetContent())
-	local refreshText = UI.CreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())
+	local auctionGrid = UICreateFrame("BDataGrid", name .. ".AuctionGrid", postingFrame)
+	local controlFrame = UICreateFrame("Frame", name .. ".ControlFrame", auctionGrid.externalPanel:GetContent())
+	local buyButton = UICreateFrame("RiftButton", name .. ".BuyButton", controlFrame)
+	local bidButton = UICreateFrame("RiftButton", name .. ".BidButton", controlFrame)
+	local auctionMoneySelector = UICreateFrame("BMoneySelector", name .. ".AuctionMoneySelector", controlFrame)
+	local noBidLabel = UICreateFrame("BShadowedText", name .. ".NoBidLabel", controlFrame)
+	local refreshPanel = UICreateFrame("BPanel", name .. ".RefreshPanel", controlFrame)
+	local refreshButton = UICreateFrame("Texture", name .. ".RefreshButton", refreshPanel:GetContent())
+	local refreshText = UICreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())
 	
-	local itemTexturePanel = UI.CreateFrame("BPanel", name .. ".ItemTexturePanel", postingFrame)
-	local itemTexture = UI.CreateFrame("Texture", name .. ".ItemTexture", itemTexturePanel:GetContent())
-	local itemNameLabel = UI.CreateFrame("BShadowedText", name .. ".ItemNameLabel", postingFrame)
-	local itemStackLabel = UI.CreateFrame("BShadowedText", name .. ".ItemStackLabel", postingFrame)
-	local pricingModelLabel = UI.CreateFrame("BShadowedText", name .. ".PricingModelLabel", postingFrame)
-	local stackSizeLabel = UI.CreateFrame("BShadowedText", name .. ".StackSizeLabel", postingFrame)
-	local stackNumberLabel = UI.CreateFrame("BShadowedText", name .. ".StackNumberLabel", postingFrame)
-	local bidLabel = UI.CreateFrame("BShadowedText", name .. ".BidLabel", postingFrame)
-	local buyLabel = UI.CreateFrame("BShadowedText", name .. ".BuyLabel", postingFrame)
-	local durationLabel = UI.CreateFrame("BShadowedText", name .. ".DurationLabel", postingFrame)
-	local pricingModelSelector = UI.CreateFrame("BDropdown", name .. ".PricingModelSelector", postingFrame)
-	local priceMatchingCheck = UI.CreateFrame("RiftCheckbox", name .. ".PriceMatchingCheck", postingFrame)
-	local priceMatchingLabel = UI.CreateFrame("BShadowedText", name .. ".PriceMatchingLabel", postingFrame)
-	local stackSizeSelector = UI.CreateFrame("BSlider", name .. ".StackSizeSelector", postingFrame)
-	local stackNumberSelector = UI.CreateFrame("BSlider", name .. ".StackNumberSelector", postingFrame)
-	local bidMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".BidMoneySelector", postingFrame)
-	local bindPricesCheck = UI.CreateFrame("RiftCheckbox", name .. ".BindPricesCheck", postingFrame)
-	local bindPricesLabel = UI.CreateFrame("BShadowedText", name .. ".BindPricesLabel", postingFrame)
-	local buyMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".BuyMoneySelector", postingFrame)
-	local buyPriceWarning = UI.CreateFrame("BShadowedText", name .. ".BuyPriceWarning", postingFrame)
-	local postButton = UI.CreateFrame("RiftButton", name .. ".PostButton", postingFrame)
-	local durationTimeLabel = UI.CreateFrame("BShadowedText", name .. ".DurationTimeLabel", postingFrame)
-	local durationSlider = UI.CreateFrame("RiftSlider", name .. ".DurationSlider", postingFrame)
-	local autoPostButton = UI.CreateFrame("RiftButton", name .. ".AutoPostButton", postingFrame)
-	local clearButton = UI.CreateFrame("RiftButton", name .. ".ClearButton", postingFrame)
+	local itemTexturePanel = UICreateFrame("BPanel", name .. ".ItemTexturePanel", postingFrame)
+	local itemTexture = UICreateFrame("Texture", name .. ".ItemTexture", itemTexturePanel:GetContent())
+	local itemNameLabel = UICreateFrame("BShadowedText", name .. ".ItemNameLabel", postingFrame)
+	local itemStackLabel = UICreateFrame("BShadowedText", name .. ".ItemStackLabel", postingFrame)
+	local pricingModelLabel = UICreateFrame("BShadowedText", name .. ".PricingModelLabel", postingFrame)
+	local stackSizeLabel = UICreateFrame("BShadowedText", name .. ".StackSizeLabel", postingFrame)
+	local stackNumberLabel = UICreateFrame("BShadowedText", name .. ".StackNumberLabel", postingFrame)
+	local bidLabel = UICreateFrame("BShadowedText", name .. ".BidLabel", postingFrame)
+	local buyLabel = UICreateFrame("BShadowedText", name .. ".BuyLabel", postingFrame)
+	local durationLabel = UICreateFrame("BShadowedText", name .. ".DurationLabel", postingFrame)
+	local pricingModelSelector = UICreateFrame("BDropdown", name .. ".PricingModelSelector", postingFrame)
+	local priceMatchingCheck = UICreateFrame("RiftCheckbox", name .. ".PriceMatchingCheck", postingFrame)
+	local priceMatchingLabel = UICreateFrame("BShadowedText", name .. ".PriceMatchingLabel", postingFrame)
+	local stackSizeSelector = UICreateFrame("BSlider", name .. ".StackSizeSelector", postingFrame)
+	local stackNumberSelector = UICreateFrame("BSlider", name .. ".StackNumberSelector", postingFrame)
+	local bidMoneySelector = UICreateFrame("BMoneySelector", name .. ".BidMoneySelector", postingFrame)
+	local bindPricesCheck = UICreateFrame("RiftCheckbox", name .. ".BindPricesCheck", postingFrame)
+	local bindPricesLabel = UICreateFrame("BShadowedText", name .. ".BindPricesLabel", postingFrame)
+	local buyMoneySelector = UICreateFrame("BMoneySelector", name .. ".BuyMoneySelector", postingFrame)
+	local buyPriceWarning = UICreateFrame("BShadowedText", name .. ".BuyPriceWarning", postingFrame)
+	local postButton = UICreateFrame("RiftButton", name .. ".PostButton", postingFrame)
+	local durationTimeLabel = UICreateFrame("BShadowedText", name .. ".DurationTimeLabel", postingFrame)
+	local durationSlider = UICreateFrame("RiftSlider", name .. ".DurationSlider", postingFrame)
+	local autoPostButton = UICreateFrame("RiftButton", name .. ".AutoPostButton", postingFrame)
+	local clearButton = UICreateFrame("RiftButton", name .. ".ClearButton", postingFrame)
 	
-	local queuePanel = UI.CreateFrame("BPanel", name .. ".QueuePanel", postingFrame)
-	local pauseResumeButton = UI.CreateFrame("RiftButton", name .. ".PauseResumeButton", queuePanel:GetContent())
-	local queueStatusLabel = UI.CreateFrame("BShadowedText", name .. ".QueueStatusLabel", queuePanel:GetContent())
-	local queueStatus = UI.CreateFrame("BShadowedText", name .. ".QueueStatus", queuePanel:GetContent())
-	local showHideButton = UI.CreateFrame("RiftButton", name .. ".ShowHideButton", queuePanel:GetContent())
-	local queueGrid = UI.CreateFrame("BDataGrid", name .. ".QueueGrid", postingFrame)
-	local queueClearButton = UI.CreateFrame("RiftButton", name .. ".QueueClearButton", queueGrid.externalPanel:GetContent())
-	local queueCancelButton = UI.CreateFrame("RiftButton", name .. ".QueueCancelButton", queueGrid.externalPanel:GetContent())
+	local queuePanel = UICreateFrame("BPanel", name .. ".QueuePanel", postingFrame)
+	local pauseResumeButton = UICreateFrame("RiftButton", name .. ".PauseResumeButton", queuePanel:GetContent())
+	local queueStatusLabel = UICreateFrame("BShadowedText", name .. ".QueueStatusLabel", queuePanel:GetContent())
+	local queueStatus = UICreateFrame("BShadowedText", name .. ".QueueStatus", queuePanel:GetContent())
+	local showHideButton = UICreateFrame("RiftButton", name .. ".ShowHideButton", queuePanel:GetContent())
+	local queueGrid = UICreateFrame("BDataGrid", name .. ".QueueGrid", postingFrame)
+	local queueClearButton = UICreateFrame("RiftButton", name .. ".QueueClearButton", queueGrid.externalPanel:GetContent())
+	local queueCancelButton = UICreateFrame("RiftButton", name .. ".QueueCancelButton", queueGrid.externalPanel:GetContent())
 	
-	local infoStacksLabel = UI.CreateFrame("BShadowedText", name .. ".InfoStacksLabel", postingFrame)
-	local totalBidLabel = UI.CreateFrame("BShadowedText", name .. ".TotalBidLabel", postingFrame)
-	local totalBuyLabel = UI.CreateFrame("BShadowedText", name .. ".TotalBuyLabel", postingFrame)
-	local depositLabel = UI.CreateFrame("BShadowedText", name .. ".DepositLabel", postingFrame)
-	local discountBidLabel = UI.CreateFrame("BShadowedText", name .. ".DiscountBidLabel", postingFrame)
-	local discountBuyLabel = UI.CreateFrame("BShadowedText", name .. ".DiscountBuyLabel", postingFrame)
-	local infoStacks = UI.CreateFrame("Text", name .. ".InfoStacks", postingFrame)
-	local infoTotalBid = UI.CreateFrame("BMoneyDisplay", name .. ".InfoTotalBid", postingFrame)
-	local infoTotalBuy = UI.CreateFrame("BMoneyDisplay", name .. ".InfoTotalBuy", postingFrame)
-	local infoDeposit = UI.CreateFrame("Text", name .. ".InfoDeposit", postingFrame)
-	local infoDiscountBid = UI.CreateFrame("BMoneyDisplay", name .. "IinfoDiscountBid", postingFrame)
-	local infoDiscountBuy = UI.CreateFrame("BMoneyDisplay", name .. "IinfoDiscountBuy", postingFrame)
+	local infoStacksLabel = UICreateFrame("BShadowedText", name .. ".InfoStacksLabel", postingFrame)
+	local totalBidLabel = UICreateFrame("BShadowedText", name .. ".TotalBidLabel", postingFrame)
+	local totalBuyLabel = UICreateFrame("BShadowedText", name .. ".TotalBuyLabel", postingFrame)
+	local depositLabel = UICreateFrame("BShadowedText", name .. ".DepositLabel", postingFrame)
+	local discountBidLabel = UICreateFrame("BShadowedText", name .. ".DiscountBidLabel", postingFrame)
+	local discountBuyLabel = UICreateFrame("BShadowedText", name .. ".DiscountBuyLabel", postingFrame)
+	local infoStacks = UICreateFrame("Text", name .. ".InfoStacks", postingFrame)
+	local infoTotalBid = UICreateFrame("BMoneyDisplay", name .. ".InfoTotalBid", postingFrame)
+	local infoTotalBuy = UICreateFrame("BMoneyDisplay", name .. ".InfoTotalBuy", postingFrame)
+	local infoDeposit = UICreateFrame("Text", name .. ".InfoDeposit", postingFrame)
+	local infoDiscountBid = UICreateFrame("BMoneyDisplay", name .. "IinfoDiscountBid", postingFrame)
+	local infoDiscountBuy = UICreateFrame("BMoneyDisplay", name .. "IinfoDiscountBuy", postingFrame)
 	
 	local visibilityMode = false
+	local itemPrices = {}
 	local autoPostingMode = false
 	local pricesSetByModel = false
-	local refreshMode = REFRESH_NONE
-	local refreshTask
-	local itemPrices = {}
 
 	local function AuctionRightClick(self)
 		local data = self.dataValue
@@ -321,8 +281,8 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		local buy = data and data.buyoutUnitPrice or 0
 		if bid then
 			if not data.own then
-				bid = math.max(bid - 1, 1)
-				buy = buy == 0 and buy or math.max(buy - 1, 1)
+				bid = MMax(bid - 1, 1)
+				buy = buy == 0 and buy or MMax(buy - 1, 1)
 			end	
 			bidMoneySelector:SetValue(bid)
 			buyMoneySelector:SetValue(buy)
@@ -330,138 +290,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		self.Event.LeftClick(self)
 	end
 
-	local function ResetItems()
-		local slot = Utility.Item.Slot.Inventory()
-		local items = Inspect.Item.List(slot)
-		
-		local itemTypeTable = {}
-		for _, itemID in pairs(items) do repeat
-			if type(itemID) == "boolean" then break end 
-			local ok, itemDetail = pcall(Inspect.Item.Detail, itemID)
-			if not ok or not itemDetail or itemDetail.bound then break end
-			
-			local itemType = itemDetail.type
-			itemTypeTable[itemType] = itemTypeTable[itemType] or { name = itemDetail.name, icon = itemDetail.icon, rarity = itemDetail.rarity, stack = 0, stackMax = itemDetail.stackMax, sell = itemDetail.sell, items = {} }
-			itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
-			table.insert(itemTypeTable[itemType].items, itemID)
-		until true end
-		
-		local itemTable = {}
-		for itemType, itemData in pairs(itemTypeTable) do
-			if itemData.stack > 0 and #itemData.items > 0 then
-				itemTable[itemData.items[1]] = itemData
-				itemTable[itemData.items[1]].itemType = itemType
-				itemData.items = nil
-			end
-		end
-		
-		itemGrid:SetData(itemTable)
-	end		
-
-	local function UpdateAuctions(item, itemInfo)
-		local lastUpdate = nil
-		if item then
-			local auctions = nil
-			auctions, lastUpdate = _G[addonID].GetActiveAuctionData(item)
-			auctionGrid:SetData(auctions)
-			for index, row in ipairs(auctionGrid.rows) do
-				row.Event.RightClick = AuctionRightClick
-			end
-		else
-			auctionGrid:SetData(nil)
-		end
-		
-		if (lastUpdate or 0) <= 0 then
-			refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. L["PostingPanel/lastUpdateDateFallback"])
-		else
-			refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. GetLocalizedDateString(L["PostingPanel/lastUpdateDateFormat"], lastUpdate))
-		end
-	end
-
-	local function UpdatePrices(item)
-		local _, prevKey = pricingModelSelector:GetSelectedValue()
-		prevKey = prevKey and prevKey.key or nil
-
-		local pricings = item and _G[addonID].GetPricings(item, autoPostingMode) or {}
-
-		itemPrices = {}
-		local newIndex = nil
-		for key, value in pairs(pricings) do
-			value.key = key
-			table.insert(itemPrices, value)
-			if key == prevKey then newIndex = #itemPrices end
-		end
-		
-		pricesSetByModel = true
-		bidMoneySelector:SetCompareFunction(function(value) return InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
-		buyMoneySelector:SetCompareFunction(function(value) return InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
-		pricesSetByModel = false
-		
-		pricingModelSelector:SetValues(itemPrices)
-		if newIndex then pricingModelSelector:SetSelectedIndex(newIndex) end
-	end
-
-	local function RefreshAuctionButtons()
-		local auctionSelected = false
-		local auctionInteraction = Inspect.Interaction("auction")
-		local selectedAuctionCached = false
-		local selectedAuctionBid = false
-		local selectedAuctionBuy = false
-		local highestBidder = false
-		local seller = false
-		local bidPrice = 1
-		
-		local selectedAuctionID, selectedAuctionData = auctionGrid:GetSelectedData()
-		if selectedAuctionID and selectedAuctionData then
-			auctionSelected = true
-			selectedAuctionCached = _G[addonID].GetAuctionCached(selectedAuctionID) or false
-			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
-			selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
-			local ok, auctionData = pcall(Inspect.Auction.Detail, selectedAuctionID)
-			if ok and auctionData and auctionData.bidder then highestBidder = true end
-			seller = selectedAuctionData.own
-			bidPrice = selectedAuctionData.bidPrice
-		end
-		
-		refreshButton.enabled = auctionInteraction
-		refreshButton:SetTexture(addonID, auctionInteraction and "Textures/RefreshMiniOff.png" or "Textures/RefreshMiniDisabled.png")
-		bidButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBid and not highestBidder and not seller)
-		buyButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBuyout and not seller)
-
-		if not auctionSelected then
-			noBidLabel:SetText(L["PostingPanel/bidErrorNoAuction"])
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
-		elseif not selectedAuctionCached then
-			noBidLabel:SetText(L["PostingPanel/bidErrorNotCached"])
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
-		elseif not selectedAuctionBid then
-			noBidLabel:SetText(L["PostingPanel/bidErrorBidEqualBuy"])
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
-		elseif seller then
-			noBidLabel:SetText(L["PostingPanel/bidErrorSeller"])
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
-		elseif highestBidder then
-			noBidLabel:SetText(L["PostingPanel/bidErrorHighestBidder"])
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
-		elseif not auctionInteraction then
-			noBidLabel:SetText(L["PostingPanel/bidErrorNoAuctionHouse"])
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
-		else
-			auctionMoneySelector:SetValue(bidPrice + 1)
-			auctionMoneySelector:SetVisible(true)
-			noBidLabel:SetVisible(false)
-		end
-	end
-
-	local function UpdatePostingConfig(item, itemInfo)
-		local activatePostingControls = false
-
+	local function UpdatePostingConfig(item, itemInfo, newIndex)
 		if item and itemInfo then
 			local defaultConfig = InternalInterface.AccountSettings.Posting.DefaultConfig
 			local itemConfig = InternalInterface.CharacterSettings.Posting.ItemConfig[itemInfo.itemType]
@@ -469,25 +298,28 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			local config = autoPostingMode and autoConfig or itemConfig or defaultConfig
 			
 			local pricingModelOrder = config.pricingModelOrder
+
+			local pricingModelIndex = newIndex
 			
-			if type(pricingModelOrder) == "string" then
-				pricingModelOrder = { pricingModelOrder }
-				for _, pricingModelId in ipairs(defaultConfig.pricingModelOrder) do
-					if pricingModelId ~= pricingModelOrder[1] then
-						table.insert(pricingModelOrder, pricingModelId)
+			if not pricingModelIndex then
+				if type(pricingModelOrder) == "string" then
+					pricingModelOrder = { pricingModelOrder }
+					for _, pricingModelId in ipairs(defaultConfig.pricingModelOrder) do
+						if pricingModelId ~= pricingModelOrder[1] then
+							TInsert(pricingModelOrder, pricingModelId)
+						end
 					end
 				end
-			end
-			
-			local pricingModelIndex = nil
-			for _, pricingModelId in ipairs(pricingModelOrder) do
-				for index, price in ipairs(itemPrices) do
-					if price.key == pricingModelId then
-						pricingModelIndex = index
-						break
+				
+				for _, pricingModelId in ipairs(pricingModelOrder) do
+					for index, price in ipairs(itemPrices) do
+						if price.key == pricingModelId then
+							pricingModelIndex = index
+							break
+						end
 					end
+					if pricingModelIndex then break end
 				end
-				if pricingModelIndex then break end
 			end
 
 			itemTexturePanel:GetContent():SetBackgroundColor(GetRarityColor(itemInfo.rarity))
@@ -497,7 +329,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			itemNameLabel:SetText(itemInfo.name)
 			itemNameLabel:SetFontColor(GetRarityColor(itemInfo.rarity))
 			itemNameLabel:SetVisible(true)
-			itemStackLabel:SetText(string.format(L["PostingPanel/labelItemStack"], itemInfo.adjustedStack))
+			itemStackLabel:SetText(SFormat(L["PostingPanel/labelItemStack"], itemInfo.adjustedStack))
 			itemStackLabel:SetVisible(true)
 			pricingModelSelector:SetEnabled(true)
 			pricingModelSelector:SetSelectedIndex(pricingModelIndex or 0)
@@ -536,23 +368,173 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		end
 	end	
 	
-	local function ApplyPricingModel(item)
-		local _, value = pricingModelSelector:GetSelectedValue()
-
-		pricesSetByModel = true
-		if item and value then
-			local bid, buy = value.bid, value.buy
-			if priceMatchingCheck:GetChecked() and itemPrices[pricingModelSelector:GetSelectedValue()].key ~= "fixed" then
-				bid, buy = _G[addonID].MatchPrice(item, bid, buy)
+	local function UpdatePrices(item, itemInfo)
+		local _, prevKey = pricingModelSelector:GetSelectedValue()
+		prevKey = prevKey and prevKey.key or nil
+		itemPrices = {}
+		
+		local function ProcessPricings(pricings)
+			local newIndex = nil
+			
+			for key, value in pairs(pricings) do
+				value.key = key
+				TInsert(itemPrices, value)
+				if key == prevKey then newIndex = #itemPrices end
 			end
 			
+			-- pricesSetByModel = true
+			-- bidMoneySelector:SetCompareFunction(function(value) return ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
+			-- buyMoneySelector:SetCompareFunction(function(value) return ScoreColorByScore(_G[addonID].ScorePrice(item, value, pricings)) end)
+			-- pricesSetByModel = false
+			
+			pricingModelSelector:SetValues(itemPrices)
+			UpdatePostingConfig(item, itemInfo, newIndex)
+		end
+
+		if item and itemInfo then
+			_G[addonID].GetPricings(ProcessPricings, itemInfo.itemType, autoPostingMode)
+		else
+			ProcessPricings({})
+		end
+	end
+
+	local function ResetAuctionGrid(auctions, lastUpdate)
+		auctionGrid:SetData(auctions)
+		for index, row in ipairs(auctionGrid.rows) do
+			row.Event.RightClick = AuctionRightClick
+		end
+		if (lastUpdate or 0) <= 0 then
+			refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. L["PostingPanel/lastUpdateDateFallback"])
+		else
+			refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. GetLocalizedDateString(L["PostingPanel/lastUpdateDateFormat"], lastUpdate))
+		end		
+	end
+	
+	local function ResetAuctions()
+		auctionGrid:SetData({})
+		UpdatePrices()
+
+		local itemID, itemData = itemGrid:GetSelectedData()
+		if itemData then
+			_G[addonID].GetActiveAuctionsScored(ResetAuctionGrid, itemData.itemType)
+			UpdatePrices(itemID, itemData)
+		end
+	end	
+	
+	local function ResetItems()
+		if not postingFrame:GetVisible() then return end
+		local slot = UISInventory()
+		local items = IIList(slot)
+		
+		local itemTypeTable = {}
+		for _, itemID in pairs(items) do repeat
+			if type(itemID) == "boolean" then break end 
+			local ok, itemDetail = pcall(IIDetail, itemID)
+			if not ok or not itemDetail or itemDetail.bound then break end
+			
+			local itemType = itemDetail.type
+			itemTypeTable[itemType] = itemTypeTable[itemType] or { name = itemDetail.name, icon = itemDetail.icon, rarity = itemDetail.rarity, stack = 0, stackMax = itemDetail.stackMax, sell = itemDetail.sell, items = {} }
+			itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
+			TInsert(itemTypeTable[itemType].items, itemID)
+		until true end
+		
+		local itemTable = {}
+		for itemType, itemData in pairs(itemTypeTable) do
+			if itemData.stack > 0 and #itemData.items > 0 then
+				itemTable[itemData.items[1]] = itemData
+				itemTable[itemData.items[1]].itemType = itemType
+				itemData.items = nil
+			end
+		end
+
+		local key = itemGrid:GetSelectedData()
+		itemGrid:SetData(nil)
+		itemGrid:SetData(itemTable)
+		if key then
+			itemGrid.lastSelectedKey = key
+			itemGrid:ForceUpdate()
+			ResetAuctions()
+		end
+	end		
+
+	local function RefreshAuctionButtons()
+		local auctionSelected = false
+		local auctionInteraction = IInteraction("auction")
+		local selectedAuctionCached = false
+		local selectedAuctionBid = false
+		local selectedAuctionBuy = false
+		local highestBidder = false
+		local seller = false
+		local bidPrice = 1
+		
+		local selectedAuctionID, selectedAuctionData = auctionGrid:GetSelectedData()
+		if selectedAuctionID and selectedAuctionData then
+			auctionSelected = true
+			selectedAuctionCached = _G[addonID].GetAuctionCached(selectedAuctionID) or false
+			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
+			selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
+			highestBidder = (selectedAuctionData.ownBidded or 0) == selectedAuctionData.bidPrice
+			seller = selectedAuctionData.own
+			bidPrice = selectedAuctionData.bidPrice
+		end
+		
+		refreshButton.enabled = auctionInteraction
+		refreshButton:SetTexture(addonID, auctionInteraction and "Textures/RefreshMiniOff.png" or "Textures/RefreshMiniDisabled.png")
+		bidButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBid and not highestBidder and not seller)
+		buyButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBuyout and not seller)
+
+		if not auctionSelected then
+			noBidLabel:SetText(L["PostingPanel/bidErrorNoAuction"])
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		elseif not selectedAuctionCached then
+			noBidLabel:SetText(L["PostingPanel/bidErrorNotCached"])
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		elseif not selectedAuctionBid then
+			noBidLabel:SetText(L["PostingPanel/bidErrorBidEqualBuy"])
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		elseif seller then
+			noBidLabel:SetText(L["PostingPanel/bidErrorSeller"])
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		elseif highestBidder then
+			noBidLabel:SetText(L["PostingPanel/bidErrorHighestBidder"])
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		elseif not auctionInteraction then
+			noBidLabel:SetText(L["PostingPanel/bidErrorNoAuctionHouse"])
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		else
+			auctionMoneySelector:SetValue(bidPrice + 1)
+			auctionMoneySelector:SetVisible(true)
+			noBidLabel:SetVisible(false)
+		end
+	end	
+	
+	local function ApplyPricingModel()
+		local item, itemInfo = itemGrid:GetSelectedData()
+		local _, value = pricingModelSelector:GetSelectedValue()
+
+		local function PriceMatched(bid, buy)
+			pricesSetByModel = true
 			bidMoneySelector:SetValue(bid)
 			buyMoneySelector:SetValue(buy)
+			pricesSetByModel = false
+		end
+		
+		if item and itemInfo and value then
+			local bid, buy = value.bid, value.buy
+			if priceMatchingCheck:GetChecked() and itemPrices[pricingModelSelector:GetSelectedValue()].key ~= "fixed" then
+				_G[addonID].MatchPrice(PriceMatched, itemInfo.itemType, bid, buy)
+			else
+				PriceMatched(bid, buy)
+			end
 		else
-			bidMoneySelector:SetValue(0)
-			buyMoneySelector:SetValue(0)
+			PriceMatched(0, 0)
 		end	
-		pricesSetByModel = false
 	end
 	
 	local function UpdateInfo()
@@ -561,8 +543,8 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			local amount = itemInfo.adjustedStack
 			local stackSize = stackSizeSelector:GetPosition()
 			local stacks = stackNumberSelector:GetPosition()
-			amount = math.min(amount, stackSize * stacks)
-			local fullStacks = math.floor(amount / stackSize)
+			amount = MMin(amount, stackSize * stacks)
+			local fullStacks = MFloor(amount / stackSize)
 			local oddStackSize = amount % stackSize
 			local stackText = nil
 			if fullStacks > 0 then stackText = fullStacks .. " x " .. stackSize end
@@ -587,57 +569,8 @@ function InternalInterface.UI.PostingFrame(name, parent)
 			infoDiscountBuy:SetValue(0)
 		end
 	end
+
 	
-	local function SetRefreshMode(mode)
-		if mode > REFRESH_NONE and refreshMode <= REFRESH_NONE and refreshTask then
-			Library.LibCron.resume(refreshTask)
-		end
-		refreshMode = math.max(mode, refreshMode)
-	end
-
-	local function DoRefresh()
-		if not postingFrame:GetVisible() then return end
-	
-		if refreshMode >= REFRESH_ITEMS then
-			ResetItems()
-		end
-		
-		if refreshMode == REFRESH_ITEMFILTER then
-			itemGrid:ForceUpdate()
-		end
-		
-		local item, itemData = itemGrid:GetSelectedData()
-		
-		if refreshMode >= REFRESH_ITEM then
-			UpdatePrices(item)
-		end
-		
-		if refreshMode >= REFRESH_POSTING then
-			UpdatePostingConfig(item, itemData)
-		end
-
-		if refreshMode >= REFRESH_AUCTIONS then
-			UpdateAuctions(item, itemData)
-			UpdatePrices(item)
-		end
-		
-		if refreshMode >= REFRESH_AUCTION then
-			RefreshAuctionButtons()
-		end
-		
-		if refreshMode >= REFRESH_PRICES then
-			ApplyPricingModel(item)
-		end
-		
-		if refreshMode >= REFRESH_INFO then
-			UpdateInfo()
-		end
-
-		refreshMode = REFRESH_NONE
-		if refreshTask then Library.LibCron.pause(refreshTask) end
-	end
-	refreshTask = Library.LibCron.new(addonID, 0, true, true, DoRefresh)
-	Library.LibCron.pause(refreshTask)
 
 	itemGrid:SetPoint("TOPLEFT", postingFrame, "TOPLEFT", 5, 5)
 	itemGrid:SetPoint("BOTTOMRIGHT", postingFrame, "BOTTOMLEFT", 295, -5)
@@ -647,16 +580,16 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	itemGrid:SetRowMargin(2)
 	itemGrid:SetUnselectedRowBackgroundColor(0.2, 0.15, 0.2, 1)
 	itemGrid:SetSelectedRowBackgroundColor(0.6, 0.45, 0.6, 1)
-	itemGrid:AddColumn("Item", 248, ItemRenderer, function(a, b) local items = itemGrid:GetData() return string.upper(items[a].name) < string.upper(items[b].name) end, nil, { ResetGridFunction = function() SetRefreshMode(REFRESH_ITEMFILTER) end })
+	itemGrid:AddColumn("Item", 248, ItemRenderer, "name", nil, { ResetGridFunction = function() itemGrid:ForceUpdate() end })
 	local function ItemGridFilter(key, value)
 		local rarity = value.rarity or "common"
 		rarity = ({ sellable = 1, common = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, quest = 8 })[rarity] or 1
 		local minRarity = InternalInterface.AccountSettings.Posting.rarityFilter or 1
 		if rarity < minRarity then return false end
 
-		local filterText = string.upper(filterTextField:GetText())
-		local upperName = string.upper(value.name)
-		if not string.find(upperName, filterText) then return false end
+		local filterText = SUpper(filterTextField:GetText())
+		local upperName = SUpper(value.name)
+		if not SFind(upperName, filterText) then return false end
 		
 		if not visibilityMode then
 			if InternalInterface.AccountSettings.Posting.HiddenItems[value.itemType] or InternalInterface.CharacterSettings.Posting.HiddenItems[value.itemType] then
@@ -694,6 +627,16 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	filterTextField:SetPoint("CENTERRIGHT", visibilityIcon, "CENTERLEFT", -2, 1)
 	filterTextField:SetText("")
 
+	local function ScoreValue(value)
+		if not value then return "" end
+		return MFloor(value) .. " %"
+	end
+	
+	local function ScoreColor(value)
+		local r, g, b = unpack(ScoreColorByScore(value))
+		return { r, g, b, 0.1 }
+	end	
+	
 	auctionGrid:SetPoint("TOPLEFT", postingFrame, "TOPLEFT", 300, 335)
 	auctionGrid:SetPoint("BOTTOMRIGHT", postingFrame, "BOTTOMRIGHT", -5, -5)	
 	auctionGrid:SetPadding(1, 1, 1, 38)
@@ -709,30 +652,10 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	auctionGrid:AddColumn(L["PostingPanel/columnBuy"], 130, "MoneyRenderer", true, "buyoutPrice")
 	auctionGrid:AddColumn(L["PostingPanel/columnBidPerUnit"], 130, "MoneyRenderer", true, "bidUnitPrice")
 	local defaultOrderColumn = auctionGrid:AddColumn(L["PostingPanel/columnBuyPerUnit"], 130, "MoneyRenderer", true, "buyoutUnitPrice")
-	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 90, "Text", true, "minExpireTime", { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
-	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 90, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
-	local function ScoreValue(value)
-		local prices = {}
-		for _, itemPrice in ipairs(itemPrices) do
-			prices[itemPrice.key] = itemPrice
-		end
-		
-		local score = _G[addonID].ScorePrice(nil, value, prices)
-		
-		if not score then return "" end
-
-		return math.floor(score) .. " %"
-	end
-	local function ScoreColor(value)
-		local prices = {}
-		for _, itemPrice in ipairs(itemPrices) do
-			prices[itemPrice.key] = itemPrice
-		end
-		local r, g, b = unpack(InternalInterface.UI.ScoreColorByScore(_G[addonID].ScorePrice(nil, value, prices)))
-		return { r, g, b, 0.1 }
-	end
-	auctionGrid:AddColumn(L["AuctionsPanel/columnScore"], 60, "Text", true, "buyoutUnitPrice", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor })
-	auctionGrid:AddColumn("", 0, "AuctionRenderer", false, "buyoutUnitPrice", { Color = ScoreColor })
+	auctionGrid:AddColumn(L["PostingPanel/columnMinExpire"], 90, "Text", true, "minExpireTime", { Alignment = "right", Formatter = RemainingTimeFormatter })
+	auctionGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 90, "Text", true, "maxExpireTime", { Alignment = "right", Formatter = RemainingTimeFormatter })
+	auctionGrid:AddColumn(L["AuctionsPanel/columnScore"], 60, "Text", true, "score", { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor })
+	auctionGrid:AddColumn("", 0, "AuctionRenderer", false, "score", { Color = ScoreColor })
 	defaultOrderColumn.Event.LeftClick(defaultOrderColumn)
 
 	paddingLeft, _, paddingRight, paddingBottom = auctionGrid:GetPadding()
@@ -825,12 +748,12 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	durationLabel:SetShadowOffset(2, 2)
 	
 	local maxLabelWidth = 220
-	maxLabelWidth = math.max(maxLabelWidth, pricingModelLabel:GetWidth())
-	maxLabelWidth = math.max(maxLabelWidth, stackSizeLabel:GetWidth())
-	maxLabelWidth = math.max(maxLabelWidth, stackNumberLabel:GetWidth())
-	maxLabelWidth = math.max(maxLabelWidth, bidLabel:GetWidth())
-	maxLabelWidth = math.max(maxLabelWidth, buyLabel:GetWidth())
-	maxLabelWidth = math.max(maxLabelWidth, buyLabel:GetWidth())
+	maxLabelWidth = MMax(maxLabelWidth, pricingModelLabel:GetWidth())
+	maxLabelWidth = MMax(maxLabelWidth, stackSizeLabel:GetWidth())
+	maxLabelWidth = MMax(maxLabelWidth, stackNumberLabel:GetWidth())
+	maxLabelWidth = MMax(maxLabelWidth, bidLabel:GetWidth())
+	maxLabelWidth = MMax(maxLabelWidth, buyLabel:GetWidth())
+	maxLabelWidth = MMax(maxLabelWidth, buyLabel:GetWidth())
 	maxLabelWidth = maxLabelWidth + 15
 	
 	pricingModelSelector:SetPoint("TOPRIGHT", postingFrame, "TOPRIGHT", -430, 100)
@@ -875,7 +798,7 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	postButton:SetEnabled(false)
 	
 	durationTimeLabel:SetPoint("BOTTOMLEFT", postingFrame, "TOPRIGHT", -555, 325)
-	durationTimeLabel:SetText(string.format(L["PostingPanel/labelDurationFormat"], 48))
+	durationTimeLabel:SetText(SFormat(L["PostingPanel/labelDurationFormat"], 48))
 
 	durationSlider:SetPoint("CENTERRIGHT", durationTimeLabel, "CENTERLEFT", -15, 5)
 	durationSlider:SetPoint("CENTERLEFT", durationLabel, "CENTERRIGHT", maxLabelWidth - durationLabel:GetWidth() + 10, 5)
@@ -988,18 +911,31 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	infoDiscountBuy:SetHeight(20)
 
 
-	
 
 	function filterTextPanel.Event:LeftClick()
 		filterTextField:SetKeyFocus(true)
 	end
 
 	function filterTextField.Event:KeyFocusGain()
-		local length = string.len(self:GetText())
+		local length = SLen(self:GetText())
 		if length > 0 then
 			self:SetSelection(0, length)
 		end
 	end
+	
+	function filterTextField.Event:TextfieldChange()
+		itemGrid:ForceUpdate()
+	end
+	
+	function visibilityIcon.Event:LeftClick()
+		visibilityMode = not visibilityMode
+		visibilityIcon:SetTexture(addonID, visibilityMode and "Textures/ShowIcon.png" or "Textures/HideIcon.png")
+		itemGrid:ForceUpdate()
+	end
+
+	function itemGrid.Event:SelectionChanged(item, itemInfo)
+		ResetAuctions()
+	end	
 	
 	function refreshButton.Event:MouseIn()
 		if self.enabled then
@@ -1017,14 +953,277 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		end
 	end
 	
-	function filterTextField.Event:TextfieldChange()
-		SetRefreshMode(REFRESH_ITEMFILTER)
+	function buyButton.Event:LeftPress()
+		local auctionID, auctionData = auctionGrid:GetSelectedData()
+		if auctionID then
+			CABid(auctionID, auctionData.buyoutPrice, function(...) InternalInterface.Scanner.AuctionBuyCallback(auctionID, ...) end)
+		end
 	end
 	
-	function visibilityIcon.Event:LeftClick()
-		visibilityMode = not visibilityMode
-		visibilityIcon:SetTexture(addonID, visibilityMode and "Textures/ShowIcon.png" or "Textures/HideIcon.png")
-		SetRefreshMode(REFRESH_ITEMFILTER)
+	function bidButton.Event:LeftPress()
+		local auctionID = auctionGrid:GetSelectedData()
+		if auctionID then
+			local bidAmount = auctionMoneySelector:GetValue()
+			CABid(auctionID, bidAmount, function(...) InternalInterface.Scanner.AuctionBidCallback(auctionID, bidAmount, ...) end)
+		end
+	end
+	
+	function refreshButton.Event:LeftClick()
+		if not self.enabled then return end
+		
+		local item, itemInfo = itemGrid:GetSelectedData()
+		if not item then return end
+		
+		if not pcall(CAScan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common", sort = "time", sortOrder = "descending" }) then
+			out(L["PostingPanel/itemScanError"])
+		else
+			InternalInterface.ScanNext()
+			out(L["PostingPanel/itemScanStarted"])
+		end				
+	end
+
+	function auctionGrid.Event:SelectionChanged(auctionID, auctionData)
+		RefreshAuctionButtons()
+	end
+	
+	function itemTexture.Event:MouseIn()
+		CTooltip(self.itemType)
+	end
+	
+	function itemTexture.Event:MouseOut()
+		CTooltip(nil)
+	end
+
+	function pricingModelSelector.Event:SelectionChanged()
+		ApplyPricingModel()
+	end
+
+	function priceMatchingCheck.Event:CheckboxChange()
+		ApplyPricingModel()
+	end
+
+	function stackSizeSelector.Event:PositionChanged(stackSize)
+		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
+		if stackSize > 0 and selectedItem then
+			local stacks = selectedInfo.adjustedStack
+			local maxNumberOfStacks = MCeil(stacks / stackSize)
+			stackNumberSelector:SetRange(1, maxNumberOfStacks)
+			stackNumberSelector:SetPosition(maxNumberOfStacks)
+		else
+			stackNumberSelector:SetRange(0, 0)
+		end
+		UpdateInfo()
+	end
+
+	function stackNumberSelector.Event:PositionChanged(stackNumber)
+		UpdateInfo()
+	end
+
+	function bindPricesCheck.Event:CheckboxChange()
+		if self:GetChecked() then
+			pricesSetByModel = true
+			local maxPrice = MMax(bidMoneySelector:GetValue(), buyMoneySelector:GetValue())
+			bidMoneySelector:SetValue(maxPrice)
+			buyMoneySelector:SetValue(maxPrice)
+			pricesSetByModel = false
+		else
+			ApplyPricingModel()
+		end
+	end	
+
+	function bidMoneySelector.Event:ValueChanged(newValue)
+		if not self:GetEnabled() then return end
+		if bindPricesCheck:GetChecked() then
+			local buy = buyMoneySelector:GetValue()
+			if buy ~= newValue then
+				buyMoneySelector:SetValue(newValue)
+			end
+		end
+		if not pricesSetByModel then
+			for index, price in ipairs(itemPrices) do
+				if price.key == "fixed" then
+					itemPrices[index].bid = newValue
+					itemPrices[index].buy = buyMoneySelector:GetValue()
+					pricingModelSelector:SetValues(itemPrices)
+					pricingModelSelector:SetSelectedIndex(index)
+					break
+				end
+			end
+		end
+		UpdateInfo()
+	end
+	
+	function buyMoneySelector.Event:ValueChanged(newValue)
+		if not self:GetEnabled() then return end
+		if bindPricesCheck:GetChecked() then
+			local bid = bidMoneySelector:GetValue()
+			if bid ~= newValue then
+				bidMoneySelector:SetValue(newValue)
+			end
+		end
+		if not pricesSetByModel then
+			for index, price in ipairs(itemPrices) do
+				if price.key == "fixed" then
+					itemPrices[index].bid = bidMoneySelector:GetValue()
+					itemPrices[index].buy = newValue
+					pricingModelSelector:SetValues(itemPrices)
+					pricingModelSelector:SetSelectedIndex(index)
+					break
+				end
+			end
+		end
+		local _, selectedInfo = itemGrid:GetSelectedData()
+		buyPriceWarning:SetVisible((selectedInfo and newValue > 0 and newValue < MCeil((selectedInfo.sell or 0) / AUCTION_FEE_REDUCTION)) or false)
+		UpdateInfo()
+	end
+
+	function durationSlider.Event:SliderChange()
+		local position = self:GetPosition()
+		durationTimeLabel:SetText(SFormat(L["PostingPanel/labelDurationFormat"], 6 * 2 ^ position))
+		UpdateInfo()
+	end
+
+	function postButton.Event:LeftPress()
+		if self.cooldown and ITReal() < self.cooldown then return end
+		
+		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
+		if not selectedItem or not selectedInfo then return end
+		
+		local priceIndex, price = pricingModelSelector:GetSelectedValue()
+		local pricingModelId = price and price.key or nil
+		local savePriceMatching = priceMatchingCheck:GetChecked()
+		local stackSize = stackSizeSelector:GetPosition()
+		local stackNumber = stackNumberSelector:GetPosition()
+		local bidUnitPrice = bidMoneySelector:GetValue()
+		local saveBindPrices = bindPricesCheck:GetChecked()
+		local buyUnitPrice = buyMoneySelector:GetValue()
+		local saveDuration = durationSlider:GetPosition()
+		local duration = 6 * 2 ^ saveDuration
+		
+		if not pricingModelId or stackSize <= 0 or stackNumber <= 0 or bidUnitPrice <= 0 then return end
+		if buyUnitPrice <= 0 then 
+			buyUnitPrice = nil
+		elseif buyUnitPrice < bidUnitPrice then
+			out(L["PostingPanel/postErrorBidHigherBuy"])
+			return
+		end
+		
+		local amount = MMin(stackSize * stackNumber, selectedInfo.adjustedStack)
+		if amount <= 0 then return end
+		
+		if autoPostingMode or _G[addonID].PostItem(selectedItem, stackSize, amount, bidUnitPrice, buyUnitPrice, duration) then
+			local config = { pricingModelOrder = pricingModelId, usePriceMatching = savePriceMatching, stackSize = stackSize, bindPrices = saveBindPrices, duration = saveDuration, }
+			
+			if autoPostingMode then
+				InternalInterface.CharacterSettings.Posting.AutoConfig[selectedInfo.itemType] = config
+			else
+				InternalInterface.CharacterSettings.Posting.ItemConfig[selectedInfo.itemType] = config
+				self.cooldown = ITReal() + 0.5
+			end
+
+			local pricingModelCallback = InternalInterface.Modules.GetPricingModelCallback(pricingModelId)
+			if type(pricingModelCallback) == "function" then
+				pricingModelCallback(selectedInfo.itemType, bidUnitPrice, buyUnitPrice, autoPostingMode)
+			end
+		
+			itemGrid:ForceUpdate()
+		end
+	end
+
+	function clearButton.Event:LeftPress()
+		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
+		if not selectedItem or not selectedInfo then return end
+
+		local pricingModelCallback = InternalInterface.Modules.GetPricingModelCallback(InternalInterface.CharacterSettings.Posting.AutoConfig[selectedInfo.itemType].pricingModelOrder)
+		if type(pricingModelCallback) == "function" then
+			pricingModelCallback(selectedInfo.itemType, bidUnitPrice, buyUnitPrice, autoPostingMode)
+		end
+		
+		InternalInterface.CharacterSettings.Posting.AutoConfig[selectedInfo.itemType] = nil
+		itemGrid:ForceUpdate()
+	end
+
+	function autoPostButton.Event:RightClick()
+		autoPostingMode = not autoPostingMode
+		postButton:SetText(autoPostingMode and L["PostingPanel/buttonAutoPostingSave"] or L["PostingPanel/buttonPost"])
+		clearButton:SetVisible(autoPostingMode)
+		UpdatePrices()
+		local itemID, itemData = itemGrid:GetSelectedData()
+		if itemData then
+			UpdatePrices(itemID, itemData)
+		end
+	end
+
+	function autoPostButton.Event:LeftClick()
+		local slot = UISInventory()
+		local items = IIList(slot)
+		
+		local itemTypeTable = {}
+		for _, itemID in pairs(items) do repeat
+			if type(itemID) == "boolean" then break end 
+			local ok, itemDetail = pcall(IIDetail, itemID)
+			if not ok or not itemDetail or itemDetail.bound then break end
+			
+			local itemType = itemDetail.type
+			itemTypeTable[itemType] = itemTypeTable[itemType] or { name = itemDetail.name, stack = 0 }
+			itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
+		until true end
+
+		local postingAmounts = {}
+		local postingQueue = _G[addonID].GetPostingQueue()
+		for index, post in ipairs(postingQueue) do
+			postingAmounts[post.itemType] = (postingAmounts[post.itemType] or 0) + post.amount
+		end
+		
+		local remainingItems = false
+		for itemType, itemData in pairs(itemTypeTable) do
+			if not InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then
+				itemTypeTable[itemType] = nil
+			else
+				itemTypeTable[itemType].autoPosting = InternalInterface.CharacterSettings.Posting.AutoConfig[itemType]
+				itemTypeTable[itemType].stack = itemTypeTable[itemType].stack - (postingAmounts[itemType] or 0)
+				if itemTypeTable[itemType].stack <= 0 then
+					itemTypeTable[itemType] = nil
+				else
+					remainingItems = true 
+				end
+			end
+		end
+		
+		if not remainingItems then
+			out(L["PostingPanel/autoPostingErrorNoItems"])
+			return
+		end
+		
+		for itemType, itemData in pairs(itemTypeTable) do
+			local pricingModelOrder = itemData.autoPosting.pricingModelOrder
+			local usePriceMatching = itemData.autoPosting.usePriceMatching
+			
+			local function AutoPostingMatchingCallback(bid, buy)
+				if bid then
+					_G[addonID].PostItem(itemType, itemData.autoPosting.stackSize, itemData.stack, bid, buy > 0 and buy or nil, 6 * 2 ^ itemData.autoPosting.duration)	
+				end
+			end
+			
+			local function AutoPostingPricingCallback(prices)
+				if not prices or not prices[pricingModelOrder] then
+					itemTypeTable[itemType] = nil
+					out(SFormat(L["PostingPanel/autoPostingErrorPricingModelNotFound"], itemData.name))
+					return
+				end
+
+				local unitBid = prices[pricingModelOrder].bid
+				local unitBuy = prices[pricingModelOrder].buy or 0
+			
+				if usePriceMatching then
+					_G[addonID].MatchPrice(AutoPostingMatchingCallback, itemType, unitBid, unitBuy)
+				else
+					AutoPostingMatchingCallback(unitBid, unitBuy)
+				end
+			end
+		
+			_G[addonID].GetPricings(AutoPostingPricingCallback, itemType, true)
+		end
 	end
 	
 	function showHideButton.Event:LeftPress()
@@ -1053,287 +1252,20 @@ function InternalInterface.UI.PostingFrame(name, parent)
 	function queueGrid.Event:SelectionChanged(key, value)
 		queueCancelButton:SetEnabled(key and true or false)
 	end
-	
-	function buyButton.Event:LeftPress()
-		local auctionID, auctionData = auctionGrid:GetSelectedData()
-		if auctionID then
-			Command.Auction.Bid(auctionID, auctionData.buyoutPrice, function(...) InternalInterface.AHMonitoringService.AuctionBuyCallback(auctionID, ...) end)
-		end
-	end
-	
-	function bidButton.Event:LeftPress()
-		local auctionID = auctionGrid:GetSelectedData()
-		if auctionID then
-			local bidAmount = auctionMoneySelector:GetValue()
-			Command.Auction.Bid(auctionID, bidAmount, function(...) InternalInterface.AHMonitoringService.AuctionBidCallback(auctionID, bidAmount, ...) end)
-		end
-	end
-	
-	function refreshButton.Event:LeftClick()
-		if not self.enabled then return end
-		
-		local item, itemInfo = itemGrid:GetSelectedData()
-		if not item then return end
-		
-		if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common", sort = "time", sortOrder = "descending" }) then
-			out(L["PostingPanel/itemScanError"])
-		else
-			InternalInterface.ScanNext()
-			out(L["PostingPanel/itemScanStarted"])
-		end				
-	end
-
-	function itemGrid.Event:SelectionChanged(item, itemInfo)
-		SetRefreshMode(REFRESH_ITEM)
-	end	
-
-	function auctionGrid.Event:SelectionChanged(auctionID, auctionData)
-		SetRefreshMode(REFRESH_AUCTION)
-	end
-
-	function autoPostButton.Event:RightClick()
-		autoPostingMode = not autoPostingMode
-		postButton:SetText(autoPostingMode and L["PostingPanel/buttonAutoPostingSave"] or L["PostingPanel/buttonPost"])
-		clearButton:SetVisible(autoPostingMode)
-		SetRefreshMode(REFRESH_POSTING)
-	end
-	
-	function clearButton.Event:LeftPress()
-		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-		if not selectedItem or not selectedInfo then return end
-
-		local pricingModelCallback = _G[addonID].GetPricingModel(InternalInterface.CharacterSettings.Posting.AutoConfig[selectedInfo.itemType].pricingModelOrder)
-		pricingModelCallback = pricingModelCallback and pricingModelCallback.callbackFunction or nil
-		if type(pricingModelCallback) == "function" then
-			pricingModelCallback(selectedInfo.itemType, nil, nil, true)
-		end		
-		
-		InternalInterface.CharacterSettings.Posting.AutoConfig[selectedInfo.itemType] = nil
-		SetRefreshMode(REFRESH_ITEMFILTER)
-	end
-	
-	function stackSizeSelector.Event:PositionChanged(stackSize)
-		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-		if stackSize > 0 and selectedItem then
-			local stacks = selectedInfo.adjustedStack
-			local maxNumberOfStacks = math.ceil(stacks / stackSize)
-			stackNumberSelector:SetRange(1, maxNumberOfStacks)
-			stackNumberSelector:SetPosition(maxNumberOfStacks)
-		else
-			stackNumberSelector:SetRange(0, 0)
-		end
-		SetRefreshMode(REFRESH_INFO)
-	end
-	
-	function stackNumberSelector.Event:PositionChanged(stackNumber)
-		SetRefreshMode(REFRESH_INFO)
-	end
-
-	function postButton.Event:LeftPress()
-		if self.cooldown and Inspect.Time.Real() < self.cooldown then return end
-		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-		if not selectedItem or not selectedInfo then return end
-		
-		local priceIndex, price = pricingModelSelector:GetSelectedValue()
-		local pricingModelId = price and price.key or nil
-		local savePriceMatching = priceMatchingCheck:GetChecked()
-		local stackSize = stackSizeSelector:GetPosition()
-		local stackNumber = stackNumberSelector:GetPosition()
-		local bidUnitPrice = bidMoneySelector:GetValue()
-		local saveBindPrices = bindPricesCheck:GetChecked()
-		local buyUnitPrice = buyMoneySelector:GetValue()
-		local saveDuration = durationSlider:GetPosition()
-		local duration = 6 * 2 ^ saveDuration
-		
-		if not pricingModelId or stackSize <= 0 or stackNumber <= 0 or bidUnitPrice <= 0 then return end
-		if buyUnitPrice <= 0 then 
-			buyUnitPrice = nil
-		elseif buyUnitPrice < bidUnitPrice then
-			out(L["PostingPanel/postErrorBidHigherBuy"])
-			return
-		end
-		
-		local amount = math.min(stackSize * stackNumber, selectedInfo.adjustedStack)
-		if amount <= 0 then return end
-		
-		if autoPostingMode or _G[addonID].PostItem(selectedItem, stackSize, amount, bidUnitPrice, buyUnitPrice, duration) then
-			local config = { pricingModelOrder = pricingModelId, usePriceMatching = savePriceMatching, stackSize = stackSize, bindPrices = saveBindPrices, duration = saveDuration, }
-			
-			if autoPostingMode then
-				InternalInterface.CharacterSettings.Posting.AutoConfig[selectedInfo.itemType] = config
-			else
-				InternalInterface.CharacterSettings.Posting.ItemConfig[selectedInfo.itemType] = config
-				self.cooldown = Inspect.Time.Real() + 0.5
-			end
-
-			local pricingModelCallback = _G[addonID].GetPricingModel(pricingModelId)
-			pricingModelCallback = pricingModelCallback and pricingModelCallback.callbackFunction or nil
-			if pricingModelCallback then
-				pricingModelCallback(selectedInfo.itemType, bidUnitPrice, buyUnitPrice, autoPostingMode)
-			end
-		
-			SetRefreshMode(REFRESH_ITEMFILTER)
-		end
-	end
-	
-	function durationSlider.Event:SliderChange()
-		local position = self:GetPosition()
-		durationTimeLabel:SetText(string.format(L["PostingPanel/labelDurationFormat"], 6 * 2 ^ position))
-		SetRefreshMode(REFRESH_INFO)
-	end
-	
-	function autoPostButton.Event:LeftClick()
-		local slot = Utility.Item.Slot.Inventory()
-		local items = Inspect.Item.List(slot)
-		
-		local itemTypeTable = {}
-		for _, itemID in pairs(items) do repeat
-			if type(itemID) == "boolean" then break end 
-			local ok, itemDetail = pcall(Inspect.Item.Detail, itemID)
-			if not ok or not itemDetail or itemDetail.bound then break end
-			
-			local itemType = itemDetail.type
-			itemTypeTable[itemType] = itemTypeTable[itemType] or { name = itemDetail.name, stack = 0, referenceItem = itemID, }
-			itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
-		until true end
-
-		local postingAmounts = {}
-		local postingQueue = _G[addonID].GetPostingQueue()
-		for index, post in ipairs(postingQueue) do
-			postingAmounts[post.itemType] = (postingAmounts[post.itemType] or 0) + post.amount
-		end
-		
-		local remainingItems = false
-		for itemType, itemData in pairs(itemTypeTable) do
-			if not InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then
-				itemTypeTable[itemType] = nil
-			else
-				itemTypeTable[itemType].autoPosting = InternalInterface.CharacterSettings.Posting.AutoConfig[itemType]
-				itemTypeTable[itemType].stack = itemTypeTable[itemType].stack - (postingAmounts[itemType] or 0)
-				if itemTypeTable[itemType].stack <= 0 then
-					itemTypeTable[itemType] = nil
-				else
-					remainingItems = true 
-				end
-			end
-		end
-		if not remainingItems then
-			out(L["PostingPanel/autoPostingErrorNoItems"])
-			return
-		end
-		
-		for itemType, itemData in pairs(itemTypeTable) do repeat
-			local pricingModelOrder = itemData.autoPosting.pricingModelOrder
-			local prices = _G[addonID].GetPricings(itemData.referenceItem, true)
-			
-			if not prices[pricingModelOrder] then
-				itemTypeTable[itemType] = nil
-				out(string.format(L["PostingPanel/autoPostingErrorPricingModelNotFound"], itemData.name))
-				break
-			end
-
-			local unitBid = prices[pricingModelOrder].bid
-			local unitBuy = prices[pricingModelOrder].buy or 0
-			local usePriceMatching = itemData.autoPosting.usePriceMatching
-			
-			if usePriceMatching then
-				unitBid, unitBuy = _G[addonID].MatchPrice(itemData.referenceItem, unitBid, unitBuy)
-			end
-			
-			if itemData.autoPosting.bindPrices then unitBid = unitBuy end
-			itemTypeTable[itemType].unitBid = unitBid
-			itemTypeTable[itemType].unitBuy = unitBuy
-		until true end
-		
-		for _, itemData in pairs(itemTypeTable) do
-			_G[addonID].PostItem(itemData.referenceItem, itemData.autoPosting.stackSize, itemData.stack, itemData.unitBid, itemData.unitBuy, 6 * 2 ^ itemData.autoPosting.duration)	
-		end
-	end
-	
-	function pricingModelSelector.Event:SelectionChanged()
-		SetRefreshMode(REFRESH_PRICES)
-	end
-
-	function priceMatchingCheck.Event:CheckboxChange()
-		SetRefreshMode(REFRESH_PRICES)
-	end
-
-	function bindPricesCheck.Event:CheckboxChange()
-		if self:GetChecked() then
-			pricesSetByModel = true
-			local maxPrice = math.max(bidMoneySelector:GetValue(), buyMoneySelector:GetValue())
-			bidMoneySelector:SetValue(maxPrice)
-			buyMoneySelector:SetValue(maxPrice)
-			pricesSetByModel = false
-		else
-			SetRefreshMode(REFRESH_PRICES)
-		end
-	end
-	
-	function bidMoneySelector.Event:ValueChanged(newValue)
-		if not self:GetEnabled() then return end
-		if bindPricesCheck:GetChecked() then
-			local buy = buyMoneySelector:GetValue()
-			if buy ~= newValue then
-				buyMoneySelector:SetValue(newValue)
-			end
-		end
-		if not pricesSetByModel then
-			for index, price in ipairs(itemPrices) do
-				if price.key == "fixed" then
-					itemPrices[index].bid = newValue
-					itemPrices[index].buy = buyMoneySelector:GetValue()
-					pricingModelSelector:SetValues(itemPrices)
-					pricingModelSelector:SetSelectedIndex(index)
-				end
-			end
-		end
-		SetRefreshMode(REFRESH_INFO)
-	end
-	
-	function buyMoneySelector.Event:ValueChanged(newValue)
-		if not self:GetEnabled() then return end
-		if bindPricesCheck:GetChecked() then
-			local bid = bidMoneySelector:GetValue()
-			if bid ~= newValue then
-				bidMoneySelector:SetValue(newValue)
-			end
-		end
-		if not pricesSetByModel then
-			for index, price in ipairs(itemPrices) do
-				if price.key == "fixed" then
-					itemPrices[index].bid = bidMoneySelector:GetValue()
-					itemPrices[index].buy = newValue
-					pricingModelSelector:SetValues(itemPrices)
-					pricingModelSelector:SetSelectedIndex(index)
-				end
-			end
-		end
-		local _, selectedInfo = itemGrid:GetSelectedData()
-		buyPriceWarning:SetVisible((selectedInfo and newValue > 0 and newValue < math.ceil((selectedInfo.sell or 0) / AUCTION_FEE_REDUCTION)) or false)
-		SetRefreshMode(REFRESH_INFO)
-	end
-	
-	function itemTexture.Event:MouseIn()
-		Command.Tooltip(self.itemType)
-	end
-	
-	function itemTexture.Event:MouseOut()
-		Command.Tooltip(nil)
-	end
 
 
-	table.insert(Event.Item.Slot, { function() SetRefreshMode(REFRESH_ITEMS) end, addonID, "PostingFrame.OnItemSlot" })
-	table.insert(Event.Item.Update, { function() SetRefreshMode(REFRESH_ITEMS) end, addonID, "PostingFrame.OnItemUpdate" })
-	table.insert(Event[addonID].PostingQueueChanged, { function() SetRefreshMode(REFRESH_ITEMFILTER) end, addonID, "PostingFrame.OnPostingQueueChanged" })	
-	table.insert(Event[addonID].AuctionData, { function() SetRefreshMode(REFRESH_AUCTIONS) end, addonID, "PostingFrame.OnAuctionData" })
-	table.insert(Event.Interaction, { function(interaction) if interaction == "auction" then SetRefreshMode(REFRESH_AUCTION) end end, addonID, "PostingFrame.OnInteraction" })
+
+	TInsert(Event.Item.Slot, { ResetItems, addonID, "PostingFrame.OnItemSlot" })
+	TInsert(Event.Item.Update, { ResetItems, addonID, "PostingFrame.OnItemUpdate" })
+	TInsert(Event[addonID].PostingQueueChanged, { function() if postingFrame:GetVisible() then ResetItems() end end, addonID, "PostingFrame.OnPostingQueueChanged" })	
+	TInsert(Event[addonID].AuctionData, { function() if postingFrame:GetVisible() then ResetAuctions() end end, addonID, "PostingFrame.OnAuctionData" })
+	TInsert(Event.Interaction, { function(interaction) if postingFrame:GetVisible() and interaction == "auction" then RefreshAuctionButtons() end end, addonID, "PostingFrame.OnInteraction" })
 
 	local function OnQueueStatusChanged()
 		local status, size = _G[addonID].GetPostingQueueStatus()
 		local paused = _G[addonID].GetPostingQueuePaused()
 		
-		queueStatus:SetText(string.format("%s (%d)", L["PostingPanel/labelPostingQueueStatus" .. status], size or 0))
+		queueStatus:SetText(SFormat("%s (%d)", L["PostingPanel/labelPostingQueueStatus" .. status], size or 0))
 		pauseResumeButton:SetText(paused and L["PostingPanel/buttonResumeQueue"] or L["PostingPanel/buttonPauseQueue"])
 		if status == 1 or status == 3 then
 			queueStatus:SetFontColor(1, 0.5, 0, 1)
@@ -1351,12 +1283,35 @@ function InternalInterface.UI.PostingFrame(name, parent)
 		queueGrid:SetData(auctions)
 		queueClearButton:SetEnabled(clearable)
 	end
-	table.insert(Event[addonID].PostingQueueStatusChanged, { OnQueueStatusChanged, addonID, "QueueManager.OnQueueStatusChanged" })
+	TInsert(Event[addonID].PostingQueueStatusChanged, { OnQueueStatusChanged, addonID, "PostingFrame.OnQueueStatusChanged" })
 	
 	OnQueueStatusChanged()	
 	
 	function postingFrame:Show(hEvent)
-		SetRefreshMode(REFRESH_ITEMS)
+		ResetItems()
+	end
+	
+	local info = Inspect.Addon.Detail("ImhoBags")
+	if(info and info.toc.publicAPI) then
+		local function OnImhoBagsRightClick(params)
+			if not postingFrame:GetVisible() then return end
+			local ok, itemInfo = pcall(IIDetail, params.id)
+			if not ok or not itemInfo or itemInfo.bound then return end
+			
+			local adjustedStack = 0
+			local itemGridData = itemGrid:GetData()
+			for item, itemData in pairs(itemGridData) do
+				if itemData.itemType == itemInfo.type then
+					itemGrid.lastSelectedKey = item
+					itemGrid:ForceUpdate()
+					ResetAuctions()
+					params.cancel = true
+					break
+				end
+			end
+		end
+	
+		TInsert(ImhoBags.Event.Item.Standard.Right, { OnImhoBagsRightClick, addonID, "PostingFrame.OnImhoBagsRightClick" })
 	end
 	
 	return postingFrame

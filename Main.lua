@@ -2,8 +2,7 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
 local L = InternalInterface.Localization.L
-local GetOutput = InternalInterface.Utility.GetOutput
-local function out(value) GetOutput()(value) end
+local out = InternalInterface.Output.Write
 
 local function InitializeLayout()
 	local mapContext = UI.CreateContext(addonID .. ".UI.MapContext")
@@ -23,7 +22,7 @@ local function InitializeLayout()
 	local scannerButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.ScannerButton", statusPanel:GetContent())
 	local refreshButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
 	local searchText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.SearchTab.Text", searchTab:GetContent())
-	local searchFrame = InternalInterface.UI.SearchFrame(addonID .. ".UI.MainWindow.SearchFrame", mainPanel:GetContent())
+	--local searchFrame = InternalInterface.UI.SearchFrame(addonID .. ".UI.MainWindow.SearchFrame", mainPanel:GetContent())
 	local postText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.PostTab.Text", postTab:GetContent())
 	local postFrame = InternalInterface.UI.PostingFrame(addonID .. ".UI.MainWindow.PostFrame", mainPanel:GetContent())
 	local auctionsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.AuctionsTab.Text", auctionsTab:GetContent())
@@ -118,13 +117,14 @@ local function InitializeLayout()
 	searchText:SetText(L["General/menuSearch"])
 	searchText:SetFontSize(16)
 	searchText:SetShadowOffset(2, 2)
-	searchText:SetFontColor(0.75, 0.75, 0.5, 1)
+	searchText:SetFontColor(0.5, 0.5, 0.5, 1)
+	-- searchText:SetFontColor(0.75, 0.75, 0.5, 1)
 	searchTab:SetWidth(searchText:GetWidth() + 60)
 	searchTab.text = searchText
 	
-	searchFrame:SetAllPoints()
-	searchFrame:SetVisible(false)
-	searchTab.frame = searchFrame
+	--searchFrame:SetAllPoints()
+	--searchFrame:SetVisible(false)
+	--searchTab.frame = searchFrame
 	
 	postText:SetPoint("CENTER", postTab, "CENTER", 0, 2)
 	postText:SetText(L["General/menuPost"])
@@ -262,9 +262,9 @@ local function InitializeLayout()
 		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame)
 	end
 	
-	searchTab.Event.MouseIn = TabMouseIn
-	searchTab.Event.MouseOut = TabMouseOut
-	searchTab.Event.LeftClick = TabLeftClick
+	-- searchTab.Event.MouseIn = TabMouseIn
+	-- searchTab.Event.MouseOut = TabMouseOut
+	-- searchTab.Event.LeftClick = TabLeftClick
 	postTab.Event.MouseIn = TabMouseIn
 	postTab.Event.MouseOut = TabMouseOut
 	postTab.Event.LeftClick = TabLeftClick
@@ -274,7 +274,7 @@ local function InitializeLayout()
 	configTab.Event.MouseIn = TabMouseIn
 	configTab.Event.MouseOut = TabMouseOut
 	configTab.Event.LeftClick = TabLeftClick
-	mainWindow.selectedTab = searchTab
+	mainWindow.selectedTab = postTab
 	mainWindow.selectedTab.text:SetFontColor(1, 1, 1, 1)
 	
 	local function OnInteractionChanged(interaction, state)
@@ -286,8 +286,10 @@ local function InitializeLayout()
 	table.insert(Event.Interaction, { OnInteractionChanged, addonID, "OnInteractionChanged" })
 	
 	local function ReportAuctionData(scanType, total, new, updated, removed, before)
-		if scanType ~= "searchitem" and scanType ~= "searchfull" then return end
-		local fullOrPartialMessage = scanType == "searchfull" and L["General/scanTypeFull"] or L["General/scanTypePartial"]
+		if scanType ~= "search" then return end
+		--if scanType ~= "searchitem" and scanType ~= "searchfull" then return end
+		--local fullOrPartialMessage = scanType == "searchfull" and L["General/scanTypeFull"] or L["General/scanTypePartial"]
+		local fullOrPartialMessage = "Completed" -- FIXME LOCALIZE
 		local newMessage = (#new > 0) and string.format(L["General/scanNewCount"], #new) or ""
 		local updatedMessage = (#updated > 0) and string.format(L["General/scanUpdatedCount"], #updated) or ""
 		local removedMessage = (#removed > 0) and string.format(L["General/scanRemovedCount"], #removed, #before) or ""
@@ -310,7 +312,7 @@ local function InitializeLayout()
 	local function StatusBarOutput(value)
 		statusText:SetText(value and tostring(value) or "")
 	end
-	InternalInterface.Utility.SetOutput(StatusBarOutput)
+	InternalInterface.Output.SetOutputFunction(StatusBarOutput)
 end
 
 local function OnAddonLoaded(addonId)
