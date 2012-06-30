@@ -95,8 +95,8 @@ local function PostingSettings(parent)
 	local function ResetPricingModelGrid()
 		local defaultOrder = InternalInterface.AccountSettings.Posting.DefaultConfig.pricingModelOrder or {}
 
-		local pricingModels = InternalInterface.PricingModelService.GetAllPricingModels()
-		local priceScorers = InternalInterface.PricingModelService.GetAllPriceScorers() 
+		local pricingModels = InternalInterface.Modules.GetAllPricingModels()
+		local priceScorers = InternalInterface.Modules.GetAllPriceScorers() 
 
 		local data = {}
 		
@@ -131,7 +131,7 @@ local function PostingSettings(parent)
 	local function ResetPriceMatcherGrid()
 		local defaultOrder = InternalInterface.AccountSettings.Posting.DefaultConfig.priceMatcherOrder or {}
 
-		local priceMatchers = InternalInterface.PricingModelService.GetAllPriceMatchers() 
+		local priceMatchers = InternalInterface.Modules.GetAllPriceMatchers() 
 
 		local data = {}
 		
@@ -641,7 +641,7 @@ local function PriceScoreSettings(parent)
 	local color5SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color5SamplePanel", samplePanel:GetContent())
 	
 	local function ResetDefaultPriceScorer()
-		local priceScorers = InternalInterface.PricingModelService.GetAllPriceScorers()
+		local priceScorers = InternalInterface.Modules.GetAllPriceScorers()
 		local values = {}
 		local defaultIndex = 1
 		for priceScorerID, priceScorerData in pairs(priceScorers) do
@@ -835,7 +835,7 @@ local function PriceScoreSettings(parent)
 end
 
 local function LoadConfigScreens(self, configDisplay)
-	local pricingModels = InternalInterface.PricingModelService.GetAllPricingModels()
+	local pricingModels = InternalInterface.Modules.GetAllPricingModels()
 	local pricingModelsChilden = { }
 	local count = 1
 	for pricingModelId, pricingModelData in pairs(pricingModels) do
@@ -845,7 +845,7 @@ local function LoadConfigScreens(self, configDisplay)
 		end
 	end
 	
-	local priceScorers = InternalInterface.PricingModelService.GetAllPriceScorers()
+	local priceScorers = InternalInterface.Modules.GetAllPriceScorers()
 	local priceScorersChildren = {{ title = "\t" .. L["ConfigPanel/subcategoryScoreSettings"], frame = PriceScoreSettings(configDisplay), order = 201 }}
 	count = 2
 	for priceScorerId, priceScorerData in pairs(priceScorers) do
@@ -855,7 +855,7 @@ local function LoadConfigScreens(self, configDisplay)
 		end
 	end
 	
-	local priceMatchers = InternalInterface.PricingModelService.GetAllPriceMatchers()
+	local priceMatchers = InternalInterface.Modules.GetAllPriceMatchers()
 	local priceMatchersChilden = { }
 	count = 1
 	for priceMatcherId, priceMatcherData in pairs(priceMatchers) do

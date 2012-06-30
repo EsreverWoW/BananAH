@@ -1,24 +1,5 @@
-	Alpha r55
-- Fixed bug in the "User defined" pricing model
-
-	Alpha r54
-- Added item tooltips to all tabs
-- Added "Resell" auction searcher
-- Restored pre 0.3.0 "Hide filter" behavior
-- The "Profit" column in the search tab now orders by decreasing bid profit on "ascending" state, and by decreasing buy profit on "descending" state
-
-	Alpha r53
-- Added "Extended" auction searcher
-- Testing item tooltips (search tab only)
-
-	Alpha r52
-- Added "Vendor" auction searcher
-
-	Alpha r51
-- Forgot to upload the main new file in r50 :P
-
-	Alpha r50
-- Testing Search frame	
+	Release 0.3.1
+- Updated to Rift 1.9
 
 	Release 0.3
 - Updated to Rift 1.8

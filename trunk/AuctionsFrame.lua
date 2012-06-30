@@ -1,27 +1,34 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
-local REFRESH_MINE = 4
-local REFRESH_MINEFILTER = 3
-local REFRESH_AUCTIONS = 2
-local REFRESH_AUCTION = 1
-local REFRESH_NONE = 0
+local CABid = Command.Auction.Bid
+local CAScan = Command.Auction.Scan
+local CTooltip = Command.Tooltip
+local IInteraction = Inspect.Interaction
+local MFloor = math.floor
+local SFind = string.find
+local SFormat = string.format
+local SLen = string.len
+local SUpper = string.upper
+local TInsert = table.insert
+local UICreateFrame = UI.CreateFrame
 
 local L = InternalInterface.Localization.L
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
-local GetOutput = InternalInterface.Utility.GetOutput
-local function out(value) GetOutput()(value) end
-local GetLocalizedDateString = InternalInterface.Localization.GetLocalizedDateString
+local GetLocalizedDateString = InternalInterface.Utility.GetLocalizedDateString
+local GetPlayerName = InternalInterface.Utility.GetPlayerName
+local ScoreColorByScore = InternalInterface.UI.ScoreColorByScore
+local out = InternalInterface.Output.Write
 
 local function MineItemRenderer(name, parent)
-	local mineCell = UI.CreateFrame("Mask", name, parent)
-	local itemTextureBackground = UI.CreateFrame("Frame", name .. ".ItemTextureBackground", mineCell)
-	local itemTexture = UI.CreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
-	local itemNameLabel = UI.CreateFrame("BShadowedText", name .. ".ItemNameLabel", mineCell)
-	local alterTexture = UI.CreateFrame("Texture", name .. ".AlterTexture", mineCell)
-	local alterNameLabel = UI.CreateFrame("BShadowedText", name .. ".AlterNameLabel", mineCell)
-	local biddedTexture = UI.CreateFrame("Texture", name .. ".BiddedTexture", mineCell)
-	local biddedNameLabel = UI.CreateFrame("BShadowedText", name .. ".BiddedNameLabel", mineCell)
+	local mineCell = UICreateFrame("Mask", name, parent)
+	local itemTextureBackground = UICreateFrame("Frame", name .. ".ItemTextureBackground", mineCell)
+	local itemTexture = UICreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
+	local itemNameLabel = UICreateFrame("BShadowedText", name .. ".ItemNameLabel", mineCell)
+	local alterTexture = UICreateFrame("Texture", name .. ".AlterTexture", mineCell)
+	local alterNameLabel = UICreateFrame("BShadowedText", name .. ".AlterNameLabel", mineCell)
+	local biddedTexture = UICreateFrame("Texture", name .. ".BiddedTexture", mineCell)
+	local biddedNameLabel = UICreateFrame("BShadowedText", name .. ".BiddedNameLabel", mineCell)
 	
 	itemTextureBackground:SetPoint("CENTERLEFT", mineCell, "CENTERLEFT", 4, 0)
 	itemTextureBackground:SetWidth(50)
@@ -58,7 +65,7 @@ local function MineItemRenderer(name, parent)
 		self.itemNameLabel:SetText(name)
 		self.itemNameLabel:SetFontColor(GetRarityColor(value.itemRarity))
 		self.seller = value.sellerName
-		if value.sellerName ~= Inspect.Unit.Detail("player").name then
+		if value.sellerName ~= GetPlayerName() then
 			alterTexture:ClearWidth()
 			alterTexture:SetVisible(true)
 		else
@@ -70,11 +77,11 @@ local function MineItemRenderer(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		Command.Tooltip(self.itemType)
+		CTooltip(self.itemType)
 	end
 	
 	function itemTexture.Event:MouseOut()
-		Command.Tooltip(nil)
+		CTooltip(nil)
 	end	
 	
 	function alterTexture.Event:MouseIn()
@@ -93,8 +100,8 @@ local function MineItemRenderer(name, parent)
 end
 
 local function CancellableRenderer(name, parent)
-	local cell = UI.CreateFrame("Frame", name, parent)
-	local cancellableCell = UI.CreateFrame("Texture", name .. ".Texture", cell)
+	local cell = UICreateFrame("Frame", name, parent)
+	local cancellableCell = UICreateFrame("Texture", name .. ".Texture", cell)
 	
 	cancellableCell:SetPoint("CENTER", cell, "CENTER")
 	cancellableCell:SetWidth(24)
@@ -107,23 +114,23 @@ local function CancellableRenderer(name, parent)
 	
 	function cancellableCell:SetValue(key, value, width, extra)
 		self.auctionID = key
-		self.usable = _G[addonID].GetAuctionCached(key) and value.sellerName == Inspect.Unit.Detail("player").name and Inspect.Interaction("auction") and not value.bidded and true or false
+		self.usable = _G[addonID].GetAuctionCached(key) and value.sellerName == GetPlayerName() and IInteraction("auction") and not value.bidded and true or false
 		self:SetTexture(addonID, self.usable and "Textures/DeleteEnabled.png" or "Textures/DeleteDisabled.png")
 	end
 	
 	function cancellableCell.Event:LeftClick()
-		if not self.usable then return end
+		if not self.usable or not self.auctionID then return end
 		if not InternalInterface.AccountSettings.Auctions.allowLeftCancel then
 			out(L["AuctionsPanel/CancelWarning"])
 		else
-			Command.Auction.Cancel(self.auctionID, function(...) InternalInterface.AHMonitoringService.AuctionCancelCallback(self.auctionID, ...) end)
+			Command.Auction.Cancel(self.auctionID, function(...) InternalInterface.Scanner.AuctionCancelCallback(self.auctionID, ...) end)
 		end
 		cell:GetParent().Event.LeftClick(cell:GetParent())
 	end
 	
 	function cancellableCell.Event:RightClick()
 		if not self.usable or not self.auctionID then return end
-		Command.Auction.Cancel(self.auctionID, function(...) InternalInterface.AHMonitoringService.AuctionCancelCallback(self.auctionID, ...) end)
+		Command.Auction.Cancel(self.auctionID, function(...) InternalInterface.Scanner.AuctionCancelCallback(self.auctionID, ...) end)
 		cell:GetParent().Event.LeftClick(cell:GetParent())
 	end
 	
@@ -131,7 +138,7 @@ local function CancellableRenderer(name, parent)
 end
 
 local function MineBackgroundRenderer(name, parent)
-	local backgroundCell = UI.CreateFrame("Texture", name, parent)
+	local backgroundCell = UICreateFrame("Texture", name, parent)
 	
 	backgroundCell:SetTexture(addonID, "Textures/AuctionRowBackground.png")
 	
@@ -145,105 +152,55 @@ local function MineBackgroundRenderer(name, parent)
 end
 
 function InternalInterface.UI.AuctionsFrame(name, parent)
-	local auctionsFrame = UI.CreateFrame("Frame", name, parent)
+	local auctionsFrame = UICreateFrame("Frame", name, parent)
 	
-	local mineGrid = UI.CreateFrame("BDataGrid", name .. ".MineGrid", auctionsFrame)
+	local mineGrid = UICreateFrame("BDataGrid", name .. ".MineGrid", auctionsFrame)
 	
-	local collapseButton = UI.CreateFrame("Texture", name .. ".CollapseButton", auctionsFrame)
-	local filterTextPanel = UI.CreateFrame("BPanel", name .. ".FilterTextPanel", auctionsFrame)
-	local filterTextField = UI.CreateFrame("RiftTextfield", name .. ".FilterTextField", filterTextPanel:GetContent())
+	local collapseButton = UICreateFrame("Texture", name .. ".CollapseButton", auctionsFrame)
+	local filterTextPanel = UICreateFrame("BPanel", name .. ".FilterTextPanel", auctionsFrame)
+	local filterTextField = UICreateFrame("RiftTextfield", name .. ".FilterTextField", filterTextPanel:GetContent())
 
-	local filterFrame = UI.CreateFrame("Frame", name .. ".FilterFrame", auctionsFrame)
-	local filterCharacterCheck = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterCharacterCheck", filterFrame)
-	local filterCharacterText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterCharacterText", filterFrame)
-	local filterCompetitionText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterCompetitionText", filterFrame)
-	local filterCompetitionSelector = UI.CreateFrame("BDropdown", filterFrame:GetName() .. ".FilterCompetitionSelector", filterFrame)
-	local filterBelowText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterBelowText", filterFrame)
-	local filterBelowSlider = UI.CreateFrame("BSlider", filterFrame:GetName() .. ".FilterBelowSlider", filterFrame)
-	local filterScorePanel = UI.CreateFrame("BPanel", filterFrame:GetName() .. ".FilterScorePanel", filterFrame)
-	local filterScoreTitle = UI.CreateFrame("BShadowedText", filterFrame:GetName() .. ".FilterScoreTitle", filterScorePanel:GetContent())
-	local filterScoreNilCheck = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScoreNilCheck", filterScorePanel:GetContent())
-	local filterScoreNilText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScoreNilText", filterScorePanel:GetContent())
-	local filterScore1Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore1Check", filterScorePanel:GetContent())
-	local filterScore1Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore1Text", filterScorePanel:GetContent())
-	local filterScore2Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore2Check", filterScorePanel:GetContent())
-	local filterScore2Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore2Text", filterScorePanel:GetContent())
-	local filterScore3Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore3Check", filterScorePanel:GetContent())
-	local filterScore3Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore3Text", filterScorePanel:GetContent())
-	local filterScore4Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore4Check", filterScorePanel:GetContent())
-	local filterScore4Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore4Text", filterScorePanel:GetContent())
-	local filterScore5Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore5Check", filterScorePanel:GetContent())
-	local filterScore5Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore5Text", filterScorePanel:GetContent())
+	local filterFrame = UICreateFrame("Frame", name .. ".FilterFrame", auctionsFrame)
+	local filterCharacterCheck = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterCharacterCheck", filterFrame)
+	local filterCharacterText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterCharacterText", filterFrame)
+	local filterCompetitionText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterCompetitionText", filterFrame)
+	local filterCompetitionSelector = UICreateFrame("BDropdown", filterFrame:GetName() .. ".FilterCompetitionSelector", filterFrame)
+	local filterBelowText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterBelowText", filterFrame)
+	local filterBelowSlider = UICreateFrame("BSlider", filterFrame:GetName() .. ".FilterBelowSlider", filterFrame)
+	local filterScorePanel = UICreateFrame("BPanel", filterFrame:GetName() .. ".FilterScorePanel", filterFrame)
+	local filterScoreTitle = UICreateFrame("BShadowedText", filterFrame:GetName() .. ".FilterScoreTitle", filterScorePanel:GetContent())
+	local filterScoreNilCheck = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScoreNilCheck", filterScorePanel:GetContent())
+	local filterScoreNilText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScoreNilText", filterScorePanel:GetContent())
+	local filterScore1Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore1Check", filterScorePanel:GetContent())
+	local filterScore1Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore1Text", filterScorePanel:GetContent())
+	local filterScore2Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore2Check", filterScorePanel:GetContent())
+	local filterScore2Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore2Text", filterScorePanel:GetContent())
+	local filterScore3Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore3Check", filterScorePanel:GetContent())
+	local filterScore3Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore3Text", filterScorePanel:GetContent())
+	local filterScore4Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore4Check", filterScorePanel:GetContent())
+	local filterScore4Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore4Text", filterScorePanel:GetContent())
+	local filterScore5Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore5Check", filterScorePanel:GetContent())
+	local filterScore5Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore5Text", filterScorePanel:GetContent())
 	
-	local auctionGrid = UI.CreateFrame("BDataGrid", name .. ".AuctionGrid", auctionsFrame)
-	local controlFrame = UI.CreateFrame("Frame", name .. ".ControlFrame", auctionGrid.externalPanel:GetContent())
-	local buyButton = UI.CreateFrame("RiftButton", name .. ".BuyButton", controlFrame)
-	local bidButton = UI.CreateFrame("RiftButton", name .. ".BidButton", controlFrame)
-	local auctionMoneySelector = UI.CreateFrame("BMoneySelector", name .. ".AuctionMoneySelector", controlFrame)
-	local noBidLabel = UI.CreateFrame("BShadowedText", name .. ".NoBidLabel", controlFrame)
-	local refreshPanel = UI.CreateFrame("BPanel", name .. ".RefreshPanel", controlFrame)
-	local refreshButton = UI.CreateFrame("Texture", name .. ".RefreshButton", refreshPanel:GetContent())
-	local refreshText = UI.CreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())
-	
+	local auctionGrid = UICreateFrame("BDataGrid", name .. ".AuctionGrid", auctionsFrame)
+	local controlFrame = UICreateFrame("Frame", name .. ".ControlFrame", auctionGrid.externalPanel:GetContent())
+	local buyButton = UICreateFrame("RiftButton", name .. ".BuyButton", controlFrame)
+	local bidButton = UICreateFrame("RiftButton", name .. ".BidButton", controlFrame)
+	local auctionMoneySelector = UICreateFrame("BMoneySelector", name .. ".AuctionMoneySelector", controlFrame)
+	local noBidLabel = UICreateFrame("BShadowedText", name .. ".NoBidLabel", controlFrame)
+	local refreshPanel = UICreateFrame("BPanel", name .. ".RefreshPanel", controlFrame)
+	local refreshButton = UICreateFrame("Texture", name .. ".RefreshButton", refreshPanel:GetContent())
+	local refreshText = UICreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())
 
-	local prices = {}
 	local collapsed = true
-	local refreshMode = REFRESH_NONE
-	local refreshTask
 	
-	local function ResetMineGrid()
-		local ownAuctions = _G[addonID].GetActiveAuctionData()
-		local auctionsByItem = {}
-		prices = {}
-		for auctionID, auctionData in pairs(ownAuctions) do
-			if not auctionData.own then 
-				ownAuctions[auctionID] = nil 
-			else
-				if not prices[auctionData.itemType] then
-					prices[auctionData.itemType] = _G[addonID].GetPricings(auctionData.itemType)
-				end
-				if auctionData.buyoutUnitPrice then
-					ownAuctions[auctionID].score =  _G[addonID].ScorePrice(auctionData.itemType, auctionData.buyoutUnitPrice, prices[auctionData.itemType])
-					auctionsByItem[auctionData.itemType] = auctionsByItem[auctionData.itemType] or {}
-					table.insert(auctionsByItem[auctionData.itemType], auctionID)
-				end
-			end 
-		end
-		
-		for itemType, auctions in pairs(auctionsByItem) do
-			local itemAuctions = _G[addonID].GetActiveAuctionData(itemType)
-			for _, auctionID in ipairs(auctions) do
-				local buy = ownAuctions[auctionID].buyoutUnitPrice
-				local below, above, total = 0, 0, 1
-				for itemAuctionID, itemAuctionData in pairs(itemAuctions) do
-					if itemAuctionData.buyoutUnitPrice and not itemAuctionData.own then
-						local itemBuy = itemAuctionData.buyoutUnitPrice
-						if buy < itemBuy then 
-							above = above + 1
-						elseif buy > itemBuy then 
-							below = below + 1
-						end
-						total = total + 1
-					end
-				end
-				ownAuctions[auctionID].below = below
-				ownAuctions[auctionID].above = above
-				ownAuctions[auctionID].quintile = math.floor(below * 5 / total) + 1
-			end
-		end
-		mineGrid:SetData(ownAuctions)
+	local function ResetAuctions()
+		-- TODO Remember last selected one
+		mineGrid:SetData({})
+		_G[addonID].GetOwnAuctionsScoredCompetition(function(auctions) mineGrid:SetData(auctions) end)
 	end
 
-	local function ResetAuctionGrid()
-		local auctions = {}
-		local lastUpdate = nil
-		local mineID, mineData = mineGrid:GetSelectedData()
-		if mineData then
-			auctions, lastUpdate = _G[addonID].GetActiveAuctionData(mineData.itemType)
-			for auctionID, auctionData in pairs(auctions) do
-				auctions[auctionID].score = _G[addonID].ScorePrice(auctionData.itemType, auctionData.buyoutUnitPrice, prices[auctionData.itemType])
-			end
-		end
+	local function ResetAuctionGrid(auctions, lastUpdate)
 		auctionGrid:SetData(auctions)
 		if (lastUpdate or 0) <= 0 then
 			refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. L["PostingPanel/lastUpdateDateFallback"])
@@ -251,10 +208,19 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 			refreshText:SetText(L["PostingPanel/lastUpdateMessage"] .. GetLocalizedDateString(L["PostingPanel/lastUpdateDateFormat"], lastUpdate))
 		end		
 	end
+	
+	local function ResetCompetition()
+		auctionGrid:SetData({})
 
+		local mineID, mineData = mineGrid:GetSelectedData()
+		if mineData then
+			_G[addonID].GetActiveAuctionsScored(ResetAuctionGrid, mineData.itemType)
+		end
+	end
+	
 	local function RefreshAuctionButtons()
 		local auctionSelected = false
-		local auctionInteraction = Inspect.Interaction("auction")
+		local auctionInteraction = IInteraction("auction")
 		local selectedAuctionCached = false
 		local selectedAuctionBid = false
 		local selectedAuctionBuy = false
@@ -268,8 +234,7 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 			selectedAuctionCached = _G[addonID].GetAuctionCached(selectedAuctionID) or false
 			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
 			selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
-			local ok, auctionData = pcall(Inspect.Auction.Detail, selectedAuctionID)
-			if ok and auctionData and auctionData.bidder then highestBidder = true end
+			highestBidder = (selectedAuctionData.ownBidded or 0) == selectedAuctionData.bidPrice
 			seller = selectedAuctionData.own
 			bidPrice = selectedAuctionData.bidPrice
 		end
@@ -308,46 +273,14 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 			auctionMoneySelector:SetVisible(true)
 			noBidLabel:SetVisible(false)
 		end
-	end
+	end	
 
-	local function SetRefreshMode(mode)
-		if mode > REFRESH_NONE and refreshMode <= REFRESH_NONE and refreshTask then
-			Library.LibCron.resume(refreshTask)
-		end
-		refreshMode = math.max(mode, refreshMode)
-	end
-	
-	local function DoRefresh()
-		if not auctionsFrame:GetVisible() then return end
-	
-		if refreshMode >= REFRESH_MINE then
-			ResetMineGrid()
-		end
-		
-		if refreshMode == REFRESH_MINEFILTER then
-			mineGrid:ForceUpdate()
-		end
-		
-		if refreshMode >= REFRESH_AUCTIONS then
-			ResetAuctionGrid(item)
-		end
-
-		if refreshMode >= REFRESH_AUCTION then
-			RefreshAuctionButtons()
-		end
-
-		refreshMode = REFRESH_NONE
-		if refreshTask then Library.LibCron.pause(refreshTask) end
-	end
-	refreshTask = Library.LibCron.new(addonID, 0, true, true, DoRefresh)
-	Library.LibCron.pause(refreshTask)
-	
 	local function MineGridFilter(key, value)
-		if (value.below or 0) < filterBelowSlider:GetPosition() then return false end
+		if (value.competitionBelow or 0) < filterBelowSlider:GetPosition() then return false end
 	
-		if (value.quintile or 1) < filterCompetitionSelector:GetSelectedValue() then return false end
+		if (value.competitionQuintile or 1) < filterCompetitionSelector:GetSelectedValue() then return false end
 
-		if filterCharacterCheck:GetChecked() and value.sellerName ~= Inspect.Unit.Detail("player").name then return false end
+		if filterCharacterCheck:GetChecked() and value.sellerName ~= GetPlayerName() then return false end
 
 		local scoreIndex = InternalInterface.UI.ScoreIndexByScore(value.score) or 0
 		if scoreIndex == 0 and not filterScoreNilCheck:GetChecked() then return false
@@ -358,34 +291,34 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 		elseif scoreIndex == 5 and not filterScore5Check:GetChecked() then return false
 		end
 
-		local filterText = string.upper(filterTextField:GetText())
-		local upperName = string.upper(value.itemName)
-		if not string.find(upperName, filterText) then return false end
+		local filterText = SUpper(filterTextField:GetText())
+		local upperName = SUpper(value.itemName)
+		if not SFind(upperName, filterText) then return false end
 
 		return true
 	end
 	
 	local function ScoreValue(value)
 		if not value then return "" end
-		return math.floor(value) .. " %"
+		return MFloor(value) .. " %"
 	end
 	
 	local function ScoreColor(value)
-		local r, g, b = unpack(InternalInterface.UI.ScoreColorByScore(value))
+		local r, g, b = unpack(ScoreColorByScore(value))
 		return { r, g, b, 0.1 }
 	end
 	
 	local function CompetitionString(value)
-		if not value.below or not value.quintile then return "" end
-		local quintileNames = { "Weak", "Moderate", "Intense", "Strong", "Fierce" }
-		return string.format("%s (%d)", L["AuctionsPanel/CompetitionName" .. value.quintile], value.below)
+		if not value.competitionBelow or not value.competitionQuintile then return "" end
+		return SFormat("%s (%d)", L["AuctionsPanel/CompetitionName" .. value.competitionQuintile], value.competitionBelow)
 	end
 	
 	local function CompetitionOrder(a, b, direction)
 		local auctions = mineGrid:GetData()
-		local ret = ((auctions[a].quintile or 0) - (auctions[b].quintile or 0)) * direction
-		if ret == 0 then ret = ((auctions[a].below or 0) - (auctions[b].below or 0)) * direction end
-		return ret < 0 or (ret == 0 and a < b)
+		local qA, qB, bA, bB = auctions[a].competitionQuintile or 0, auctions[b].competitionQuintile or 0, auctions[a].competitionBelow or 0, auctions[b].competitionBelow or 0
+		local winner = ((qA < qB or (qA == qB and bA < bB) or (qA == qB and bA == bB and a < b)) and a or b) == a
+		if direction < 0 then winner = not winner end
+		return winner
 	end
 	
 	mineGrid:SetRowHeight(62)
@@ -396,7 +329,7 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 	mineGrid:SetHeadersVisible(true)
 	mineGrid:SetUnselectedRowBackgroundColor(0.15, 0.1, 0.1, 1)
 	mineGrid:SetSelectedRowBackgroundColor(0.45, 0.3, 0.3, 1)
-	mineGrid:AddColumn(L["AuctionsPanel/columnItem"], 310, MineItemRenderer, function(a, b, direction) local auctions = mineGrid:GetData() return (auctions[a].itemName < auctions[b].itemName and -1 or 1) * direction <= 0 end)
+	mineGrid:AddColumn(L["AuctionsPanel/columnItem"], 310, MineItemRenderer, "itemName")
 	local mineOrderColumn = mineGrid:AddColumn(L["PostingPanel/columnMinExpire"], 100, "Text", true, "minExpireTime", { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	mineGrid:AddColumn(L["PostingPanel/columnMaxExpire"], 100, "Text", true, "maxExpireTime", { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	mineGrid:AddColumn(L["PostingPanel/columnBid"], 130, "MoneyRenderer", true, "bidPrice")
@@ -548,7 +481,7 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 	filterScore5Text:SetText(L["General/ScoreName5"])
 
 	function mineGrid.Event:SelectionChanged()
-		SetRefreshMode(REFRESH_AUCTIONS)
+		ResetCompetition()
 	end
 	
 	function collapseButton.Event:LeftClick()
@@ -565,7 +498,7 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 	end
 
 	function filterTextField.Event:KeyFocusGain()
-		local length = string.len(self:GetText())
+		local length = SLen(self:GetText())
 		if length > 0 then
 			self:SetSelection(0, length)
 		end
@@ -589,16 +522,16 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 
 	function buyButton.Event:LeftPress()
 		local auctionID, auctionData = auctionGrid:GetSelectedData()
-		if auctionID then
-			Command.Auction.Bid(auctionID, auctionData.buyoutPrice, function(...) InternalInterface.AHMonitoringService.AuctionBuyCallback(auctionID, ...) end)
+		if auctionData then
+			CABid(auctionID, auctionData.buyoutPrice, function(...) InternalInterface.Scanner.AuctionBuyCallback(auctionID, ...) end)
 		end
 	end
 	
 	function bidButton.Event:LeftPress()
 		local auctionID = auctionGrid:GetSelectedData()
-		if auctionID then
+		if auctionData then
 			local bidAmount = auctionMoneySelector:GetValue()
-			Command.Auction.Bid(auctionID, bidAmount, function(...) InternalInterface.AHMonitoringService.AuctionBidCallback(auctionID, bidAmount, ...) end)
+			CABid(auctionID, bidAmount, function(...) InternalInterface.Scanner.AuctionBidCallback(auctionID, bidAmount, ...) end)
 		end
 	end
 	
@@ -606,9 +539,9 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 		if not self.enabled then return end
 		
 		local mineID, mineInfo = mineGrid:GetSelectedData()
-		if not mineID then return end
+		if not mineInfo then return end
 		
-		if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = mineInfo.itemName, sort = "time", sortOrder = "descending" }) then
+		if not pcall(CAScan, { type = "search", index = 0, text = mineInfo.itemName, sort = "time", sortOrder = "descending" }) then
 			out(L["PostingPanel/itemScanError"])
 		else
 			InternalInterface.ScanNext()
@@ -617,28 +550,29 @@ function InternalInterface.UI.AuctionsFrame(name, parent)
 	end
 
 	function auctionGrid.Event:SelectionChanged(auctionID, auctionData)
-		SetRefreshMode(REFRESH_AUCTION)
+		RefreshAuctionButtons()
 	end
 	
-	local function UpdateMineGrid() SetRefreshMode(REFRESH_MINEFILTER) end
+	local function UpdateFilter() mineGrid:ForceUpdate() end
 	
-	filterTextField.Event.TextfieldChange = UpdateMineGrid
-	filterCharacterCheck.Event.CheckboxChange = UpdateMineGrid
-	filterCompetitionSelector.Event.SelectionChanged = UpdateMineGrid
-	filterBelowSlider.Event.PositionChanged = UpdateMineGrid
-	filterScoreNilCheck.Event.CheckboxChange = UpdateMineGrid
-	filterScore1Check.Event.CheckboxChange = UpdateMineGrid
-	filterScore2Check.Event.CheckboxChange = UpdateMineGrid
-	filterScore3Check.Event.CheckboxChange = UpdateMineGrid
-	filterScore4Check.Event.CheckboxChange = UpdateMineGrid
-	filterScore5Check.Event.CheckboxChange = UpdateMineGrid
-	table.insert(Event.Interaction, { function(interaction) if interaction == "auction" then UpdateMineGrid() end end, addonID, "AuctionsFrame.OnInteraction" })
+	filterTextField.Event.TextfieldChange = UpdateFilter
+	filterCharacterCheck.Event.CheckboxChange = UpdateFilter
+	filterCompetitionSelector.Event.SelectionChanged = UpdateFilter
+	filterBelowSlider.Event.PositionChanged = UpdateFilter
+	filterScoreNilCheck.Event.CheckboxChange = UpdateFilter
+	filterScore1Check.Event.CheckboxChange = UpdateFilter
+	filterScore2Check.Event.CheckboxChange = UpdateFilter
+	filterScore3Check.Event.CheckboxChange = UpdateFilter
+	filterScore4Check.Event.CheckboxChange = UpdateFilter
+	filterScore5Check.Event.CheckboxChange = UpdateFilter
 	
-	table.insert(Event[addonID].AuctionData, { function() SetRefreshMode(REFRESH_MINE) end, addonID, "AuctionsFrame.OnAuctionData" })
+	TInsert(Event.Interaction, { function(interaction) if auctionsFrame:GetVisible() and interaction == "auction" then mineGrid:ForceUpdate() RefreshAuctionButtons() end end, addonID, "AuctionsFrame.OnInteraction" })
+	TInsert(Event[addonID].AuctionData, { function() if auctionsFrame:GetVisible() then ResetAuctions() ResetCompetition() end end, addonID, "AuctionsFrame.OnAuctionData" })
 	
 	function auctionsFrame:Show(hEvent)
 		pcall(Command.Auction.Scan, { type = "mine" })
-		SetRefreshMode(REFRESH_MINE)
+		ResetAuctions()
+		ResetCompetition()
 	end	
 
 	return auctionsFrame

@@ -1,9 +1,10 @@
 -- Private
 local function UpdateTextfield(self)
-	self.secretLabel:SetText(string.format("%d", self.currentValue))
+	local text = string.format("%d", self.currentValue)
+	self.secretLabel:SetText(text)
 	local textWidth = self.secretLabel:GetWidth() + 10
 
-	self.textField:SetText(self.secretLabel:GetText())
+	self.textField:SetText(text)
 	self.textField:SetWidth(textWidth)
 end
 

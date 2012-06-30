@@ -11,9 +11,9 @@ Description =
 	English = "UI library for BananAH",
 }
 Author = "Baanano"
-Version = "0.3.0"
+Version = "0.3.1"
 Email = "baanano.rift@gmail.com"
-Environment = "1.7"
+Environment = "1.9"
 RunOnStartup =
 {
 	"Init.lua",

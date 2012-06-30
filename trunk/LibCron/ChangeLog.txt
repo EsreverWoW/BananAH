@@ -1,3 +1,6 @@
+2012/06/22:
+	* (seebs) TOC update.
+
 2012/04/19:
 	* (Baanano) Many changes:
 	  - only public API is exposed

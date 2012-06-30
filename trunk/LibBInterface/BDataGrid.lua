@@ -141,6 +141,7 @@ local function SetRowContent(self, row, key, value)
 end
 
 local function ApplyOrderAndFilter(self)
+	Command.System.Watchdog.Quiet() -- FIXME Evil watchdog doesn't like creating rows
 	self.data = self.data or {}
 	self.lastSelectedIndex = self.lastSelectedIndex or 0
 
@@ -169,6 +170,10 @@ local function ApplyOrderAndFilter(self)
 	-- Apply the sorting
 	if self.orderColumn then
 		local orderFunction = self.columns[self.orderColumn].orderable
+		local binding = self.columns[self.orderColumn].binding
+		if type(orderFunction) == "string" then
+			binding = orderFunction
+		end
 		if type(orderFunction) ~= "function" then
 			orderFunction = function(a, b, direction)
 				if direction > 0 then
@@ -178,7 +183,6 @@ local function ApplyOrderAndFilter(self)
 				end
 			end
 		end
-		local binding = self.columns[self.orderColumn].binding
 		table.sort(orderLookup, function(keyA, keyB) return orderFunction(not binding and keyA or filteredData[keyA][binding], not binding and keyB or filteredData[keyB][binding], self.orderDirection) end)
 	end
 	
