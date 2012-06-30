@@ -1,0 +1,76 @@
+	Release 0.3.1
+- Updated to Rift 1.9
+
+	Release 0.3
+- Updated to Rift 1.8
+
+- Background scanner changes:
+ + Scanning speed improved
+ + The background scanner can be temporarily disabled now
+ + Expiration times are estimated more accurately
+
+- Post Tab changes:
+ + Added extra info on the auction being posted
+ + Added new pricing models & price matchers
+ + Added score column that compares auction prices with the reference prices
+ + Auctions are color coded by score
+ 
+- New Auctions Tab:
+ + Keeps track of all your characters' auctions
+ + Shows competition for your posted auctions
+ + The auction list is filterable to help you locate your auctions without having to scroll hundreds of pages
+ + Faster auction cancelling functionality than the native AH window
+ 
+- Other minor changes & features:
+ + Added option to close the addon window when the native auction window is closed
+ + Added status bar: Scan results & error messages are shown in the status bar now, instead of being dumped to the chat
+ + The 'Hide item' filter has been improved: Now you can also hide items only for some characters
+ + Items shown in the Post tab can be filtered by rarity now
+ + The 'Post' button now has a 0.5 cooldown to prevent accidental posting
+ + Posting & Autoposting configs are saved per character now
+ + The "Buy < Vendor" warning now takes into account the 5% auction house fee
+ + The Posting queue now displays the number of tasks queued
+ + Expiration times are shown as time remaining now
+ + New option to select the order in which the price matchers are applied
+ + Undercutting and other features consider auctions posted by your other characters as own
+ 
+- Fixed a lot of bugs
+
+- Documentation is no longer included in the addon package. Check our website instead: http://www.bananah.net
+
+	Beta 0.2.2
+- Reduced the auction database size so it doesn't get truncated
+- Speeded up the background auction scanner
+
+	Beta 0.2.1
+- Added addon documentation by LunaEclipse
+
+	Beta 0.2.0
+- Added item filtering functionality to the items panel.
+- Improved the posting fields and added an option to bind bid & buyout prices.
+- Added basic and statistical pricing models (User defined, Vendor, Average, Standard deviation, Median and Trimmed mean).
+- Added price matchers (Self matcher and Competition undercut matcher)
+- Added auto posting (aka. batch posting)
+- Added "undercut on right click" to the auction panel.
+- Added posting queue management functionality.
+- Added (optional) map icon and configuration tab.
+- Fixed some bugs.
+
+	Beta 0.1.4
+- Fixed some critical bugs
+
+	Beta 0.1.3
+- Added German translation by chii
+- Fixed error with some crafting materials
+- Fixed error when the bags were empty
+
+	Beta 0.1.2
+- Added Russian translation by Aybolitus
+
+	Beta 0.1.1
+- Added localization support
+- The addon window will be displayed above the native AH window if opened after it
+- Bid & Buyout prices are no longer linked by default
+	
+	Beta 0.1.0
+- First release	
