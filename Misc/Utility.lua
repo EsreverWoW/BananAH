@@ -9,7 +9,15 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
-local MFloor, L, OTime, ODate = math.floor, InternalInterface.Localization.L, os.time, os.date
+local IUDetail = Inspect.Unit.Detail
+local L = InternalInterface.Localization.L
+local MFloor = math.floor
+local OTime = Inspect.Time.Server
+local ODate = os.date
+local SFormat = string.format
+local pairs = pairs
+local tonumber = tonumber
+local type = type
 
 InternalInterface.Utility = InternalInterface.Utility or {}
 
@@ -20,7 +28,8 @@ InternalInterface.Utility = InternalInterface.Utility or {}
 -- * Source: http://forums.riftgame.com/beta-addon-api-development/258724-post-your-small-addon-api-suggestions-here-13.html#post3382612             *
 -- ***************************************************************************************************************************************************
 function InternalInterface.Utility.GetRarityColor(rarity)
-	if     rarity == "sellable"     then return 0.34375, 0.34375, 0.34375, 1
+--	if     rarity == "sellable"     then return 0.34375, 0.34375, 0.34375, 1
+	if     rarity == "sellable"     then return 0.5,     0.5,     0.5,     1
 	elseif rarity == "uncommon"     then return 0,       0.797,   0,       1
 	elseif rarity == "rare"         then return 0.148,   0.496,   0.977,   1
 	elseif rarity == "epic"         then return 0.676,   0.281,   0.98,    1
@@ -43,11 +52,11 @@ function InternalInterface.Utility.RemainingTimeFormatter(value)
 	local hours, minutes, seconds = MFloor(timeDelta / 3600), MFloor(MFloor(timeDelta % 3600) / 60), MFloor(timeDelta % 60)
 	
 	if hours > 0 then
-		return hours .. " h " .. minutes .. " m"
+		return SFormat(L["Misc/RemainingTimeHours"], hours, minutes)
 	elseif minutes > 0 then
-		return minutes .. " m " .. seconds .. " s"
+		return SFormat(L["Misc/RemainingTimeMinutes"], minutes, seconds)
 	else
-		return seconds .. " s"
+		return SFormat(L["Misc/RemainingTimeSeconds"], seconds)
 	end
 end	
 
@@ -57,19 +66,19 @@ end
 -- * Formats a timestamp like os.date, but using localized weekday & month names                                                                     *
 -- ***************************************************************************************************************************************************
 function InternalInterface.Utility.GetLocalizedDateString(formatString, value)
-	local weekdayNames = L["Meta/weekdayNames"] .. ","
+	local weekdayNames = L["Misc/DateWeekdayNames"] .. ","
 	weekdayNames = { weekdayNames:match((weekdayNames:gsub("[^,]*,", "([^,]*),"))) }
 	local weekdayName = weekdayNames[tonumber(ODate("%w", value)) + 1]
 	
-	local weekdayAbbreviatedNames = L["Meta/weekdayAbbreviatedNames"] .. ","
+	local weekdayAbbreviatedNames = L["Misc/DateWeekdayAbbreviatedNames"] .. ","
 	weekdayAbbreviatedNames = { weekdayAbbreviatedNames:match((weekdayAbbreviatedNames:gsub("[^,]*,", "([^,]*),"))) }
 	local weekdayAbbreviatedName = weekdayAbbreviatedNames[tonumber(ODate("%w", value)) + 1]
 
-	local monthNames = L["Meta/monthNames"] .. ","
+	local monthNames = L["Misc/DateMonthNames"] .. ","
 	monthNames = { monthNames:match((monthNames:gsub("[^,]*,", "([^,]*),"))) }
 	local monthName = monthNames[tonumber(ODate("%m", value))]
 	
-	local monthAbbreviatedNames = L["Meta/monthAbbreviatedNames"] .. ","
+	local monthAbbreviatedNames = L["Misc/DateMonthAbbreviatedNames"] .. ","
 	monthAbbreviatedNames = { monthAbbreviatedNames:match((monthAbbreviatedNames:gsub("[^,]*,", "([^,]*),"))) }
 	local monthAbbreviatedName = monthAbbreviatedNames[tonumber(ODate("%m", value))]
 	
@@ -110,7 +119,7 @@ end
 local playerName = nil
 function InternalInterface.Utility.GetPlayerName()
 	if not playerName then
-		playerName = Inspect.Unit.Detail("player")
+		playerName = IUDetail("player")
 		playerName = playerName and playerName.name or nil
 	end
 	return playerName
