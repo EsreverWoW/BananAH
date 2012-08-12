@@ -1,49 +1,121 @@
+-- ***************************************************************************************************************************************************
+-- * Main.lua                                                                                                                                        *
+-- ***************************************************************************************************************************************************
+-- * Creates the addon windows                                                                                                                       *
+-- ***************************************************************************************************************************************************
+-- * 0.4.1 / 2012.07.29 / Baanano: Updated for 0.4.1                                                                                                 *
+-- ***************************************************************************************************************************************************
+
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
+local PublicInterface = _G[addonID]
 
+local Panel = Yague.Panel
+local CAScan = Command.Auction.Scan
+local CSRegister = Command.Slash.Register
+local CancelAll = LibPGC.CancelAll
+local GetPostingQueue = LibPGC.GetPostingQueue
+local GetPostingQueuePaused = LibPGC.GetPostingQueuePaused
+local SetPostingQueuePaused = LibPGC.SetPostingQueuePaused
+local GetPostingQueueStatus = LibPGC.GetPostingQueueStatus
 local L = InternalInterface.Localization.L
-local out = InternalInterface.Output.Write
+local SFormat = string.format
+local TInsert = table.insert
+local UICreateContext = UI.CreateContext
+local UICreateFrame = UI.CreateFrame
+local UNMapMini = UI.Native.MapMini
+local UNAuction = UI.Native.Auction
+local Write = InternalInterface.Output.Write
+local next = next
+local pcall = pcall
+local tostring = tostring
+
+local MIN_WIDTH = 1370
+local MIN_HEIGHT = 800
+local DEFAULT_WIDTH = 1370
+local DEFAULT_HEIGHT = 800
 
 local function InitializeLayout()
-	local mapContext = UI.CreateContext(addonID .. ".UI.MapContext")
-	local mapIcon = UI.CreateFrame("Texture", addonID .. ".UI.MapIcon", mapContext)
+	local mapContext = UICreateContext(addonID .. ".UI.MapContext")
+	local mapIcon = UICreateFrame("Texture", addonID .. ".UI.MapIcon", mapContext)
 
-	local mainContext = UI.CreateContext(addonID .. ".UI.MainContext")
-	local mainWindow = UI.CreateFrame("BWindow", addonID .. ".UI.MainWindow", mainContext)
-	local searchTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.SearchTab", mainWindow:GetContent())
-	local postTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.PostTab", mainWindow:GetContent())
-	local auctionsTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.AuctionsTab", mainWindow:GetContent())
-	local bidsTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.BidsTab", mainWindow:GetContent())
-	local historyTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.HistoryTab", mainWindow:GetContent())
-	local configTab = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.ConfigTab", mainWindow:GetContent())
-	local mainPanel = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.Panel", mainWindow:GetContent())
-	local statusPanel = UI.CreateFrame("BPanel", addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
-	local statusText = UI.CreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
-	local scannerButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.ScannerButton", statusPanel:GetContent())
-	local refreshButton = UI.CreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
-	local searchText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.SearchTab.Text", searchTab:GetContent())
-	--local searchFrame = InternalInterface.UI.SearchFrame(addonID .. ".UI.MainWindow.SearchFrame", mainPanel:GetContent())
-	local postText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.PostTab.Text", postTab:GetContent())
-	local postFrame = InternalInterface.UI.PostingFrame(addonID .. ".UI.MainWindow.PostFrame", mainPanel:GetContent())
-	local auctionsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.AuctionsTab.Text", auctionsTab:GetContent())
-	local auctionsFrame = InternalInterface.UI.AuctionsFrame(addonID .. ".UI.MainWindow.AuctionsFrame", mainPanel:GetContent())
-	local bidsText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.BidsTab.Text", bidsTab:GetContent())
-	local historyText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.HistoryTab.Text", historyTab:GetContent())
-	local configText = UI.CreateFrame("BShadowedText", addonID .. ".UI.MainWindow.ConfigTab.Text", configTab:GetContent())
-	local configFrame = InternalInterface.UI.ConfigFrame(addonID .. ".UI.MainWindow.ConfigFrame", mainPanel:GetContent())
+	local mainContext = UICreateContext(addonID .. ".UI.MainContext")
 
+	local mainWindow = Yague.Window(addonID .. ".UI.MainWindow", mainContext)
+	local mainTab = Yague.TabControl(mainWindow:GetName() .. ".MainTab", mainWindow:GetContent())
+	local searchFrame = InternalInterface.UI.SearchFrame(mainTab:GetName() .. ".SearchFrame", mainTab:GetContent())
+	local postFrame = InternalInterface.UI.PostFrame(mainTab:GetName() .. ".PostFrame", mainTab:GetContent())
+	local sellingFrame = InternalInterface.UI.SellingFrame(mainTab:GetName() .. ".SellingFrame", mainTab:GetContent())
+	--local configFrame = InternalInterface.UI.ConfigFrame(mainTab:GetName() .. ".ConfigFrame", mainTab:GetContent())
+
+	local queuePanel = Panel(addonID .. ".UI.MainWindow.QueueSizePanel", mainWindow:GetContent())
+	local queueSizeText = UICreateFrame("Text", queuePanel:GetName() .. ".QueueSizeText", queuePanel:GetContent())
+	local clearButton = UICreateFrame("Texture", addonID .. ".UI.MainWindow.ClearButton", mainWindow:GetContent())
+	local playButton = UICreateFrame("Texture", addonID .. ".UI.MainWindow.PlayButton", mainWindow:GetContent())
+
+	local statusPanel = Panel(addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
+	local statusText = UICreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
+
+	local refreshButton = UICreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
+	
+	local refreshEnabled = false
+
+	local function ShowSelectedFrame(frame)
+		if frame and frame.Show then
+			frame:Show()
+		end
+	end
+	
+	local function HideSelectedFrame(frame)
+		if frame and frame.Hide then
+			frame:Hide()
+		end
+	end
+	
+	local function ShowBananAH()
+		mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
+		mainWindow:SetVisible(true)
+		if mainWindow:GetTop() < 0 then
+			mainWindow:ClearAll()
+			mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+			mainWindow:SetWidth(DEFAULT_WIDTH)
+			mainWindow:SetHeight(DEFAULT_HEIGHT)
+		end
+		ShowSelectedFrame(mainTab:GetSelectedFrame())
+	end	
+	
+	local function UpdateQueueStatus()
+		local status, size = GetPostingQueueStatus()
+
+		playButton:SetTextureAsync(addonID, GetPostingQueuePaused() and "Textures/Play.png" or "Textures/Pause.png")
+
+		queueSizeText:SetText(tostring(size))
+		
+		if status == 1 then
+			queueSizeText:SetFontColor(0, 0.75, 0.75, 1)
+		elseif status == 3 then
+			queueSizeText:SetFontColor(1, 0.5, 0, 1)
+		else
+			queueSizeText:SetFontColor(1, 1, 1, 1)
+		end
+		
+		-- TODO Queue control panel
+		-- local queue = GetPostingQueue()
+		-- local clearable = next(queue) and true or false
+	end
+	
 	mapContext:SetStrata("hud")
 
-	mapIcon:SetPoint("CENTER", UI.Native.MapMini, "BOTTOMLEFT", 24, -25)
-	mapIcon:SetTexture(addonID, "Textures/MapIcon.png")
-	mapIcon:SetVisible(InternalInterface.AccountSettings.General.showMapIcon or false)
+	mapIcon:SetPoint("CENTER", UNMapMini, "BOTTOMLEFT", 24, -25)
+	mapIcon:SetTextureAsync(addonID, "Textures/MapIcon.png")
+	mapIcon:SetVisible(InternalInterface.AccountSettings.General.showMapIcon or false) -- FIXME
 	InternalInterface.UI.MapIcon = mapIcon
 	
 	mainWindow:SetVisible(false)
-	mainWindow:SetMinWidth(1370)
-	mainWindow:SetMinHeight(800)
-	mainWindow:SetWidth(1370)
-	mainWindow:SetHeight(800)
+	mainWindow:SetMinWidth(MIN_WIDTH)
+	mainWindow:SetMinHeight(MIN_HEIGHT)
+	mainWindow:SetWidth(DEFAULT_WIDTH)
+	mainWindow:SetHeight(DEFAULT_HEIGHT)
 	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0) -- TODO Get from config
 	mainWindow:SetTitle(addonID)
 	mainWindow:SetAlpha(1)
@@ -51,268 +123,130 @@ local function InitializeLayout()
 	mainWindow:SetDraggable(true)
 	mainWindow:SetResizable(false)
 	
-	searchTab:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 20, 18)
-	searchTab:SetPoint("BOTTOMLEFT", mainWindow:GetContent(), "TOPLEFT", 20, 62)
-	searchTab.borderFrame.cornerBottomLeft:SetVisible(false)
-	searchTab.borderFrame.borderBottom:SetVisible(false)
-	searchTab.borderFrame.cornerBottomRight:SetVisible(false)
-	searchTab:SetLayer(1)
-
-	postTab:SetPoint("TOPLEFT", searchTab, "TOPRIGHT", 10, 0)
-	postTab:SetPoint("BOTTOMLEFT", searchTab, "BOTTOMRIGHT", 10, 0) 
-	postTab.borderFrame.cornerBottomLeft:SetVisible(false)
-	postTab.borderFrame.borderBottom:SetVisible(false)
-	postTab.borderFrame.cornerBottomRight:SetVisible(false)
-	postTab:SetLayer(1)
-
-	auctionsTab:SetPoint("TOPLEFT", postTab, "TOPRIGHT", 10, 0)
-	auctionsTab:SetPoint("BOTTOMLEFT", postTab, "BOTTOMRIGHT", 10, 0) 
-	auctionsTab.borderFrame.cornerBottomLeft:SetVisible(false)
-	auctionsTab.borderFrame.borderBottom:SetVisible(false)
-	auctionsTab.borderFrame.cornerBottomRight:SetVisible(false)
-	auctionsTab:SetLayer(1)
-
-	bidsTab:SetPoint("TOPLEFT", auctionsTab, "TOPRIGHT", 10, 0)
-	bidsTab:SetPoint("BOTTOMLEFT", auctionsTab, "BOTTOMRIGHT", 10, 0) 
-	bidsTab.borderFrame.cornerBottomLeft:SetVisible(false)
-	bidsTab.borderFrame.borderBottom:SetVisible(false)
-	bidsTab.borderFrame.cornerBottomRight:SetVisible(false)
-	bidsTab:SetLayer(1)
-
-	historyTab:SetPoint("TOPLEFT", bidsTab, "TOPRIGHT", 10, 0)
-	historyTab:SetPoint("BOTTOMLEFT", bidsTab, "BOTTOMRIGHT", 10, 0) 
-	historyTab.borderFrame.cornerBottomLeft:SetVisible(false)
-	historyTab.borderFrame.borderBottom:SetVisible(false)
-	historyTab.borderFrame.cornerBottomRight:SetVisible(false)
-	historyTab:SetLayer(1)
-
-	configTab:SetPoint("TOPLEFT", historyTab, "TOPRIGHT", 10, 0)
-	configTab:SetPoint("BOTTOMLEFT", historyTab, "BOTTOMRIGHT", 10, 0) 
-	configTab.borderFrame.cornerBottomLeft:SetVisible(false)
-	configTab.borderFrame.borderBottom:SetVisible(false)
-	configTab.borderFrame.cornerBottomRight:SetVisible(false)
-	configTab:SetLayer(1)
-
-	mainPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 5, 57)
-	mainPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -38)
-	mainPanel:SetLayer(2)
+	mainTab:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 5, 5)
+	mainTab:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -40)
+	mainTab:AddTab("search", L["Main/MenuSearch"], searchFrame)
+	mainTab:AddTab("post", L["Main/MenuPost"], postFrame)
+	mainTab:AddTab("auctions", L["Main/MenuAuctions"], sellingFrame)
+	mainTab:AddTab("bids", L["Main/MenuBids"], nil)
+	mainTab:AddTab("history", L["Main/MenuHistory"], nil)
+	mainTab:AddTab("config", L["Main/MenuConfig"], nil)
 	
+	queuePanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -55, -35)
+	queuePanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
+	queuePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.5)
+	
+	queueSizeText:SetPoint("CENTER", queuePanel:GetContent(), "CENTER")
+
+	clearButton:SetPoint("CENTERRIGHT", queuePanel, "CENTERLEFT", -5, 0)
+	clearButton:SetTextureAsync(addonID, "Textures/Stop.png")
+
+	playButton:SetPoint("CENTERRIGHT", clearButton, "CENTERLEFT", -5, 0)
+	playButton:SetTextureAsync(addonID, "Textures/Pause.png")
+
 	statusPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMLEFT", 5, -35)
-	statusPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
+	statusPanel:SetPoint("BOTTOMRIGHT", queuePanel, "BOTTOMRIGHT", -120, 0)
 	statusPanel:GetContent():SetBackgroundColor(0.2, 0.2, 0.2, 0.5)
 	
-	scannerButton:SetTexture(addonID, _G[addonID].GetBackgroundScannerEnabled() and "Textures/SearchIcon.png" or "Textures/DontSearchIcon.png")
-	scannerButton:SetPoint("CENTERRIGHT", statusPanel:GetContent(), "CENTERRIGHT", -3, 0)
-	scannerButton:SetWidth(14)
-	scannerButton:SetHeight(14)
-	
 	statusText:SetPoint("CENTERLEFT", statusPanel:GetContent(), "CENTERLEFT", 5, 0)
-	statusText:SetPoint("CENTERRIGHT", scannerButton, "CENTERLEFT", -2, 0)
+	statusText:SetPoint("CENTERRIGHT", statusPanel:GetContent(), "CENTERRIGHT", -5, 0)
 	
-	refreshButton:SetTexture(addonID, "Textures/RefreshDisabled.png")
+	refreshButton:SetTextureAsync(addonID, "Textures/RefreshDisabled.png")
 	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -20, 5)
-	refreshButton.enabled = false
+	refreshButton:SetPoint("BOTTOMLEFT", mainWindow:GetContent(), "TOPRIGHT", -56, 41)
 
-	searchText:SetPoint("CENTER", searchTab, "CENTER", 0, 2)
-	searchText:SetText(L["General/menuSearch"])
-	searchText:SetFontSize(16)
-	searchText:SetShadowOffset(2, 2)
-	searchText:SetFontColor(0.5, 0.5, 0.5, 1)
-	-- searchText:SetFontColor(0.75, 0.75, 0.5, 1)
-	searchTab:SetWidth(searchText:GetWidth() + 60)
-	searchTab.text = searchText
-	
-	--searchFrame:SetAllPoints()
-	--searchFrame:SetVisible(false)
-	--searchTab.frame = searchFrame
-	
-	postText:SetPoint("CENTER", postTab, "CENTER", 0, 2)
-	postText:SetText(L["General/menuPost"])
-	postText:SetFontSize(16)
-	postText:SetShadowOffset(2, 2)
-	postText:SetFontColor(0.75, 0.75, 0.5, 1)
-	postTab:SetWidth(postText:GetWidth() + 60)
-	postTab.text = postText
-	
-	postFrame:SetAllPoints()
-	postFrame:SetVisible(false)
-	postTab.frame = postFrame
-	
-	auctionsText:SetPoint("CENTER", auctionsTab, "CENTER", 0, 2)
-	auctionsText:SetText(L["General/menuAuctions"])
-	auctionsText:SetFontSize(16)
-	auctionsText:SetShadowOffset(2, 2)
-	auctionsText:SetFontColor(0.75, 0.75, 0.5, 1)
-	auctionsTab:SetWidth(auctionsText:GetWidth() + 60)
-	auctionsTab.text = auctionsText
-	
-	auctionsFrame:SetAllPoints()
-	auctionsFrame:SetVisible(false)
-	auctionsTab.frame = auctionsFrame	
-	
-	bidsText:SetPoint("CENTER", bidsTab, "CENTER", 0, 2)
-	bidsText:SetText(L["General/menuBids"])
-	bidsText:SetFontSize(16)
-	bidsText:SetShadowOffset(2, 2)
-	bidsText:SetFontColor(0.5, 0.5, 0.5, 1)
-	bidsTab:SetWidth(bidsText:GetWidth() + 60)
-	
-	historyText:SetPoint("CENTER", historyTab, "CENTER", 0, 2)
-	historyText:SetText(L["General/menuHistory"])
-	historyText:SetFontSize(16)
-	historyText:SetShadowOffset(2, 2)
-	historyText:SetFontColor(0.5, 0.5, 0.5, 1)
-	historyTab:SetWidth(historyText:GetWidth() + 60)
-	
-	configText:SetPoint("CENTER", configTab, "CENTER", 0, 2)
-	configText:SetText(L["General/menuConfig"])
-	configText:SetFontSize(16)
-	configText:SetShadowOffset(2, 2)
-	configText:SetFontColor(0.75, 0.75, 0.5, 1)
-	configTab:SetWidth(configText:GetWidth() + 60)
-	configTab.text = configText
-	
-	configFrame:SetAllPoints()
-	configFrame:SetVisible(false)
-	configTab.frame = configFrame
-	
-	local function ShowBananAH(hEvent)
-		mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
-		mainWindow:SetVisible(true)
-		if mainWindow:GetTop() < 0 then
-			mainWindow:ClearAll()
-			mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-			mainWindow:SetWidth(1280)
-			mainWindow:SetHeight(768)
-		end
-		mainWindow.selectedTab.frame:SetVisible(true)
-		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame, hEvent)
-	end
-	
-	function mainWindow.Event:Close()
-		mainWindow.selectedTab.frame:SetVisible(false)
-	end
-	
-	function UI.Native.MapMini.Event:Layer()
-		mapContext:SetLayer(UI.Native.MapMini:GetLayer() + 1)
+	function UNMapMini.Event:Layer()
+		mapContext:SetLayer(UNMapMini:GetLayer() + 1)
 	end
 
 	function mapIcon.Event:LeftClick()
-		local wasVisible = mainWindow:GetVisible()
-		if not wasVisible then
-			ShowBananAH(true)
+		if not mainWindow:GetVisible() then
+			ShowBananAH()
 		else
 			mainWindow:Close()
 		end
 	end
 	
-	function UI.Native.Auction.Event:Loaded()
-		if UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.General.autoOpen then
-			ShowBananAH(false)
+	function UNAuction.Event:Loaded()
+		if UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.autoOpen then -- FIXME
+			ShowBananAH()
 		end
-		if not UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.General.autoClose then
+		if not UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.autoClose then -- FIXME
 			mainWindow:Close()
 		end
+	end
+
+	function mainWindow.Event:Close()
+		HideSelectedFrame(mainTab:GetSelectedFrame())
+	end
+	
+	function mainTab.Event:TabSelected(id, frame, oldID, oldFrame)
+		ShowSelectedFrame(frame)
+		HideSelectedFrame(oldFrame)
 	end
 	
 	function refreshButton.Event:MouseIn()
-		if self.enabled then
-			self:SetTexture(addonID, "Textures/RefreshOn.png")
-		else
-			self:SetTexture(addonID, "Textures/RefreshDisabled.png")
-		end
+		self:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshOn.png" or "Textures/RefreshDisabled.png")
 	end
+	
 	function refreshButton.Event:MouseOut()
-		if self.enabled then
-			self:SetTexture(addonID, "Textures/RefreshOff.png")
-		else
-			self:SetTexture(addonID, "Textures/RefreshDisabled.png")
-		end
+		self:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
 	end
+	
 	function refreshButton.Event:LeftClick()
-		if not self.enabled then return end
-		if not pcall(Command.Auction.Scan, { type="search", sort = "time", sortOrder = "descending" }) then
-			out(L["General/fullScanError"])
+		if not refreshEnabled then return end
+		if not pcall(CAScan, { type = "search", sort = "time", sortOrder = "descending" }) then
+			Write(L["Main/FullScanError"])
 		else
-			InternalInterface.ScanNext()
-			out(L["General/fullScanStarted"])
+			Write(L["Main/FullScanStarted"])
 		end
 	end	
-	
-	function scannerButton.Event:LeftClick()
-		local newState = not _G[addonID].GetBackgroundScannerEnabled()
-		_G[addonID].SetBackgroundScannerEnabled(newState)
-		self:SetTexture(addonID, newState and "Textures/SearchIcon.png" or "Textures/DontSearchIcon.png")
-	end
 
-	local function TabMouseIn(self)
-		self.text:SetFontSize(18)
+	function playButton.Event:LeftClick()
+		SetPostingQueuePaused(not GetPostingQueuePaused())
+	end	
+
+	function clearButton.Event:LeftClick()
+		CancelAll()
 	end
-	local function TabMouseOut(self)
-		self.text:SetFontSize(16)
-	end
-	local function TabLeftClick(self)
-		if mainWindow.selectedTab then
-			mainWindow.selectedTab.text:SetFontColor(0.75, 0.75, 0.5, 1)
-			mainWindow.selectedTab.frame:SetVisible(false)
-		end
-		mainWindow.selectedTab = self
-		mainWindow.selectedTab.text:SetFontColor(1, 1, 1, 1)
-		mainWindow.selectedTab.frame:SetVisible(true)
-		pcall(mainWindow.selectedTab.frame.Show, mainWindow.selectedTab.frame)
-	end
-	
-	-- searchTab.Event.MouseIn = TabMouseIn
-	-- searchTab.Event.MouseOut = TabMouseOut
-	-- searchTab.Event.LeftClick = TabLeftClick
-	postTab.Event.MouseIn = TabMouseIn
-	postTab.Event.MouseOut = TabMouseOut
-	postTab.Event.LeftClick = TabLeftClick
-	auctionsTab.Event.MouseIn = TabMouseIn
-	auctionsTab.Event.MouseOut = TabMouseOut
-	auctionsTab.Event.LeftClick = TabLeftClick
-	configTab.Event.MouseIn = TabMouseIn
-	configTab.Event.MouseOut = TabMouseOut
-	configTab.Event.LeftClick = TabLeftClick
-	mainWindow.selectedTab = postTab
-	mainWindow.selectedTab.text:SetFontColor(1, 1, 1, 1)
 	
 	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
-			refreshButton.enabled = state
-			refreshButton:SetTexture(addonID, state and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
+			refreshEnabled = state
+			refreshButton:SetTextureAsync(addonID, state and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
 		end
 	end
-	table.insert(Event.Interaction, { OnInteractionChanged, addonID, "OnInteractionChanged" })
+	TInsert(Event.Interaction, { OnInteractionChanged, addonID, addonID .. ".OnInteractionChanged" })
 	
 	local function ReportAuctionData(scanType, total, new, updated, removed, before)
 		if scanType ~= "search" then return end
-		--if scanType ~= "searchitem" and scanType ~= "searchfull" then return end
-		--local fullOrPartialMessage = scanType == "searchfull" and L["General/scanTypeFull"] or L["General/scanTypePartial"]
-		local fullOrPartialMessage = "Completed" -- FIXME LOCALIZE
-		local newMessage = (#new > 0) and string.format(L["General/scanNewCount"], #new) or ""
-		local updatedMessage = (#updated > 0) and string.format(L["General/scanUpdatedCount"], #updated) or ""
-		local removedMessage = (#removed > 0) and string.format(L["General/scanRemovedCount"], #removed, #before) or ""
-		local message = string.format(L["General/scanMessage"], fullOrPartialMessage, #total, newMessage, updatedMessage, removedMessage)
-		out(message)
+		local newMessage = (#new > 0) and SFormat(L["Main/ScanNewCount"], #new) or ""
+		local updatedMessage = (#updated > 0) and SFormat(L["Main/ScanUpdatedCount"], #updated) or ""
+		local removedMessage = (#removed > 0) and SFormat(L["Main/ScanRemovedCount"], #removed, #before) or ""
+		local message = SFormat(L["Main/ScanMessage"], #total, newMessage, updatedMessage, removedMessage)
+		Write(message)
 	end
-	table.insert(Event[addonID].AuctionData, { ReportAuctionData, addonID, "ReportAuctionData" })
+	TInsert(Event.LibPGC.AuctionData, { ReportAuctionData, addonID, addonID .. ".ReportAuctionData" })
 
-	local slashEvent1 = Command.Slash.Register("bananah")
-	local slashEvent2 = Command.Slash.Register("bah")
+	local slashEvent1 = CSRegister("bananah")
+	local slashEvent2 = CSRegister("bah")
+	
 	if slashEvent1 then
-		table.insert(slashEvent1, {function() ShowBananAH(true) end, addonID, "ShowBananAH1"})
+		TInsert(slashEvent1, {ShowBananAH, addonID, addonID .. ".SlashShow1"})
 	end
 	if slashEvent2 then
-		table.insert(slashEvent2, {function() ShowBananAH(true) end, addonID, "ShowBananAH2"})
+		TInsert(slashEvent2, {ShowBananAHd, addonID, addonID .. ".SlashShow2"})
 	elseif not slashEvent1 then
-		out(L["General/slashRegisterError"])
+		print(L["Main/SlashRegisterError"])
 	end
 	
 	local function StatusBarOutput(value)
 		statusText:SetText(value and tostring(value) or "")
 	end
 	InternalInterface.Output.SetOutputFunction(StatusBarOutput)
+	
+	TInsert(Event.LibPGC.PostingQueueStatusChanged, { UpdateQueueStatus, addonID, addonID .. ".OnQueueStatusChanged" })
+	UpdateQueueStatus()
 end
 
 local function OnAddonLoaded(addonId)
@@ -320,4 +254,4 @@ local function OnAddonLoaded(addonId)
 		InitializeLayout()
 	end 
 end
-table.insert(Event.Addon.Load.End, { OnAddonLoaded, addonID, "OnAddonLoaded" })
+TInsert(Event.Addon.Load.End, { OnAddonLoaded, addonID, addonID .. ".OnAddonLoaded" })

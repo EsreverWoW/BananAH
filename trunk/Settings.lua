@@ -18,10 +18,9 @@ InternalInterface.CharacterSettings = InternalInterface.CharacterSettings or {}
 local function DefaultSettings()
 	InternalInterface.AccountSettings.General = InternalInterface.AccountSettings.General or
 	{
-		showMapIcon = false,
+		showMapIcon = true,
 		autoOpen = false,
 		autoClose = false,
-		disableBackgroundScanner = false,
 	}
 	InternalInterface.AccountSettings.Posting = InternalInterface.AccountSettings.Posting or 
 	{
@@ -30,8 +29,6 @@ local function DefaultSettings()
 	}
 	InternalInterface.AccountSettings.Posting.DefaultConfig = InternalInterface.AccountSettings.Posting.DefaultConfig or
 	{
-		pricingModelOrder = { "market", "vendor", "fixed", },
-		priceMatcherOrder = { "undercut", "self", "vendor", },
 		usePriceMatching = false,
 		bindPrices = false,
 		stackSize = 100,
