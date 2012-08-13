@@ -1,3 +1,11 @@
+	r62
+- Changed the Auto posting feature to work through the "lightning icons":
+ + Auto posting now shares the same posting parameters than "normal" posting
+ + Items with Auto posting enabled will show the lightning icon in full color, those with Auto posting disabled show the lightning icon grayed out
+ + You can toggle Auto posting for any item by left clicking on its lightning icon, either the one in the item list or the one next to the Post button
+ + To Auto post all items with Auto posting enabled, right click on the lightning icon next to the Post button
+ + Only items currently shown in the item list will be auto posted. That is, if an item has Auto posting enabled, but has been filtered out of the item list, it won't be auto posted.
+	
 	r61
 - Rewritten, splitted in different libraries and many changes...
 
