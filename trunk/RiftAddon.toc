@@ -11,7 +11,7 @@ Description =
 	English = "Auction house addon for RIFT.\n\n* Work in progress *\n\nPosting features:\n - Auto splitting of item stacks\n - Auto posting\n - Undercut on right click\n - Posting queue management\n\nOwn auctions tracking features:\n - Tracks all your characters' auctions\n - Shows competition for your auctions\n - Fast auction cancel\n\n**Use /bah or /bananah to show the window.**\n\nMore features will come soon!\n\nWebsite: http://www.bananah.net",
 }
 Author = "Baanano"
-Version = "0.4.1"
+Version = "0.4.1 r62"
 Email = "baanano.rift@gmail.com"
 Website = "http://www.bananah.net/"
 Environment = "1.9"
