@@ -1,3 +1,7 @@
+	r63
+- Added back the Queue Manager.
+- Fixed bug that made the addon monopolize the keyboard.	
+
 	r62
 - Changed the Auto posting feature to work through the "lightning icons":
  + Auto posting now shares the same posting parameters than "normal" posting
