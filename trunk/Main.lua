@@ -13,11 +13,6 @@ local PublicInterface = _G[addonID]
 local Panel = Yague.Panel
 local CAScan = Command.Auction.Scan
 local CSRegister = Command.Slash.Register
-local CancelAll = LibPGC.CancelAll
-local GetPostingQueue = LibPGC.GetPostingQueue
-local GetPostingQueuePaused = LibPGC.GetPostingQueuePaused
-local SetPostingQueuePaused = LibPGC.SetPostingQueuePaused
-local GetPostingQueueStatus = LibPGC.GetPostingQueueStatus
 local L = InternalInterface.Localization.L
 local SFormat = string.format
 local TInsert = table.insert
@@ -26,7 +21,6 @@ local UICreateFrame = UI.CreateFrame
 local UNMapMini = UI.Native.MapMini
 local UNAuction = UI.Native.Auction
 local Write = InternalInterface.Output.Write
-local next = next
 local pcall = pcall
 local tostring = tostring
 
@@ -48,11 +42,8 @@ local function InitializeLayout()
 	local sellingFrame = InternalInterface.UI.SellingFrame(mainTab:GetName() .. ".SellingFrame", mainTab:GetContent())
 	--local configFrame = InternalInterface.UI.ConfigFrame(mainTab:GetName() .. ".ConfigFrame", mainTab:GetContent())
 
-	local queuePanel = Panel(addonID .. ".UI.MainWindow.QueueSizePanel", mainWindow:GetContent())
-	local queueSizeText = UICreateFrame("Text", queuePanel:GetName() .. ".QueueSizeText", queuePanel:GetContent())
-	local clearButton = UICreateFrame("Texture", addonID .. ".UI.MainWindow.ClearButton", mainWindow:GetContent())
-	local playButton = UICreateFrame("Texture", addonID .. ".UI.MainWindow.PlayButton", mainWindow:GetContent())
-
+	local queueManager = InternalInterface.UI.QueueManager(mainWindow:GetName() .. ".QueueManager", mainWindow:GetContent())
+	
 	local statusPanel = Panel(addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
 	local statusText = UICreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
 
@@ -84,26 +75,6 @@ local function InitializeLayout()
 		ShowSelectedFrame(mainTab:GetSelectedFrame())
 	end	
 	
-	local function UpdateQueueStatus()
-		local status, size = GetPostingQueueStatus()
-
-		playButton:SetTextureAsync(addonID, GetPostingQueuePaused() and "Textures/Play.png" or "Textures/Pause.png")
-
-		queueSizeText:SetText(tostring(size))
-		
-		if status == 1 then
-			queueSizeText:SetFontColor(0, 0.75, 0.75, 1)
-		elseif status == 3 then
-			queueSizeText:SetFontColor(1, 0.5, 0, 1)
-		else
-			queueSizeText:SetFontColor(1, 1, 1, 1)
-		end
-		
-		-- TODO Queue control panel
-		-- local queue = GetPostingQueue()
-		-- local clearable = next(queue) and true or false
-	end
-	
 	mapContext:SetStrata("hud")
 
 	mapIcon:SetPoint("CENTER", UNMapMini, "BOTTOMLEFT", 24, -25)
@@ -132,20 +103,11 @@ local function InitializeLayout()
 	mainTab:AddTab("history", L["Main/MenuHistory"], nil)
 	mainTab:AddTab("config", L["Main/MenuConfig"], nil)
 	
-	queuePanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -55, -35)
-	queuePanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
-	queuePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.5)
-	
-	queueSizeText:SetPoint("CENTER", queuePanel:GetContent(), "CENTER")
-
-	clearButton:SetPoint("CENTERRIGHT", queuePanel, "CENTERLEFT", -5, 0)
-	clearButton:SetTextureAsync(addonID, "Textures/Stop.png")
-
-	playButton:SetPoint("CENTERRIGHT", clearButton, "CENTERLEFT", -5, 0)
-	playButton:SetTextureAsync(addonID, "Textures/Pause.png")
+	queueManager:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
+	queueManager:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -125, -35)
 
 	statusPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMLEFT", 5, -35)
-	statusPanel:SetPoint("BOTTOMRIGHT", queuePanel, "BOTTOMRIGHT", -120, 0)
+	statusPanel:SetPoint("BOTTOMRIGHT", queueManager, "BOTTOMLEFT", -5, 0)
 	statusPanel:GetContent():SetBackgroundColor(0.2, 0.2, 0.2, 0.5)
 	
 	statusText:SetPoint("CENTERLEFT", statusPanel:GetContent(), "CENTERLEFT", 5, 0)
@@ -178,6 +140,8 @@ local function InitializeLayout()
 
 	function mainWindow.Event:Close()
 		HideSelectedFrame(mainTab:GetSelectedFrame())
+		mainWindow:SetKeyFocus(true)
+		mainWindow:SetKeyFocus(false)
 	end
 	
 	function mainTab.Event:TabSelected(id, frame, oldID, oldFrame)
@@ -201,14 +165,6 @@ local function InitializeLayout()
 			Write(L["Main/FullScanStarted"])
 		end
 	end	
-
-	function playButton.Event:LeftClick()
-		SetPostingQueuePaused(not GetPostingQueuePaused())
-	end	
-
-	function clearButton.Event:LeftClick()
-		CancelAll()
-	end
 	
 	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
@@ -244,9 +200,6 @@ local function InitializeLayout()
 		statusText:SetText(value and tostring(value) or "")
 	end
 	InternalInterface.Output.SetOutputFunction(StatusBarOutput)
-	
-	TInsert(Event.LibPGC.PostingQueueStatusChanged, { UpdateQueueStatus, addonID, addonID .. ".OnQueueStatusChanged" })
-	UpdateQueueStatus()
 end
 
 local function OnAddonLoaded(addonId)
