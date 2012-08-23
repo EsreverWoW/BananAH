@@ -22,6 +22,8 @@ local function DefaultSettings()
 		autoOpen = false,
 		autoClose = false,
 	}
+	InternalInterface.AccountSettings.Search = InternalInterface.AccountSettings.Search or {}
+	InternalInterface.AccountSettings.Search.SavedSearchs = InternalInterface.AccountSettings.Search.SavedSearchs or {}
 	InternalInterface.AccountSettings.Posting = InternalInterface.AccountSettings.Posting or 
 	{
 		startPostingQueuePaused = false,

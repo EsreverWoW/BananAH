@@ -116,6 +116,7 @@ function InternalInterface.PGCExtensions.GetOwnAuctionsScoredCompetition(callbac
 					auctionData.competitionBelow = below
 					auctionData.competitionAbove = above
 					auctionData.competitionQuintile = MFloor(below * 5 / total) + 1
+					auctionData.competitionOrder = auctionData.competitionQuintile * 10000 + below
 				end
 			end
 			competitionRemaining = competitionRemaining - 1

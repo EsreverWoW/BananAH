@@ -237,7 +237,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	sellingGrid:AddColumn("unitbid", L["SellingFrame/ColumnBidPerUnit"], "MoneyCellType", 130, 0, "bidUnitPrice", true)
 	sellingGrid:AddColumn("unitbuy", L["SellingFrame/ColumnBuyPerUnit"], "MoneyCellType", 130, 0, "buyoutUnitPrice", true)
 	sellingGrid:AddColumn("score", L["SellingFrame/ColumnScore"], "Text", 80, 0, "score", true, { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor })
-	sellingGrid:AddColumn("competition", L["SellingFrame/ColumnCompetition"], "Text", 120, 0, nil, "competitionQuintile", { Alignment = "center", Formatter = CompetitionString })
+	sellingGrid:AddColumn("competition", L["SellingFrame/ColumnCompetition"], "Text", 120, 0, nil, "competitionOrder", { Alignment = "center", Formatter = CompetitionString })
 	sellingGrid:AddColumn("cancellable", nil, CancellableCellType, 48, 0)
 	sellingGrid:AddColumn("background", nil, "WideBackgroundCellType", 0, 0) -- TODO Move to BDataGrid
 	sellingGrid:SetFilter(SellingGridFilter)		

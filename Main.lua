@@ -10,10 +10,11 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 local PublicInterface = _G[addonID]
 
-local Panel = Yague.Panel
 local CAScan = Command.Auction.Scan
 local CSRegister = Command.Slash.Register
 local L = InternalInterface.Localization.L
+local Panel = Yague.Panel
+local PopupManager = Yague.PopupManager
 local SFormat = string.format
 local TInsert = table.insert
 local UICreateContext = UI.CreateContext
@@ -36,6 +37,7 @@ local function InitializeLayout()
 	local mainContext = UICreateContext(addonID .. ".UI.MainContext")
 
 	local mainWindow = Yague.Window(addonID .. ".UI.MainWindow", mainContext)
+	local popupManager = PopupManager(mainWindow:GetName() .. ".PopupManager", mainWindow)
 	local mainTab = Yague.TabControl(mainWindow:GetName() .. ".MainTab", mainWindow:GetContent())
 	local searchFrame = InternalInterface.UI.SearchFrame(mainTab:GetName() .. ".SearchFrame", mainTab:GetContent())
 	local postFrame = InternalInterface.UI.PostFrame(mainTab:GetName() .. ".PostFrame", mainTab:GetContent())
@@ -191,7 +193,7 @@ local function InitializeLayout()
 		TInsert(slashEvent1, {ShowBananAH, addonID, addonID .. ".SlashShow1"})
 	end
 	if slashEvent2 then
-		TInsert(slashEvent2, {ShowBananAHd, addonID, addonID .. ".SlashShow2"})
+		TInsert(slashEvent2, {ShowBananAH, addonID, addonID .. ".SlashShow2"})
 	elseif not slashEvent1 then
 		print(L["Main/SlashRegisterError"])
 	end
@@ -200,6 +202,7 @@ local function InitializeLayout()
 		statusText:SetText(value and tostring(value) or "")
 	end
 	InternalInterface.Output.SetOutputFunction(StatusBarOutput)
+	InternalInterface.Output.SetPopupManager(popupManager)
 end
 
 local function OnAddonLoaded(addonId)

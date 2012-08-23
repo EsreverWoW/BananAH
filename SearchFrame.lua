@@ -22,18 +22,23 @@ local GetAuctionBuyCallback = LibPGC.GetAuctionBuyCallback
 local GetAuctionCached = LibPGC.GetAuctionCached
 local GetAuctionSearchers = LibPGCEx.GetAuctionSearchers
 local GetAuctionSearcherExtraDescription = LibPGCEx.GetAuctionSearcherExtraDescription
+local GetLocalizedDateString = InternalInterface.Utility.GetLocalizedDateString
+local GetPopupManager = InternalInterface.Output.GetPopupManager
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local IInteraction = Inspect.Interaction
 local L = InternalInterface.Localization.L
 local MFloor = math.floor
 local MMax = math.max
 local MMin = math.min
+local RegisterPopupConstructor = Yague.RegisterPopupConstructor
 local RemainingTimeFormatter = InternalInterface.Utility.RemainingTimeFormatter
 local SLen = string.len
 local ScoreAuctions = InternalInterface.PGCExtensions.ScoreAuctions
 local ScoreColorByScore = InternalInterface.UI.ScoreColorByScore
 local SearchAuctions = LibPGCEx.SearchAuctions
 local TInsert = table.insert
+local Time = os.time
+local ODate = os.date
 local UICreateFrame = UI.CreateFrame
 local ipairs = ipairs
 local pairs = pairs
@@ -86,6 +91,82 @@ local function SearchCellType(name, parent)
 	
 	return searchCell
 end
+
+local function SaveSearchPopup(parent)
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".SaveSearchPopup", parent)
+	
+	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame)
+	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame)
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame)
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame)
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame)	
+	
+	frame:SetWidth(400)
+	frame:SetHeight(140)
+	frame:SetBackgroundColor(0, 0, 0, 0.9)
+	
+	titleText:SetPoint("TOPCENTER", frame, "TOPCENTER", 0, 10)
+	titleText:SetFontSize(14)
+	titleText:SetFontColor(1, 1, 0.75, 1)
+	titleText:SetShadowOffset(2, 2)
+	titleText:SetText("SAVE SEARCH") -- LOCALIZE
+	
+	contentText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 40)
+	contentText:SetText("Saved search name:") -- LOCALIZE
+	
+	namePanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 60)
+	namePanel:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, -50)
+	namePanel:SetInvertedBorder(true)
+	namePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	
+	nameField:SetPoint("CENTERLEFT", namePanel:GetContent(), "CENTERLEFT", 2, 1)
+	nameField:SetPoint("CENTERRIGHT", namePanel:GetContent(), "CENTERRIGHT", -2, 1)
+	nameField:SetText("")
+	
+	saveButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMCENTER", 0, -10)
+	saveButton:SetText("Save")
+	
+	cancelButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMCENTER", 0, -10)
+	cancelButton:SetText("Cancel")
+
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
+
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
+	
+	function nameField.Event:KeyUp(key)
+		if key == "\13" and saveButton:GetEnabled() and saveButton.Event.LeftPress then
+			saveButton.Event.LeftPress(saveButton)
+		end
+	end
+	
+	function nameField.Event:TextfieldChange()
+		saveButton:SetEnabled(self:GetText() ~= "")
+	end
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".SaveSearch", frame)
+	end
+	
+	function frame:SetData(proposedName, callback)
+		nameField:SetText(proposedName)
+		function saveButton.Event:LeftPress()
+			callback(nameField:GetText()) 
+			parent:HidePopup(addonID .. ".SaveSearch", frame)
+		end
+		nameField:SetKeyFocus(true)
+	end
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".SaveSearch", SaveSearchPopup)
 
 function InternalInterface.UI.SearchFrame(name, parent)
 	local searchFrame = UICreateFrame("Frame", name, parent)
@@ -147,7 +228,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 			ScoreAuctions(ProcessAuctionsScored, auctions)
 		end
 		
-		SearchAuctions(ProcessAuctions, currentSearcher, onlineInfo, itemNameField:GetText(), extra)
+		SearchAuctions(ProcessAuctions, searchInfo.baseSearcher or currentSearcher, onlineInfo, itemNameField:GetText(), extra)
 	end
 	
 	local function ResetOnlineMode()
@@ -191,6 +272,22 @@ function InternalInterface.UI.SearchFrame(name, parent)
 			if not auctionSearchers[searcherID] then
 				searcherData.frame:SetVisible(false)
 				searchers[searcherID] = nil
+			end
+		end
+		
+		local savedSearchs = InternalInterface.AccountSettings.Search.SavedSearchs or {}
+		for savedID, savedInfo in pairs(savedSearchs) do
+			local baseSearcher = savedInfo.baseSearcher and searchers[savedInfo.baseSearcher] or nil
+			if baseSearcher then
+				searchers[savedID] =
+				{
+					displayName = savedInfo.displayName,
+					frame = baseSearcher.frame,
+					extra = savedInfo.extra,
+					extraInfo = baseSearcher.extraInfo,
+					online = baseSearcher.online,
+					baseSearcher = savedInfo.baseSearcher,
+				}
 			end
 		end
 		
@@ -239,10 +336,6 @@ function InternalInterface.UI.SearchFrame(name, parent)
 			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNotCached"]) -- LOCALIZE
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
-		elseif not selectedAuctionBid then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorBidEqualBuy"]) -- LOCALIZE
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
 		elseif seller then
 			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorSeller"]) -- LOCALIZE
 			noBidLabel:SetVisible(true)
@@ -253,6 +346,10 @@ function InternalInterface.UI.SearchFrame(name, parent)
 			auctionMoneySelector:SetVisible(false)
 		elseif not auctionInteraction then
 			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNoAuctionHouse"]) -- LOCALIZE
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		elseif not selectedAuctionBid then
+			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorBidEqualBuy"]) -- LOCALIZE
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		else
@@ -452,7 +549,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 		if searcherID == currentSearcher then return end
 		
 		if currentSearcher then
-			local currentFrame = searchers[currentSearcher].frame
+			local currentFrame = searchers[currentSearcher] and searchers[currentSearcher].frame
 			if currentFrame then
 				currentFrame:SetVisible(false)
 			end
@@ -469,8 +566,36 @@ function InternalInterface.UI.SearchFrame(name, parent)
 			searcherFrame:SetHeight(0)
 		end
 		
+		deleteButton:SetTextureAsync(addonID, searcherData.baseSearcher and "Textures/DeleteEnabled.png" or "Textures/DeleteDisabled.png")
+		
 		ResetOnlineMode()
 		RefreshAuctionButtons()
+	end
+	
+	function saveButton.Event:LeftClick()
+		local manager = GetPopupManager()
+		local searchInfo = currentSearcher and searchers[currentSearcher] or nil
+		local searchFrame = searchInfo and searchInfo.frame or nil
+		local extra = searchFrame and searchFrame:GetExtra() or nil		
+		if manager and extra then
+			local timeStamp = Time()
+			manager:ShowPopup(addonID .. ".SaveSearch", "Saved " .. GetLocalizedDateString("%x %X", timeStamp),
+				function(name)
+					InternalInterface.AccountSettings.Search.SavedSearchs["custom-" .. timeStamp] =
+					{
+						displayName = name, -- LOCALIZE
+						extra = extra,
+						baseSearcher = searchInfo.baseSearcher or currentSearcher,
+					}
+					currentSearcher = "custom-" .. timeStamp
+					ResetSearchers()
+				end)
+		end		
+	end
+	
+	function deleteButton.Event:LeftClick()
+		InternalInterface.AccountSettings.Search.SavedSearchs[currentSearcher] = nil
+		ResetSearchers()
 	end
 	
 	function searchGrid.Event:SelectionChanged()
