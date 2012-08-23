@@ -85,10 +85,6 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNotCached"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
-		elseif not selectedAuctionBid then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorBidEqualBuy"])
-			noBidLabel:SetVisible(true)
-			auctionMoneySelector:SetVisible(false)
 		elseif seller then
 			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorSeller"])
 			noBidLabel:SetVisible(true)
@@ -99,6 +95,10 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 			auctionMoneySelector:SetVisible(false)
 		elseif not auctionInteraction then
 			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNoAuctionHouse"])
+			noBidLabel:SetVisible(true)
+			auctionMoneySelector:SetVisible(false)
+		elseif not selectedAuctionBid then
+			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorBidEqualBuy"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		else

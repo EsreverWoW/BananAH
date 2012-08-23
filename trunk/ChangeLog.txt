@@ -1,3 +1,9 @@
+	r64
+- Enabled Saved Searchs
+- When Auto posting fails because the addon can't calculate a reference price, it'll be deactivated instead of using Vendor price as reference.
+- Fixed bug that made the "Bid & Buyout prices are equal" to be shown when there were other messages with higher precedence
+- Fixed bug that made the Competition column in the Selling tab to order incorrectly items in the same competition range
+
 	r63
 - Added back the Queue Manager.
 - Fixed bug that made the addon monopolize the keyboard.	

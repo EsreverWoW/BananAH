@@ -816,7 +816,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 				filteredData[itemType] = nil
 			end
 		end
-		
+	
 		if not next(filteredData) then return end
 		
 		local function DoAutoPost(ownAuctions)
@@ -828,7 +828,11 @@ function InternalInterface.UI.PostFrame(name, parent)
 				local itemConfig = itemType and InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] or {}
 				
 				local preferredPrice = itemConfig.pricingModelOrder or "market" -- TODO Use default price
-				if not preferredPrice or (not pricingModels[preferredPrice] and preferredPrice ~= FIXED_MODEL_ID) then break end
+				if not preferredPrice or (not pricingModels[preferredPrice] and preferredPrice ~= FIXED_MODEL_ID) then
+					InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = nil
+					-- TODO Message warning deactivation?
+					break
+				end
 
 				local preferredMatch = itemConfig.usePriceMatching
 				if preferredMatch == nil then preferredMatch = false end -- TODO Get default value
