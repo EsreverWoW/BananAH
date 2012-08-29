@@ -24,7 +24,7 @@ InternalInterface.PGCExtensions = InternalInterface.PGCExtensions or {}
 function InternalInterface.PGCExtensions.GetActiveAuctionsScored(callback, item)
 	if type(callback) ~= "function" then return end
 	
-	local referencePrice = "market" -- FIXME Get from config
+	local referencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice
 	
 	local function ProcessAuctions(auctions)
 		local remainingItemTypes = 1
@@ -66,7 +66,7 @@ end
 function InternalInterface.PGCExtensions.GetOwnAuctionsScoredCompetition(callback)
 	if type(callback) ~= "function" then return end
 	
-	local referencePrice = "market" -- FIXME Get from config
+	local referencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice
 	
 	local function ProcessAuctions(auctions)
 		local scoreRemaining = 0
@@ -146,7 +146,7 @@ end
 function InternalInterface.PGCExtensions.ScoreAuctions(callback, auctions)
 	if type(callback) ~= "function" then return end
 	
-	local referencePrice = "market" -- FIXME Get from config
+	local referencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice
 	
 	local remainingItemTypes = 1
 	local itemTypes = {}

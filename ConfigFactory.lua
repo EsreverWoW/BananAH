@@ -319,7 +319,7 @@ local ControlConstructors =
 			end
 
 			local function SetExtra(extra)
-				control:SetSelectedKey(extra or "market") -- TODO Get from config
+				control:SetSelectedKey(extra or InternalInterface.AccountSettings.Scoring.ReferencePrice)
 			end
 			
 			return control, GetExtra, SetExtra

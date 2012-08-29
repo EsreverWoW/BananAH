@@ -21,11 +21,13 @@ local GetAuctionCached = LibPGC.GetAuctionCached
 local GetAuctionCancelCallback = LibPGC.GetAuctionCancelCallback
 local GetOwnAuctionsScoredCompetition = InternalInterface.PGCExtensions.GetOwnAuctionsScoredCompetition
 local GetPlayerName = InternalInterface.Utility.GetPlayerName
+local GetPopupManager = InternalInterface.Output.GetPopupManager
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local IInteraction = Inspect.Interaction
 local L = InternalInterface.Localization.L
 local MFloor = math.floor
 local MMin = math.min
+local RegisterPopupConstructor = Yague.RegisterPopupConstructor
 local RemainingTimeFormatter = InternalInterface.Utility.RemainingTimeFormatter
 local SFind = string.find
 local SFormat = string.format
@@ -36,6 +38,57 @@ local TInsert = table.insert
 local UICreateFrame = UI.CreateFrame
 local Write = InternalInterface.Output.Write
 local unpack = unpack
+
+local function CancelAuctionPopup(parent)
+	local frame = Yague.Popup(parent:GetName() .. ".SaveSearchPopup", parent)
+	
+	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
+	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
+	local ignoreCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".IgnoreCheck", frame:GetContent())
+	local ignoreText = UICreateFrame("Text", frame:GetName() .. ".IgnoreText", frame:GetContent())
+	local yesButton = UICreateFrame("RiftButton", frame:GetName() .. ".YesButton", frame:GetContent())
+	local noButton = UICreateFrame("RiftButton", frame:GetName() .. ".NoButton", frame:GetContent())	
+	
+	frame:SetWidth(420)
+	frame:SetHeight(160)
+	
+	titleText:SetPoint("TOPCENTER", frame:GetContent(), "TOPCENTER", 0, 10)
+	titleText:SetFontSize(14)
+	titleText:SetFontColor(1, 1, 0.75, 1)
+	titleText:SetShadowOffset(2, 2)
+	titleText:SetText(L["CancelAuctionPopup/Title"])
+	
+	contentText:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 10, 45)
+	contentText:SetText(L["CancelAuctionPopup/ContentText"])
+	
+	yesButton:SetPoint("BOTTOMRIGHT", frame:GetContent(), "BOTTOMCENTER", 0, -30)
+	yesButton:SetText(L["CancelAuctionPopup/ButtonYes"])
+	
+	noButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -30)
+	noButton:SetText(L["CancelAuctionPopup/ButtonNo"])
+
+	ignoreCheck:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 15, 120)
+	ignoreCheck:SetChecked(false)
+	
+	ignoreText:SetPoint("CENTERLEFT", ignoreCheck, "CENTERRIGHT", 5, 0)
+	ignoreText:SetText(L["CancelAuctionPopup/IgnoreText"])	
+	
+	function noButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".CancelAuction", frame)
+	end
+	
+	function frame:SetData(callback)
+		function yesButton.Event:LeftPress()
+			InternalInterface.AccountSettings.Auctions.BypassCancelPopup = ignoreCheck:GetChecked()
+			callback() 
+			parent:HidePopup(addonID .. ".CancelAuction", frame)
+		end
+	end
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".CancelAuction", CancelAuctionPopup)
+
 
 local function SellingAuctionCellType(name, parent)
 	local sellingCell = UICreateFrame("Mask", name, parent)
@@ -133,19 +186,15 @@ local function CancellableCellType(name, parent)
 	
 	function cancellableCell.Event:LeftClick()
 		if auctionID then
-			if not InternalInterface.AccountSettings.Auctions.allowLeftCancel then -- FIXME
-				-- TODO Change to popup
-				Write(L["SellingFrame/WarningCancel"])
+			local callback = function() if IInteraction("auction") then CACancel(auctionID, GetAuctionCancelCallback(auctionID)) end end
+			if not InternalInterface.AccountSettings.Auctions.BypassCancelPopup then
+				local manager = GetPopupManager()
+				if manager then
+					manager:ShowPopup(addonID .. ".CancelAuction", callback)
+				end				
 			else
-				CACancel(auctionID, GetAuctionCancelCallback(auctionID))
+				callback()
 			end
-		end
-		cell:GetParent().Event.LeftClick(cell:GetParent())
-	end
-	
-	function cancellableCell.Event:RightClick()
-		if auctionID then
-			CACancel(auctionID, GetAuctionCancelCallback(auctionID))
 		end
 		cell:GetParent().Event.LeftClick(cell:GetParent())
 	end
@@ -239,9 +288,10 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	sellingGrid:AddColumn("score", L["SellingFrame/ColumnScore"], "Text", 80, 0, "score", true, { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor })
 	sellingGrid:AddColumn("competition", L["SellingFrame/ColumnCompetition"], "Text", 120, 0, nil, "competitionOrder", { Alignment = "center", Formatter = CompetitionString })
 	sellingGrid:AddColumn("cancellable", nil, CancellableCellType, 48, 0)
-	sellingGrid:AddColumn("background", nil, "WideBackgroundCellType", 0, 0) -- TODO Move to BDataGrid
+	sellingGrid:AddColumn("background", nil, "WideBackgroundCellType", 0, 0)
 	sellingGrid:SetFilter(SellingGridFilter)		
 	sellingGrid:SetOrder("minexpire", false)
+	sellingGrid:GetInternalContent():SetBackgroundColor(0, 0.05, 0.05, 0.5)	
 	
 	collapseButton:SetPoint("BOTTOMLEFT", sellingFrame, "BOTTOMLEFT", 5, -5)
 	collapseButton:SetTextureAsync(addonID, "Textures/ArrowDown.png")
@@ -259,7 +309,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	filterFrame:SetPoint("TOPRIGHT", anchor, "CENTERRIGHT", -5, 0)
 
 	filterCharacterCheck:SetPoint("TOPLEFT", filterFrame, "TOPLEFT", 5, 15)
-	filterCharacterCheck:SetChecked(InternalInterface.AccountSettings.Auctions.restrictCharacterFilter or false) -- FIXME
+	filterCharacterCheck:SetChecked(InternalInterface.AccountSettings.Auctions.RestrictCharacterFilter)
 	
 	filterCharacterText:SetPoint("CENTERLEFT", filterCharacterCheck, "CENTERRIGHT", 5, 0)
 	filterCharacterText:SetText(L["SellingFrame/FilterSeller"])
@@ -278,7 +328,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 		[4] = { displayName = L["General/CompetitionName4"], order = 4, },
 		[5] = { displayName = L["General/CompetitionName5"], order = 5, },
 	})
-	filterCompetitionSelector:SetSelectedKey(InternalInterface.AccountSettings.Auctions.defaultCompetitionFilter or 1) -- FIXME
+	filterCompetitionSelector:SetSelectedKey(InternalInterface.AccountSettings.Auctions.DefaultCompetitionFilter)
 	
 	filterBelowText:SetPoint("TOPLEFT", filterFrame, "TOPLEFT", 5, 110)
 	filterBelowText:SetText(L["SellingFrame/FilterBelow"])
@@ -286,7 +336,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	filterBelowSlider:SetPoint("CENTERLEFT", filterBelowText, "CENTERRIGHT", 5, 0)
 	filterBelowSlider:SetPoint("CENTERRIGHT", filterFrame, "TOPLEFT", 290, 115)
 	filterBelowSlider:SetRange(0, 20)
-	filterBelowSlider:SetPosition(InternalInterface.AccountSettings.Auctions.defaultBelowFilter or 0) -- FIXME
+	filterBelowSlider:SetPosition(InternalInterface.AccountSettings.Auctions.DefaultBelowFilter)
 	
 	filterScorePanel:SetPoint("TOPLEFT", filterFrame, "TOPLEFT", 0, 150)
 	filterScorePanel:SetPoint("BOTTOMRIGHT", filterFrame, "BOTTOMLEFT", 290, -5)
@@ -299,7 +349,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	
 	for index = 0, 5 do
 		filterScoreChecks[index + 1]:SetPoint("CENTERLEFT", filterScorePanel:GetContent(), (index % 2) / 2, (3 + 2 * MFloor(index / 2)) / 8, 5, 0)
-		filterScoreChecks[index + 1]:SetChecked(InternalInterface.AccountSettings.Auctions.defaultScoreFilter[index + 1] or false) -- FIXME
+		filterScoreChecks[index + 1]:SetChecked(InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[index + 1] or false)
 		filterScoreTexts[index + 1]:SetPoint("CENTERLEFT", filterScoreChecks[index + 1], "CENTERRIGHT", 5, 0)
 		filterScoreTexts[index + 1]:SetText(L["General/ScoreName" .. tostring(index)])
 	end

@@ -93,30 +93,29 @@ local function SearchCellType(name, parent)
 end
 
 local function SaveSearchPopup(parent)
-	local frame = UICreateFrame("Frame", parent:GetName() .. ".SaveSearchPopup", parent)
+	local frame = Yague.Popup(parent:GetName() .. ".SaveSearchPopup", parent)
 	
-	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame)
-	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame)
-	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame)
+	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
+	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
 	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
-	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame)
-	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame)	
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())	
 	
-	frame:SetWidth(400)
-	frame:SetHeight(140)
-	frame:SetBackgroundColor(0, 0, 0, 0.9)
+	frame:SetWidth(420)
+	frame:SetHeight(160)
 	
-	titleText:SetPoint("TOPCENTER", frame, "TOPCENTER", 0, 10)
+	titleText:SetPoint("TOPCENTER", frame:GetContent(), "TOPCENTER", 0, 10)
 	titleText:SetFontSize(14)
 	titleText:SetFontColor(1, 1, 0.75, 1)
 	titleText:SetShadowOffset(2, 2)
-	titleText:SetText("SAVE SEARCH") -- LOCALIZE
+	titleText:SetText(L["SaveSearchPopup/Title"])
 	
-	contentText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 40)
-	contentText:SetText("Saved search name:") -- LOCALIZE
+	contentText:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 10, 40)
+	contentText:SetText(L["SaveSearchPopup/NameText"])
 	
-	namePanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 60)
-	namePanel:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, -50)
+	namePanel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 10, 60)
+	namePanel:SetPoint("BOTTOMRIGHT", frame:GetContent(), "BOTTOMRIGHT", -10, -50)
 	namePanel:SetInvertedBorder(true)
 	namePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
 	
@@ -124,11 +123,11 @@ local function SaveSearchPopup(parent)
 	nameField:SetPoint("CENTERRIGHT", namePanel:GetContent(), "CENTERRIGHT", -2, 1)
 	nameField:SetText("")
 	
-	saveButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMCENTER", 0, -10)
-	saveButton:SetText("Save")
+	saveButton:SetPoint("BOTTOMRIGHT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
+	saveButton:SetText(L["SaveSearchPopup/ButtonSave"])
 	
-	cancelButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMCENTER", 0, -10)
-	cancelButton:SetText("Cancel")
+	cancelButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
+	cancelButton:SetText(L["SaveSearchPopup/ButtonCancel"])
 
 	function namePanel.Event:LeftClick()
 		nameField:SetKeyFocus(true)
@@ -202,7 +201,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	local currentSearcher = nil
 	local lastSearcherUsed = nil
 	local lastSearcherExtraInfo = {}
-	local onlineMode = false -- TODO Get initial from config
+	local onlineMode = InternalInterface.AccountSettings.Search.DefaultOnline or false
 	local onlineInfo = nil
 	
 	local function PerformSearch()
@@ -292,8 +291,8 @@ function InternalInterface.UI.SearchFrame(name, parent)
 		end
 		
 		local prevSearcher = currentSearcher and searchers[currentSearcher] and currentSearcher or nil
-		if not prevSearcher and searchers["basic"] then -- TODO Get default from config
-			prevSearcher = "basic" -- TODO Get default from config
+		if not prevSearcher and searchers[InternalInterface.AccountSettings.Search.DefaultSearcher] then
+			prevSearcher = InternalInterface.AccountSettings.Search.DefaultSearcher
 		end		 
 		
 		searcherDropdown:SetValues(searchers)
@@ -329,27 +328,27 @@ function InternalInterface.UI.SearchFrame(name, parent)
 		buyButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBuyout and not seller)
 
 		if not auctionSelected then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNoAuction"]) -- LOCALIZE
+			noBidLabel:SetText(L["SearchFrame/ErrorNoAuction"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		elseif not selectedAuctionCached then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNotCached"]) -- LOCALIZE
+			noBidLabel:SetText(L["SearchFrame/ErrorNotCached"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		elseif seller then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorSeller"]) -- LOCALIZE
+			noBidLabel:SetText(L["SearchFrame/ErrorSeller"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		elseif highestBidder then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorHighestBidder"]) -- LOCALIZE
+			noBidLabel:SetText(L["SearchFrame/ErrorHighestBidder"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		elseif not auctionInteraction then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNoAuctionHouse"]) -- LOCALIZE
+			noBidLabel:SetText(L["SearchFrame/ErrorNoAuctionHouse"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		elseif not selectedAuctionBid then
-			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorBidEqualBuy"]) -- LOCALIZE
+			noBidLabel:SetText(L["SearchFrame/ErrorBidEqualBuy"])
 			noBidLabel:SetVisible(true)
 			auctionMoneySelector:SetVisible(false)
 		else
@@ -385,10 +384,10 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	deleteButton:SetTextureAsync(addonID, "Textures/DeleteDisabled.png")
 	
 	clearButton:SetPoint("CENTERRIGHT", searcherDropdown, "CENTERLEFT", -5, 0)
-	clearButton:SetText("Reset") -- LOCALIZE
+	clearButton:SetText(L["SearchFrame/ButtonReset"])
 	
 	searchButton:SetPoint("TOPRIGHT", clearButton, "TOPLEFT", 10, 0)
-	searchButton:SetText("Search") -- LOCALIZE
+	searchButton:SetText(L["SearchFrame/ButtonSearch"])
 	
 	itemNamePanel:SetPoint("CENTERLEFT", collapseButton, "CENTERRIGHT", 5, 0)
 	itemNamePanel:SetPoint("TOPRIGHT", searchButton, "TOPLEFT", -5, 3)
@@ -415,23 +414,24 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	searchGrid:SetRowMargin(2)
 	searchGrid:SetUnselectedRowBackgroundColor({0.15, 0.1, 0.1, 1})
 	searchGrid:SetSelectedRowBackgroundColor({0.45, 0.3, 0.3, 1})
-	searchGrid:AddColumn("item", "Item", SearchCellType, 140, 3, nil, "itemName") -- LOCALIZE
-	searchGrid:AddColumn("seller", "Seller", "Text", 120, 1, "sellerName", true, { Alignment = "center" }) -- LOCALIZE
-	searchGrid:AddColumn("minexpire", "Min. expire", "Text", 90, 0, "minExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter }) -- LOCALIZE
-	searchGrid:AddColumn("maxexpire", "Max. expire", "Text", 90, 0, "maxExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter }) -- LOCALIZE
-	searchGrid:AddColumn("bid", "Bid", "MoneyCellType", 120, 0, "bidPrice", true) -- LOCALIZE
-	searchGrid:AddColumn("buy","Buy", "MoneyCellType", 120, 0, "buyoutPrice", true) -- LOCALIZE
-	searchGrid:AddColumn("unitbid", "Unit Bid", "MoneyCellType", 120, 0, "bidUnitPrice", true) -- LOCALIZE
-	searchGrid:AddColumn("unitbuy", "Unit Buy", "MoneyCellType", 120, 0, "buyoutUnitPrice", true) -- LOCALIZE
-	searchGrid:AddColumn("score", "Score", "Text", 60, 0, "score", true, { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor }) -- LOCALIZE
-	searchGrid:AddColumn("background", nil, "WideBackgroundCellType", 0, 0) -- TODO Move to BDataGrid	
-	searchGrid:SetOrder("minexpire", false)		
+	searchGrid:AddColumn("item", L["SearchFrame/ColumnItem"], SearchCellType, 140, 3, nil, "itemName")
+	searchGrid:AddColumn("seller", L["SearchFrame/ColumnSeller"], "Text", 120, 1, "sellerName", true, { Alignment = "center" })
+	searchGrid:AddColumn("minexpire", L["SearchFrame/ColumnMinExpire"], "Text", 90, 0, "minExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter })
+	searchGrid:AddColumn("maxexpire", L["SearchFrame/ColumnMaxExpire"], "Text", 90, 0, "maxExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter })
+	searchGrid:AddColumn("bid", L["SearchFrame/ColumnBid"], "MoneyCellType", 120, 0, "bidPrice", true)
+	searchGrid:AddColumn("buy", L["SearchFrame/ColumnBuy"], "MoneyCellType", 120, 0, "buyoutPrice", true)
+	searchGrid:AddColumn("unitbid", L["SearchFrame/ColumnBidPerUnit"], "MoneyCellType", 120, 0, "bidUnitPrice", true)
+	searchGrid:AddColumn("unitbuy", L["SearchFrame/ColumnBuyPerUnit"], "MoneyCellType", 120, 0, "buyoutUnitPrice", true)
+	searchGrid:AddColumn("score", L["SearchFrame/ColumnScore"], "Text", 60, 0, "score", true, { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor })
+	searchGrid:AddColumn("background", nil, "WideBackgroundCellType", 0, 0)
+	searchGrid:SetOrder("minexpire", false)
+	searchGrid:GetInternalContent():SetBackgroundColor(0, 0.05, 0.05, 0.5)	
 
 	controlFrame:SetPoint("TOPLEFT", searchGrid:GetContent(), "BOTTOMLEFT", 3, -36)
 	controlFrame:SetPoint("BOTTOMRIGHT", searchGrid:GetContent(), "BOTTOMRIGHT", -3, -2)
 
 	trackButton:SetPoint("CENTERLEFT", controlFrame, "CENTERLEFT", 0, 0)
-	trackButton:SetText("Track auction") -- LOCALIZE
+	trackButton:SetText(L["SearchFrame/ButtonTrack"])
 	trackButton:SetEnabled(false)
 	
 	navigationFrame:SetPoint("CENTERLEFT", trackButton, "CENTERRIGHT")
@@ -453,11 +453,11 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	nextButton:SetTextureAsync(addonID, "Textures/MoveNext.png")
 
 	buyButton:SetPoint("CENTERRIGHT", controlFrame, "CENTERRIGHT", 0, 0)
-	buyButton:SetText("Buy") -- LOCALIZE
+	buyButton:SetText(L["SearchFrame/ButtonBuy"])
 	buyButton:SetEnabled(false)
 
 	bidButton:SetPoint("CENTERRIGHT", buyButton, "CENTERLEFT", 10, 0)
-	bidButton:SetText("Bid") -- LOCALIZE
+	bidButton:SetText(L["SearchFrame/ButtonBid"])
 	bidButton:SetEnabled(false)
 
 	auctionMoneySelector:SetPoint("TOPRIGHT", bidButton, "TOPLEFT", -5, 2)
@@ -490,11 +490,13 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	end
 	
 	-- 2012.08.11 Baanano: Key events don't seem to be hardware events, so Command.Auction.Bid fails
-	-- function itemNameField.Event:KeyUp(key)
-		-- if key == "\13" and searchButton:GetEnabled() then
-			-- searchButton.Event.LeftPress(searchButton)
-		-- end
-	-- end
+	--[[
+	function itemNameField.Event:KeyUp(key)
+		if key == "\13" and searchButton:GetEnabled() then
+			searchButton.Event.LeftPress(searchButton)
+		end
+	end
+	--]]
 	
 	function onlineButton.Event:LeftClick()
 		local onlineCapable = currentSearcher and searchers[currentSearcher] and searchers[currentSearcher].online
@@ -579,11 +581,11 @@ function InternalInterface.UI.SearchFrame(name, parent)
 		local extra = searchFrame and searchFrame:GetExtra() or nil		
 		if manager and extra then
 			local timeStamp = Time()
-			manager:ShowPopup(addonID .. ".SaveSearch", "Saved " .. GetLocalizedDateString("%x %X", timeStamp),
+			manager:ShowPopup(addonID .. ".SaveSearch", GetLocalizedDateString(L["SaveSearchPopup/DefaultName"], timeStamp),
 				function(name)
 					InternalInterface.AccountSettings.Search.SavedSearchs["custom-" .. timeStamp] =
 					{
-						displayName = name, -- LOCALIZE
+						displayName = name,
 						extra = extra,
 						baseSearcher = searchInfo.baseSearcher or currentSearcher,
 					}
@@ -653,7 +655,6 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	end
 	
 	ResetSearchers()
---	InternalInterface.PGCExtensions.GetActiveAuctionsScored(function(auctions) searchGrid:SetData(auctions) end)
 	
 	return searchFrame
 end

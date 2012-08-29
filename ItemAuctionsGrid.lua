@@ -142,8 +142,8 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	itemAuctionsGrid:SetHeadersVisible(true)
 	itemAuctionsGrid:SetRowHeight(20)
 	itemAuctionsGrid:SetRowMargin(0)
-	itemAuctionsGrid:SetUnselectedRowBackgroundColor({0.2, 0.2, 0.2, 0.25}) -- TODO Change to use function
-	itemAuctionsGrid:SetSelectedRowBackgroundColor({0.6, 0.6, 0.6, 0.25}) -- TODO Change to use function
+	itemAuctionsGrid:SetUnselectedRowBackgroundColor({0.2, 0.2, 0.2, 0.25})
+	itemAuctionsGrid:SetSelectedRowBackgroundColor({0.6, 0.6, 0.6, 0.25})
 	itemAuctionsGrid:AddColumn("cached", nil, "AuctionCachedCellType", 20, 0)
 	itemAuctionsGrid:AddColumn("seller", L["ItemAuctionsGrid/ColumnSeller"], "Text", 140, 2, "sellerName", true, { Alignment = "left", Formatter = "none" })
 	itemAuctionsGrid:AddColumn("stack", L["ItemAuctionsGrid/ColumnStack"], "Text", 60, 1, "stack", true, { Alignment = "center", Formatter = "none" })
@@ -154,8 +154,9 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	itemAuctionsGrid:AddColumn("minexpire", L["ItemAuctionsGrid/ColumnMinExpire"], "Text", 90, 1, "minExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter })
 	itemAuctionsGrid:AddColumn("maxexpire", L["ItemAuctionsGrid/ColumnMaxExpire"], "Text", 90, 1, "maxExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter })
 	itemAuctionsGrid:AddColumn("score", L["ItemAuctionsGrid/ColumnScore"], "Text", 60, 0, "score", true, { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor })
-	itemAuctionsGrid:AddColumn("background", nil, "ItemAuctionBackgroundCellType", 0, 0, "score", false, { Color = ScoreColor }) -- TODO Remove
+	itemAuctionsGrid:AddColumn("background", nil, "ItemAuctionBackgroundCellType", 0, 0, "score", false, { Color = ScoreColor })
 	itemAuctionsGrid:SetOrder("unitbuy", false)
+	itemAuctionsGrid:GetInternalContent():SetBackgroundColor(0.05, 0, 0.05, 0.25)	
 	
 	controlFrame:SetPoint("TOPLEFT", itemAuctionsGrid:GetContent(), "BOTTOMLEFT", 3, -36)
 	controlFrame:SetPoint("BOTTOMRIGHT", itemAuctionsGrid:GetContent(), "BOTTOMRIGHT", -3, -2)
