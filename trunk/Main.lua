@@ -42,7 +42,7 @@ local function InitializeLayout()
 	local searchFrame = InternalInterface.UI.SearchFrame(mainTab:GetName() .. ".SearchFrame", mainTab:GetContent())
 	local postFrame = InternalInterface.UI.PostFrame(mainTab:GetName() .. ".PostFrame", mainTab:GetContent())
 	local sellingFrame = InternalInterface.UI.SellingFrame(mainTab:GetName() .. ".SellingFrame", mainTab:GetContent())
-	--local configFrame = InternalInterface.UI.ConfigFrame(mainTab:GetName() .. ".ConfigFrame", mainTab:GetContent())
+	local configFrame = InternalInterface.UI.ConfigFrame(mainTab:GetName() .. ".ConfigFrame", mainTab:GetContent())
 
 	local queueManager = InternalInterface.UI.QueueManager(mainWindow:GetName() .. ".QueueManager", mainWindow:GetContent())
 	
@@ -81,7 +81,7 @@ local function InitializeLayout()
 
 	mapIcon:SetPoint("CENTER", UNMapMini, "BOTTOMLEFT", 24, -25)
 	mapIcon:SetTextureAsync(addonID, "Textures/MapIcon.png")
-	mapIcon:SetVisible(InternalInterface.AccountSettings.General.showMapIcon or false) -- FIXME
+	mapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon or false)
 	InternalInterface.UI.MapIcon = mapIcon
 	
 	mainWindow:SetVisible(false)
@@ -96,6 +96,8 @@ local function InitializeLayout()
 	mainWindow:SetDraggable(true)
 	mainWindow:SetResizable(false)
 	
+	popupManager:SetAllPoints(mainWindow:GetContent())
+	
 	mainTab:SetPoint("TOPLEFT", mainWindow:GetContent(), "TOPLEFT", 5, 5)
 	mainTab:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -40)
 	mainTab:AddTab("search", L["Main/MenuSearch"], searchFrame)
@@ -103,7 +105,7 @@ local function InitializeLayout()
 	mainTab:AddTab("auctions", L["Main/MenuAuctions"], sellingFrame)
 	mainTab:AddTab("bids", L["Main/MenuBids"], nil)
 	mainTab:AddTab("history", L["Main/MenuHistory"], nil)
-	mainTab:AddTab("config", L["Main/MenuConfig"], nil)
+	mainTab:AddTab("config", L["Main/MenuConfig"], configFrame)
 	
 	queueManager:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
 	queueManager:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -125, -35)
@@ -132,10 +134,10 @@ local function InitializeLayout()
 	end
 	
 	function UNAuction.Event:Loaded()
-		if UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.autoOpen then -- FIXME
+		if UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.AutoOpen then
 			ShowBananAH()
 		end
-		if not UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.autoClose then -- FIXME
+		if not UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.AutoClose then
 			mainWindow:Close()
 		end
 	end

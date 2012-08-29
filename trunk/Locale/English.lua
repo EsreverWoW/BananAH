@@ -48,6 +48,20 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["Main/FullScanError"] = "Can't issue a full scan right now, try again later.",
 	["Main/SlashRegisterError"] = "Failed to register slash commands.",
 	
+	-- Save Search Popup
+	["SaveSearchPopup/Title"] = "SAVE SEARCH",
+	["SaveSearchPopup/NameText"] = "Saved search name:",
+	["SaveSearchPopup/DefaultName"] = "Saved %x %X",
+	["SaveSearchPopup/ButtonSave"] = "Save",
+	["SaveSearchPopup/ButtonCancel"] = "Cancel",
+	
+	-- Cancel Auction Popup
+	["CancelAuctionPopup/Title"] = "CANCEL AUCTION",
+	["CancelAuctionPopup/ContentText"] = "Are you sure you want to cancel this auction?",
+	["CancelAuctionPopup/ButtonYes"] = "Yes",
+	["CancelAuctionPopup/ButtonNo"] = "No",
+	["CancelAuctionPopup/IgnoreText"] = "Don't ask again",
+	
 	-- Item Auctions Grid
 	["ItemAuctionsGrid/ButtonBuy"] = "Buy",
 	["ItemAuctionsGrid/ButtonBid"] = "Bid",
@@ -72,20 +86,46 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["ItemAuctionsGrid/ItemScanError"] = "Item scan started...",
 	["ItemAuctionsGrid/ItemScanStarted"] = "Can't issue an item scan right now, try again later.",
 	
+	-- Search frame
+	["SearchFrame/ButtonReset"] = "Reset",
+	["SearchFrame/ButtonSearch"] = "Search",
+	["SearchFrame/ButtonTrack"] = "Track auction",
+	["SearchFrame/ButtonBuy"] = "Buy",
+	["SearchFrame/ButtonBid"] = "Bid",
+	["SearchFrame/ColumnItem"] = "Item",
+	["SearchFrame/ColumnSeller"] = "Seller",
+	["SearchFrame/ColumnMinExpire"] = "Min. expire",
+	["SearchFrame/ColumnMaxExpire"] = "Max. expire",
+	["SearchFrame/ColumnBid"] = "Bid",
+	["SearchFrame/ColumnBuy"] = "Buyout",
+	["SearchFrame/ColumnBidPerUnit"] = "Unit Bid",
+	["SearchFrame/ColumnBuyPerUnit"] = "Unit Buyout",
+	["SearchFrame/ColumnScore"] = "Score",
+	["SearchFrame/ErrorNoAuction"] = "No auction selected",
+	["SearchFrame/ErrorNoAuctionHouse"] = "Not at the auction house",
+	["SearchFrame/ErrorBidEqualBuy"] = "Bid & Buyout prices are equal",
+	["SearchFrame/ErrorSeller"] = "You're the seller",
+	["SearchFrame/ErrorHighestBidder"] = "You're the highest bidder",
+	["SearchFrame/ErrorNotCached"] = "Need scan refresh",
+	
 	-- Post frame
 	["PostFrame/ButtonPost"] = "Post",
 	["PostFrame/ButtonReset"] = "Reset",
-	["PostFrame/CheckPriceMatching"] = "Match prices",
+	["PostFrame/CheckPriceMatching"] = "Apply matching rules",
 	["PostFrame/CheckBindPrices"] = "Bind prices",
 	["PostFrame/CheckStackLimit"] = "Including active ones",
 	["PostFrame/LabelItemStack"] = "You have %d available to auction",
-	["PostFrame/LabelPricingModel"] = "PRICING MODEL:",
+	["PostFrame/LabelPricingModel"] = "REFERENCE PRICE:",
 	["PostFrame/LabelStackSize"] = "STACK SIZE:",
 	["PostFrame/LabelStackNumber"] = "AUCTIONS:",
 	["PostFrame/LabelUnitBid"] = "UNIT BID:",
 	["PostFrame/LabelUnitBuy"] = "UNIT BUYOUT:",
 	["PostFrame/LabelDuration"] = "DURATION:",
-	["PostFrame/LabelDurationFormat"] = "%d hours",
+	["PostFrame/ErrorPostBase"] = "Couldn't post the item, %s.",
+	["PostFrame/ErrorPostStackSize"] = "invalid stack size",
+	["PostFrame/ErrorPostStackNumber"] = "no stacks to post",
+	["PostFrame/ErrorPostBidPrice"] = "no bid price",
+	["PostFrame/ErrorPostBuyPrice"] = "buy price less than bid price",
 	
 	-- Selling frame
 	["SellingFrame/ColumnItem"] = "Item",
@@ -101,8 +141,43 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["SellingFrame/FilterCompetition"] = "Min. Competition:",
 	["SellingFrame/FilterBelow"] = "Min. Below:",
 	["SellingFrame/FilterScore"] = "SCORE FILTER",
-	["SellingFrame/WarningCancel"] = "To avoid cancelling auctions by accident, you need to right click on the button to cancel the auction. You can change this behavior in the Config tab.",
-
+	
+	-- Config frame
+	["ConfigFrame/CategoryGeneral"] = "GENERAL",
+	["ConfigFrame/CategorySearch"] = "SEARCH",
+	["ConfigFrame/CategoryPost"] = "POST",
+	["ConfigFrame/CategorySelling"] = "SELLING",
+	["ConfigFrame/CategoryTracking"] = "TRACKING",
+	["ConfigFrame/CategoryHistory"] = "HISTORY",
+	["ConfigFrame/CategoryPricing"] = "PRICES",
+	["ConfigFrame/CategoryScoring"] = "SCORE",
+	
+	["ConfigGeneral/MapIconShow"] = "Show map icon",
+	["ConfigGeneral/AutoOpenWindow"] = "Open the addon window when the native Auction House window is opened",
+	["ConfigGeneral/AutoCloseWindow"] = "Close the addon window when the native Auction House window is closed",
+	["ConfigGeneral/PausePostingQueue"] = "Pause posting queue on load (note other Auction House addons may override this setting)",
+	
+	["ConfigSearch/DefaultSearcher"] = "Default searcher:",
+	["ConfigSearch/DefaultSearchMode"] = "Default search mode:",
+	
+	["ConfigPost/RarityFilter"] = "Minimum rarity filter:",
+	["ConfigPost/DefaultReferencePrice"] = "Default reference price:",
+	["ConfigPost/FallbackReferencePrice"] = "Fallback reference price:",
+	["ConfigPost/ApplyMatching"] = "Apply matching rules for unconfigured items",
+	["ConfigPost/DefaultStackSize"] = "Default stack size:",
+	["ConfigPost/DefaultStackNumber"] = "Default auctions:",
+	["ConfigPost/BidPercentage"] = "Bid percentage (of buyout price):",
+	["ConfigPost/DefaultBindPrices"] = "Bind bid & buyout prices for unconfigured items",
+	["ConfigPost/DefaultDuration"] = "Default duration:",
+	
+	["ConfigSelling/BypassCancelPopup"] = "Cancel auctions with a single click (don't ask for confirmation)",
+	["ConfigSelling/FilterRestrictCharacter"] = "Show only auctions posted by the current character by default",
+	["ConfigSelling/FilterCompetition"] = "Default min. competition:",
+	["ConfigSelling/FilterBelow"] = "Default min. auctions below:",
+	["ConfigSelling/FilterScore"] = "Default scores:",
+	
+	["ConfigScore/ReferencePrice"] = "Reference price for scoring:",
+	
 	-- Misc
 	["Misc/DateMonthAbbreviatedNames"] = "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
 	["Misc/DateMonthNames"] = "January,February,March,April,May,June,July,August,September,October,November,December",
@@ -111,9 +186,15 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["Misc/RemainingTimeHours"] = "%d h %d m",
 	["Misc/RemainingTimeMinutes"] = "%d m %d s",
 	["Misc/RemainingTimeSeconds"] = "%d s",
+	["Misc/SearchModeOnline"] = "Online",
+	["Misc/SearchModeOffline"] = "Offline",
 	["Misc/StackSizeMax"] = "Max",
 	["Misc/StacksFull"] = "Full",
 	["Misc/StacksAll"] = "All",
+	["Misc/StackSizeMaxKeyShortcut"] = "+",
+	["Misc/StacksFullKeyShortcut"] = "F",
+	["Misc/StacksAllKeyShortcut"] = "A",
+	["Misc/DurationFormat"] = "%d hours",
 	
 	-- Default price models
 	["PriceModels/Fixed"] = "User defined",

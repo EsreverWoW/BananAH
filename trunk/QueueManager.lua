@@ -43,7 +43,7 @@ local function QueueCellType(name, parent)
 	local itemType = nil
 	
 	cellBackground:SetAllPoints()
-	cellBackground:SetTextureAsync(addonID, "Textures/ItemRowBackground.png") -- TODO Move to BDataGrid
+	cellBackground:SetTextureAsync(addonID, "Textures/ItemRowBackground.png")
 	cellBackground:SetLayer(-9999)
 	
 	itemTextureBackground:SetPoint("CENTERLEFT", queueManagerCell, "CENTERLEFT", 4, 0)
@@ -159,6 +159,7 @@ function InternalInterface.UI.QueueManager(name, parent)
 	queueGrid:SetSelectedRowBackgroundColor({0.45, 0.6, 0.45, 1})
 	queueGrid:AddColumn("item", nil, QueueCellType, 248, 0, nil, "I DON'T CARE")
 	queueGrid:SetVisible(false)
+	queueGrid:GetInternalContent():SetBackgroundColor(0, 0, 0.05, 0.5)	
 
 	function playButton.Event:LeftClick()
 		SetPostingQueuePaused(not GetPostingQueuePaused())
@@ -185,6 +186,10 @@ function InternalInterface.UI.QueueManager(name, parent)
 	
 	TInsert(Event.LibPGC.PostingQueueChanged, { UpdateQueue, addonID, addonID .. ".OnQueueChanged" })
 	UpdateQueue()
+	
+	if InternalInterface.AccountSettings.General.QueuePausedOnStart then
+		SetPostingQueuePaused(true)
+	end
 	
 	return queueFrame
 end

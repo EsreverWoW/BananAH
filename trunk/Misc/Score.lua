@@ -24,7 +24,7 @@ end
 
 function InternalInterface.UI.ScoreIndexByScore(score)
 	local index = nil
-	local limits = InternalInterface.AccountSettings.PriceScorers.Settings.colorLimits or { 85, 85, 115, 115 }
+	local limits = InternalInterface.AccountSettings.Scoring.ColorLimits
 	if score then
 		if score <= limits[1] then index = 1
 		elseif score <= limits[2] then index = 2

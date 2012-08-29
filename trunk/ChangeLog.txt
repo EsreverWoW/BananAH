@@ -1,3 +1,8 @@
+	r65
+- Reenabled	Config Tab
+- Modified Auction cancel process
+- Slightly modified textures and colors	to get a higher contrast
+
 	r64
 - Enabled Saved Searchs
 - When Auto posting fails because the addon can't calculate a reference price, it'll be deactivated instead of using Vendor price as reference.

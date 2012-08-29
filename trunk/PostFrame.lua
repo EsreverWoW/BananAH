@@ -62,7 +62,7 @@ local function ItemCellType(name, parent)
 	local resetGridFunction = nil
 
 	cellBackground:SetAllPoints()
-	cellBackground:SetTextureAsync(addonID, "Textures/ItemRowBackground.png") -- TODO Move to BDataGrid
+	cellBackground:SetTextureAsync(addonID, "Textures/ItemRowBackground.png")
 	cellBackground:SetLayer(-9999)
 	
 	itemTextureBackground:SetPoint("CENTERLEFT", itemCell, "CENTERLEFT", 4, 0)
@@ -204,9 +204,9 @@ function InternalInterface.UI.PostFrame(name, parent)
 	local pricesSetByModel = false
 
 	local function ItemGridFilter(itemType, itemInfo)
-		local rarity = itemInfo.rarity or "common"
+		local rarity = itemInfo.rarity and itemInfo.rarity ~= "" and itemInfo.rarity or "common"
 		rarity = ({ sellable = 1, common = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, quest = 8 })[rarity] or 1
-		local minRarity = InternalInterface.AccountSettings.Posting.rarityFilter or 1 -- FIXME
+		local minRarity = InternalInterface.AccountSettings.Posting.RarityFilter or 1
 		if rarity < minRarity then return false end
 
 		local filterText = SUpper(filterTextField:GetText())
@@ -298,6 +298,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 			itemStackLabel:SetVisible(true)
 			
 			local itemConfig = currentItemType and InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType] or {}
+			local defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[""] -- TODO Item Categories
 			
 			local priceModels = GetPriceModels()
 			for priceID, priceData in pairs(prices) do
@@ -312,8 +313,8 @@ function InternalInterface.UI.PostFrame(name, parent)
 			prices[FIXED_MODEL_ID] = { displayName = FIXED_MODEL_NAME, bid = itemConfig.lastBid or 0, buy = itemConfig.lastBuy or 0 }
 
 			local preferredPrice = itemConfig.pricingModelOrder
-			if not preferredPrice or not prices[preferredPrice] then preferredPrice = "market" end -- TODO Use default price
-			if not preferredPrice or not prices[preferredPrice] then preferredPrice = "vendor" end -- TODO Use fallback price
+			if not preferredPrice or not prices[preferredPrice] then preferredPrice = defaultConfig.DefaultReferencePrice end
+			if not preferredPrice or not prices[preferredPrice] then preferredPrice = defaultConfig.FallbackReferencePrice end
 			if not preferredPrice or not prices[preferredPrice] then preferredPrice = nil end
 			pricingModelSelector:SetValues(prices)
 			pricingModelSelector:SetEnabled(true)
@@ -322,20 +323,20 @@ function InternalInterface.UI.PostFrame(name, parent)
 			end
 			
 			local preferredMatch = itemConfig.usePriceMatching
-			if preferredMatch == nil then preferredMatch = false end -- TODO Get default value
+			if preferredMatch == nil then preferredMatch = defaultConfig.ApplyMatching end
 			priceMatchingCheck:SetEnabled(true)
 			priceMatchingCheck:SetChecked(preferredMatch)
 			
-			local preferredStackSize = itemConfig.stackSize or "+" -- TODO Get default value
+			local preferredStackSize = itemConfig.stackSize or defaultConfig.StackSize
 			stackSizeSelector:SetRange(1, itemInfo.stackMax or 1)
-			stackSizeSelector:AddPostValue("+", "+", L["Misc/StackSizeMax"]) -- LOCALIZE first +, and all shortcuts in the file
+			stackSizeSelector:AddPostValue(L["Misc/StackSizeMaxKeyShortcut"], "+", L["Misc/StackSizeMax"])
 			if type(preferredStackSize) == "number" then
 				preferredStackSize = MMin(preferredStackSize, itemInfo.stackMax or 1)
 			end
 			stackSizeSelector:SetPosition(preferredStackSize)
 			
 			local preferredLimitActive = itemConfig.limitActive
-			if preferredLimitActive == nil then preferredLimitActive = false end -- TODO Get default value
+			if preferredLimitActive == nil then preferredLimitActive = defaultConfig.StackLimit end
 			stackLimitCheck:SetEnabled(true)
 			stackLimitCheck:SetChecked(preferredLimitActive)
 
@@ -343,11 +344,11 @@ function InternalInterface.UI.PostFrame(name, parent)
 			buyMoneySelector:SetEnabled(true)
 			
 			local preferredBindPrices = itemConfig.bindPrices
-			if preferredBindPrices == nil then preferredBindPrices = false end -- TODO Get default value
+			if preferredBindPrices == nil then preferredBindPrices = defaultConfig.BindPrices end
 			bindPricesCheck:SetEnabled(true)
 			bindPricesCheck:SetChecked(preferredBindPrices)
 			
-			local preferredDuration = itemConfig.duration or 3 -- TODO Get default value
+			local preferredDuration = itemConfig.duration or defaultConfig.Duration
 			durationSlider:SetEnabled(true)
 			durationSlider:SetPosition(preferredDuration)
 			
@@ -357,7 +358,8 @@ function InternalInterface.UI.PostFrame(name, parent)
 		end
 		
 		if itemType and itemInfo then
-			GetPrices(function(prices) PopulatePostArea(itemType, itemInfo, prices) end, itemType, 0.75, nil, false) -- TODO BidPercentage, Get own models
+			local bidPercentage = InternalInterface.AccountSettings.Posting.CategoryConfig[""].BidPercentage / 100 -- TODO Item Categories
+			GetPrices(function(prices) PopulatePostArea(itemType, itemInfo, prices) end, itemType, bidPercentage, nil, false) -- TODO Get models for that category only
 		else
 			autoPostButton:SetTextureAsync(addonID, "Textures/AutoOff.png")
 		end
@@ -394,7 +396,8 @@ function InternalInterface.UI.PostFrame(name, parent)
 	itemGrid:SetUnselectedRowBackgroundColor({0.2, 0.15, 0.2, 1})
 	itemGrid:SetSelectedRowBackgroundColor({0.6, 0.45, 0.6, 1})
 	itemGrid:AddColumn("item", nil, ItemCellType, 248, 0, nil, "name", { ResetGridFunction = ResetItemGridFunction })
-	itemGrid:SetFilter(ItemGridFilter)	
+	itemGrid:SetFilter(ItemGridFilter)
+	itemGrid:GetInternalContent():SetBackgroundColor(0, 0.05, 0, 0.5)	
 
 	filterFrame:SetPoint("TOPLEFT", itemGrid:GetContent(), "BOTTOMLEFT", 3, -36)
 	filterFrame:SetPoint("BOTTOMRIGHT", itemGrid:GetContent(), "BOTTOMRIGHT", -3, -2)
@@ -483,7 +486,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	stackLimitLabel:SetText(L["PostFrame/CheckStackLimit"])
 
 	durationTimeLabel:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 225)
-	durationTimeLabel:SetText(SFormat(L["PostFrame/LabelDurationFormat"], 48))
+	durationTimeLabel:SetText(SFormat(L["Misc/DurationFormat"], 48))
 
 	durationSlider:SetPoint("CENTERRIGHT", durationTimeLabel, "CENTERLEFT", -15, 5)
 	durationSlider:SetPoint("CENTERLEFT", durationLabel, "CENTERLEFT", maxLeftLabelWidth + 10, 5)
@@ -603,7 +606,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 			if type(stackSize) ~= "number" then stackSize = 0 end
 
 			local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-			local stackNumber = InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType].stackNumber or "A" -- TODO Get default
+			local stackNumber = InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType].stackNumber or InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackNumber -- TODO Item categories
 			
 			if stackSize > 0 and selectedItem then
 				local stacks = selectedInfo.adjustedStack
@@ -614,9 +617,9 @@ function InternalInterface.UI.PostFrame(name, parent)
 				stackNumberSelector:ResetPseudoValues()
 				
 				if fullStacks > 0 then
-					stackNumberSelector:AddPostValue("F", "F", L["Misc/StacksFull"])
+					stackNumberSelector:AddPostValue(L["Misc/StacksFullKeyShortcut"], "F", L["Misc/StacksFull"])
 				end
-				stackNumberSelector:AddPostValue("A", "A", L["Misc/StacksAll"])
+				stackNumberSelector:AddPostValue(L["Misc/StacksAllKeyShortcut"], "A", L["Misc/StacksAll"])
 				
 				if stackNumber == "F" and fullStacks <= 0 then stackNumber = 1 end
 				if type(stackNumber) == "number" then stackNumber = MMin(stackNumber, fullStacks) end
@@ -718,7 +721,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	function durationSlider.Event:SliderChange()
 		local position = self:GetPosition()
-		durationTimeLabel:SetText(SFormat(L["PostFrame/LabelDurationFormat"], 6 * 2 ^ position))
+		durationTimeLabel:SetText(SFormat(L["Misc/DurationFormat"], 6 * 2 ^ position))
 		if currentItemType then
 			InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType] = InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType] or {}
 			InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType].duration = position
@@ -774,37 +777,41 @@ function InternalInterface.UI.PostFrame(name, parent)
 						stackNumber = stackNumber - MCeil(queueInfo.amount / queueInfo.stackSize)
 					end
 				end
-				-- TODO Error message if < 0
 			end
 			
 			stackNumber = MMax(MMin(stackNumber, maxNumberOfStacks), 0)
 		else
 			stackNumber = 0
 		end
+
+		buyUnitPrice = buyUnitPrice > 0 and buyUnitPrice or nil
+		local amount = MMin(stackSize * stackNumber, selectedInfo.adjustedStack)
 		
-		if stackSize <= 0 or stackNumber <= 0 or bidUnitPrice <= 0 then return end
-		if buyUnitPrice <= 0 then 
-			buyUnitPrice = nil
-		elseif buyUnitPrice < bidUnitPrice then
-			Write(L["PostingPanel/ErrorBidHigherBuy"]) -- LOCALIZE
+		if stackSize <= 0 then
+			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackSize"]))
+			return
+		elseif stackNumber <= 0 or amount <= 0 then
+			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackNumber"]))
+			return
+		elseif bidUnitPrice <= 0 then
+			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBidPrice"]))
+			return
+		elseif buyUnitPrice and buyUnitPrice < bidUnitPrice then
+			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBuyPrice"]))
 			return
 		end
-		
-		local amount = MMin(stackSize * stackNumber, selectedInfo.adjustedStack)
-		if amount <= 0 then return end
 		
 		if PostItem(selectedItem, stackSize, amount, bidUnitPrice, buyUnitPrice, duration) then
 			InternalInterface.CharacterSettings.Posting.ItemConfig[selectedItem] = InternalInterface.CharacterSettings.Posting.ItemConfig[selectedItem] or {}
 			InternalInterface.CharacterSettings.Posting.ItemConfig[selectedItem].lastBid = bidUnitPrice or 0
 			InternalInterface.CharacterSettings.Posting.ItemConfig[selectedItem].lastBuy = buyUnitPrice or 0
-			-- self.cooldown = ITReal() + 0.5
 		end
 	end
 	
 	function autoPostButton.Event.LeftClick()
 		local itemType = itemGrid:GetSelectedData()
 		if not itemType then return end
-		InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = not InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] or nil -- FIXME
+		InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = not InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] or nil
 		RefreshFilter()
 		autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
 	end
@@ -812,7 +819,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	function autoPostButton.Event.RightClick()
 		local filteredData = itemGrid:GetFilteredData()
 		for itemType in pairs(filteredData) do
-			if not InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then -- FIXME
+			if not InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then
 				filteredData[itemType] = nil
 			end
 		end
@@ -826,8 +833,9 @@ function InternalInterface.UI.PostFrame(name, parent)
 
 			for itemType, itemInfo in pairs(filteredData) do repeat
 				local itemConfig = itemType and InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] or {}
+				local defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[""] -- TODO Item Categories
 				
-				local preferredPrice = itemConfig.pricingModelOrder or "market" -- TODO Use default price
+				local preferredPrice = itemConfig.pricingModelOrder or defaultConfig.DefaultReferencePrice
 				if not preferredPrice or (not pricingModels[preferredPrice] and preferredPrice ~= FIXED_MODEL_ID) then
 					InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = nil
 					-- TODO Message warning deactivation?
@@ -835,9 +843,9 @@ function InternalInterface.UI.PostFrame(name, parent)
 				end
 
 				local preferredMatch = itemConfig.usePriceMatching
-				if preferredMatch == nil then preferredMatch = false end -- TODO Get default value
+				if preferredMatch == nil then preferredMatch = defaultConfig.ApplyMatching end
 				
-				local preferredStackSize = itemConfig.stackSize or "+" -- TODO Get default value
+				local preferredStackSize = itemConfig.stackSize or defaultConfig.StackSize
 				if preferredStackSize == "+" then preferredStackSize = itemInfo.stackMax end
 				if type(preferredStackSize) ~= "number" or preferredStackSize <= 0 then break end
 
@@ -847,9 +855,9 @@ function InternalInterface.UI.PostFrame(name, parent)
 				local maxNumberOfStacks = MCeil(stacks / preferredStackSize)
 				
 				local preferredLimitActive = itemConfig.limitActive
-				if preferredLimitActive == nil then preferredLimitActive = false end -- TODO Get default value
+				if preferredLimitActive == nil then preferredLimitActive = defaultConfig.StackLimit end
 				
-				local preferredStackNumber = itemConfig.stackNumber or "A" -- TODO Get default value
+				local preferredStackNumber = itemConfig.stackNumber or defaultConfig.StackNumber
 				if preferredStackNumber == "F" then
 					preferredStackNumber = fullStacks
 				elseif preferredStackNumber == "A" then
@@ -876,12 +884,16 @@ function InternalInterface.UI.PostFrame(name, parent)
 				local preferredAmount = MMin(preferredStackSize * preferredStackNumber, stacks)
 				
 				local preferredBindPrices = itemConfig.bindPrices
-				if preferredBindPrices == nil then preferredBindPrices = false end  -- TODO Get default value
+				if preferredBindPrices == nil then preferredBindPrices = defaultConfig.BindPrices end
 				
-				local preferredDuration = 6 * 2 ^ (itemConfig.duration or 3) -- TODO Get default value
+				local preferredDuration = 6 * 2 ^ (itemConfig.duration or defaultConfig.Duration)
 				
 				local function GetPricesCallback(prices)
-					if not prices or not prices[preferredPrice] then return end
+					if not prices or not prices[preferredPrice] then
+						InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = nil
+						 -- TODO Message warning deactivation?
+						return
+					end
 					local bid = preferredMatch and prices[preferredPrice].adjustedBid or prices[preferredPrice].bid
 					local buy = preferredMatch and prices[preferredPrice].adjustedBuy or prices[preferredPrice].buy
 					
@@ -906,7 +918,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 				if preferredPrice == FIXED_MODEL_ID then
 					GetPricesCallback({ [FIXED_MODEL_ID] = { bid = itemConfig.lastBid or 0, buy = itemConfig.lastBuy or 0, } })
 				else
-					GetPrices(GetPricesCallback, itemType, 0.75, preferredPrice, false) -- TODO BidPercentage
+					GetPrices(GetPricesCallback, itemType, defaultConfig.BidPercentage, preferredPrice, false)
 				end
 			until true end
 		end
@@ -958,8 +970,6 @@ function InternalInterface.UI.PostFrame(name, parent)
 		end
 	end
 	TInsert(Event.System.Update.Begin, { OnFrame, addonID, addonID .. ".PostFrame.OnFrame" })
-	
-	-- TODO auto post
 	
 	return postFrame
 end
