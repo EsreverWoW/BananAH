@@ -1,7 +1,10 @@
+	r66
+- Updated to RIFT 1.10
+
 	r65
-- Reenabled	Config Tab
+- Reenabled Config Tab
 - Modified Auction cancel process
-- Slightly modified textures and colors	to get a higher contrast
+- Slightly modified textures and colors to get a higher contrast
 
 	r64
 - Enabled Saved Searchs

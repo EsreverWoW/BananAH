@@ -255,7 +255,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 			itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
 		until true end
 		
-		itemGrid:SetData(itemTypeTable, nil, RefreshFilter)
+		itemGrid:SetData(itemTypeTable, nil, RefreshFilter, true)
 	end
 	
 	local function RefreshPostArea(itemType, itemInfo)
