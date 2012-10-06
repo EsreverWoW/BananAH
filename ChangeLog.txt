@@ -1,3 +1,6 @@
+	r67
+- Repackaged due to a bugfix in LibPGCEx	
+
 	r66
 - Updated to RIFT 1.10
 
