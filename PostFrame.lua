@@ -10,13 +10,16 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 local PublicInterface = _G[addonID]
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
 local DataGrid = Yague.DataGrid
 local Dropdown = Yague.Dropdown
 local MoneySelector = Yague.MoneySelector
 local Panel = Yague.Panel
 local ShadowedText = Yague.ShadowedText
 local Slider = Yague.Slider
+local CDetail = InternalInterface.Category.Detail
 local CTooltip = Command.Tooltip
+local GetCategoryModels = InternalInterface.PGCConfig.GetCategoryModels
 local GetOwnAuctionData = LibPGC.GetOwnAuctionData
 local GetPostingQueue = LibPGC.GetPostingQueue
 local GetPriceModels = LibPGCEx.GetPriceModels
@@ -157,6 +160,17 @@ local function ItemCellType(name, parent)
 	return itemCell
 end
 
+local function GetCategoryConfig(category)
+	category = category or BASE_CATEGORY
+	local defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[category]
+	while not defaultConfig do
+		local detail = CDetail(category)
+		category = detail and detail.parent or BASE_CATEGORY
+		defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[category]
+	end
+	return defaultConfig
+end
+
 function InternalInterface.UI.PostFrame(name, parent)
 	local postFrame = UICreateFrame("Frame", name, parent)
 	
@@ -187,7 +201,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	local bidLabel = ShadowedText(name .. ".BidLabel", postFrame)
 	local bidMoneySelector = MoneySelector(name .. ".BidMoneySelector", postFrame)
 	local buyLabel = ShadowedText(name .. ".BuyLabel", postFrame)
-	local buyMoneySelector = MoneySelector(name .. ".BuyMoneySelector", postFrame)
+	local buyMoneySelector = MoneySelector(name .. ".BuyMoneySelector", postFrame) -- TODO Mark red when price is under vendor price
 	local bindPricesCheck = UICreateFrame("RiftCheckbox", name .. ".BindPricesCheck", postFrame)
 	local bindPricesLabel = ShadowedText(name .. ".BindPricesLabel", postFrame)
 	
@@ -251,7 +265,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 			if not ok or not itemDetail or itemDetail.bound then break end
 			
 			local itemType = itemDetail.type
-			itemTypeTable[itemType] = itemTypeTable[itemType] or { name = itemDetail.name, icon = itemDetail.icon, rarity = itemDetail.rarity, stack = 0, stackMax = itemDetail.stackMax, sell = itemDetail.sell, itemType = itemType }
+			itemTypeTable[itemType] = itemTypeTable[itemType] or { name = itemDetail.name, icon = itemDetail.icon, rarity = itemDetail.rarity, stack = 0, stackMax = itemDetail.stackMax, sell = itemDetail.sell, itemType = itemType, category = itemDetail.category, }
 			itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
 		until true end
 		
@@ -297,8 +311,10 @@ function InternalInterface.UI.PostFrame(name, parent)
 			itemStackLabel:SetText(SFormat(L["PostFrame/LabelItemStack"], itemInfo.adjustedStack))
 			itemStackLabel:SetVisible(true)
 			
+			
 			local itemConfig = currentItemType and InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType] or {}
-			local defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[""] -- TODO Item Categories
+			local defaultCategoryConfig = GetCategoryConfig(itemInfo.category)
+			local defaultConfig = InternalInterface.AccountSettings.Posting.Config or {}
 			
 			local priceModels = GetPriceModels()
 			for priceID, priceData in pairs(prices) do
@@ -313,8 +329,8 @@ function InternalInterface.UI.PostFrame(name, parent)
 			prices[FIXED_MODEL_ID] = { displayName = FIXED_MODEL_NAME, bid = itemConfig.lastBid or 0, buy = itemConfig.lastBuy or 0 }
 
 			local preferredPrice = itemConfig.pricingModelOrder
-			if not preferredPrice or not prices[preferredPrice] then preferredPrice = defaultConfig.DefaultReferencePrice end
-			if not preferredPrice or not prices[preferredPrice] then preferredPrice = defaultConfig.FallbackReferencePrice end
+			if not preferredPrice or not prices[preferredPrice] then preferredPrice = defaultCategoryConfig.DefaultReferencePrice end
+			if not preferredPrice or not prices[preferredPrice] then preferredPrice = defaultCategoryConfig.FallbackReferencePrice end
 			if not preferredPrice or not prices[preferredPrice] then preferredPrice = nil end
 			pricingModelSelector:SetValues(prices)
 			pricingModelSelector:SetEnabled(true)
@@ -323,11 +339,11 @@ function InternalInterface.UI.PostFrame(name, parent)
 			end
 			
 			local preferredMatch = itemConfig.usePriceMatching
-			if preferredMatch == nil then preferredMatch = defaultConfig.ApplyMatching end
+			if preferredMatch == nil then preferredMatch = defaultCategoryConfig.ApplyMatching end
 			priceMatchingCheck:SetEnabled(true)
 			priceMatchingCheck:SetChecked(preferredMatch)
 			
-			local preferredStackSize = itemConfig.stackSize or defaultConfig.StackSize
+			local preferredStackSize = itemConfig.stackSize or defaultCategoryConfig.StackSize
 			stackSizeSelector:SetRange(1, itemInfo.stackMax or 1)
 			stackSizeSelector:AddPostValue(L["Misc/StackSizeMaxKeyShortcut"], "+", L["Misc/StackSizeMax"])
 			if type(preferredStackSize) == "number" then
@@ -336,7 +352,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 			stackSizeSelector:SetPosition(preferredStackSize)
 			
 			local preferredLimitActive = itemConfig.limitActive
-			if preferredLimitActive == nil then preferredLimitActive = defaultConfig.StackLimit end
+			if preferredLimitActive == nil then preferredLimitActive = defaultCategoryConfig.StackLimit end
 			stackLimitCheck:SetEnabled(true)
 			stackLimitCheck:SetChecked(preferredLimitActive)
 
@@ -348,7 +364,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 			bindPricesCheck:SetEnabled(true)
 			bindPricesCheck:SetChecked(preferredBindPrices)
 			
-			local preferredDuration = itemConfig.duration or defaultConfig.Duration
+			local preferredDuration = itemConfig.duration or defaultCategoryConfig.Duration
 			durationSlider:SetEnabled(true)
 			durationSlider:SetPosition(preferredDuration)
 			
@@ -358,8 +374,16 @@ function InternalInterface.UI.PostFrame(name, parent)
 		end
 		
 		if itemType and itemInfo then
-			local bidPercentage = InternalInterface.AccountSettings.Posting.CategoryConfig[""].BidPercentage / 100 -- TODO Item Categories
-			GetPrices(function(prices) PopulatePostArea(itemType, itemInfo, prices) end, itemType, bidPercentage, nil, false) -- TODO Get models for that category only
+			local bidPercentage = InternalInterface.AccountSettings.Posting.Config.BidPercentage / 100
+			
+			local category = itemInfo.category
+			local categoryModels = GetCategoryModels(category)
+			local categoryBlackList = GetCategoryConfig(category).BlackList or {}
+			for modelID in pairs(categoryBlackList) do
+				categoryModels[modelID] = nil
+			end
+			
+			GetPrices(function(prices) PopulatePostArea(itemType, itemInfo, prices) end, itemType, bidPercentage, categoryModels, false)
 		else
 			autoPostButton:SetTextureAsync(addonID, "Textures/AutoOff.png")
 		end
@@ -606,7 +630,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 			if type(stackSize) ~= "number" then stackSize = 0 end
 
 			local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-			local stackNumber = InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType].stackNumber or InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackNumber -- TODO Item categories
+			local stackNumber = InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType].stackNumber or GetCategoryConfig(selectedInfo.category).StackNumber
 			
 			if stackSize > 0 and selectedItem then
 				local stacks = selectedInfo.adjustedStack
@@ -833,9 +857,10 @@ function InternalInterface.UI.PostFrame(name, parent)
 
 			for itemType, itemInfo in pairs(filteredData) do repeat
 				local itemConfig = itemType and InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] or {}
-				local defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[""] -- TODO Item Categories
+				local defaultCategoryConfig = GetCategoryConfig(itemInfo.category)
+				local defaultConfig = InternalInterface.AccountSettings.Posting.Config
 				
-				local preferredPrice = itemConfig.pricingModelOrder or defaultConfig.DefaultReferencePrice
+				local preferredPrice = itemConfig.pricingModelOrder or defaultCategoryConfig.DefaultReferencePrice
 				if not preferredPrice or (not pricingModels[preferredPrice] and preferredPrice ~= FIXED_MODEL_ID) then
 					InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = nil
 					-- TODO Message warning deactivation?
@@ -843,9 +868,9 @@ function InternalInterface.UI.PostFrame(name, parent)
 				end
 
 				local preferredMatch = itemConfig.usePriceMatching
-				if preferredMatch == nil then preferredMatch = defaultConfig.ApplyMatching end
+				if preferredMatch == nil then preferredMatch = defaultCategoryConfig.ApplyMatching end
 				
-				local preferredStackSize = itemConfig.stackSize or defaultConfig.StackSize
+				local preferredStackSize = itemConfig.stackSize or defaultCategoryConfig.StackSize
 				if preferredStackSize == "+" then preferredStackSize = itemInfo.stackMax end
 				if type(preferredStackSize) ~= "number" or preferredStackSize <= 0 then break end
 
@@ -855,9 +880,9 @@ function InternalInterface.UI.PostFrame(name, parent)
 				local maxNumberOfStacks = MCeil(stacks / preferredStackSize)
 				
 				local preferredLimitActive = itemConfig.limitActive
-				if preferredLimitActive == nil then preferredLimitActive = defaultConfig.StackLimit end
+				if preferredLimitActive == nil then preferredLimitActive = defaultCategoryConfig.StackLimit end
 				
-				local preferredStackNumber = itemConfig.stackNumber or defaultConfig.StackNumber
+				local preferredStackNumber = itemConfig.stackNumber or defaultCategoryConfig.StackNumber
 				if preferredStackNumber == "F" then
 					preferredStackNumber = fullStacks
 				elseif preferredStackNumber == "A" then
@@ -886,7 +911,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 				local preferredBindPrices = itemConfig.bindPrices
 				if preferredBindPrices == nil then preferredBindPrices = defaultConfig.BindPrices end
 				
-				local preferredDuration = 6 * 2 ^ (itemConfig.duration or defaultConfig.Duration)
+				local preferredDuration = 6 * 2 ^ (itemConfig.duration or defaultCategoryConfig.Duration)
 				
 				local function GetPricesCallback(prices)
 					if not prices or not prices[preferredPrice] then

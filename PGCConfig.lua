@@ -3,16 +3,26 @@
 -- ***************************************************************************************************************************************************
 -- * Sets up BananAH's Price Models                                                                                                                  *
 -- ***************************************************************************************************************************************************
+-- * 0.4.4 / 2012.10.23 / Baanano: Per category price models                                                                                         *
 -- * 0.4.1 / 2012.08.01 / Baanano: First version                                                                                                     *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
+local CDetail = InternalInterface.Category.Detail
+local GetPriceModelMatchers = LibPGCEx.GetPriceModelMatchers
+local GetPriceModelType = LibPGCEx.GetPriceModelType
+local GetPriceModelUsage = LibPGCEx.GetPriceModelUsage
+local GetPriceModels = LibPGCEx.GetPriceModels
 local L = InternalInterface.Localization.L
 local RegisterPriceModel = LibPGCEx.RegisterPriceModel
+local pairs = pairs
 
-RegisterPriceModel("vendor", L["PriceModels/Vendor"], "simple",
+local categoryModels = {}
+
+RegisterPriceModel("BVendor", L["PriceModels/Vendor"], "simple",
 {
 	id = "vendor",
 	extra =
@@ -43,7 +53,7 @@ RegisterPriceModel("vendor", L["PriceModels/Vendor"], "simple",
 	},
 })
 
-RegisterPriceModel("mean", L["PriceModels/Average"], "statistical",
+RegisterPriceModel("BMean", L["PriceModels/Average"], "statistical",
 {
 	id = "avg",
 	extra =
@@ -83,7 +93,7 @@ RegisterPriceModel("mean", L["PriceModels/Average"], "statistical",
 	},
 })
 
-RegisterPriceModel("median", L["PriceModels/Median"], "statistical",
+RegisterPriceModel("BMedian", L["PriceModels/Median"], "statistical",
 {
 	id = "rpos",
 	extra =
@@ -124,7 +134,7 @@ RegisterPriceModel("median", L["PriceModels/Median"], "statistical",
 	},
 })
 
-RegisterPriceModel("stdev", L["PriceModels/StandardDeviation"], "statistical",
+RegisterPriceModel("BStdev", L["PriceModels/StandardDeviation"], "statistical",
 {
 	id = "avg",
 	extra =
@@ -173,7 +183,7 @@ RegisterPriceModel("stdev", L["PriceModels/StandardDeviation"], "statistical",
 	},
 })
 
-RegisterPriceModel("interpercentilerange", L["PriceModels/TrimmedMean"], "statistical",
+RegisterPriceModel("BInterpercentilerange", L["PriceModels/TrimmedMean"], "statistical",
 {
 	id = "avg",
 	extra =
@@ -222,11 +232,11 @@ RegisterPriceModel("interpercentilerange", L["PriceModels/TrimmedMean"], "statis
 	},
 })
 
-RegisterPriceModel("market", L["PriceModels/Market"], "composite",
+RegisterPriceModel("BMarket", L["PriceModels/Market"], "composite",
 {
-	mean = 1,
-	stdev = 3,
-	interpercentilerange = 5,
+	BMean = 1,
+	BStdev = 3,
+	BInterpercentilerange = 5,
 },
 {
 	{
@@ -249,3 +259,47 @@ RegisterPriceModel("market", L["PriceModels/Market"], "composite",
 		}
 	},
 })
+
+categoryModels[BASE_CATEGORY] =
+{
+	["BVendor"] = true,
+	["BMean"] = true,
+	["BMedian"] = true,
+	["BStdev"] = true,
+	["BInterpercentilerange"] = true,
+	["BMarket"] = true,
+}
+
+InternalInterface.PGCConfig = InternalInterface.PGCConfig or {}
+
+function InternalInterface.PGCConfig.GetCategoryModels(category)
+	local allModels = GetPriceModels()
+	local models = {}
+	
+	local own = true
+	while category do
+		local detail = CDetail(category)
+		if detail then
+			if categoryModels[category] then
+				for model in pairs(categoryModels[category]) do
+					if allModels[model] then
+						models[model] = models[model] or 
+						{
+							name = allModels[model],
+							own = own,
+							modelType = GetPriceModelType(model),
+							usage = GetPriceModelUsage(model),
+							matchers = GetPriceModelMatchers(model),
+						}
+					end
+				end
+			end		
+			own = false
+			category = detail.parent
+		else
+			category = nil
+		end
+	end
+	
+	return models
+end
