@@ -9,21 +9,109 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
+local BuildConfigFrame = InternalInterface.UI.BuildConfigFrame
+local CDetail = InternalInterface.Category.Detail
 local DataGrid = Yague.DataGrid
 local Dropdown = Yague.Dropdown
 local GetAuctionSearchers = LibPGCEx.GetAuctionSearchers
+local GetCategoryModels = InternalInterface.PGCConfig.GetCategoryModels
+local GetPopupManager = InternalInterface.Output.GetPopupManager
 local GetPriceModels = LibPGCEx.GetPriceModels
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local L = InternalInterface.Localization.L
 local MMax = math.max
 local MMin = math.min
 local Panel = Yague.Panel
+local RegisterPopupConstructor = Yague.RegisterPopupConstructor
 local SFormat = string.format
 local ScoreColorByIndex = InternalInterface.UI.ScoreColorByIndex
+local ShadowedText = Yague.ShadowedText
 local Slider = Yague.Slider
 local UICreateFrame = UI.CreateFrame
 local pairs = pairs
+local type = type
 local unpack = unpack
+
+local function BooleanDotCellType(name, parent)
+	local baseCell = UICreateFrame("Frame", name, parent)
+	
+	local dotTexture = UICreateFrame("Texture", name .. ".DotTexture", baseCell)
+
+	local assignedKey = nil
+	local interactable = nil
+
+	dotTexture:SetPoint("CENTER", baseCell, "CENTER")
+	dotTexture:SetTextureAsync(addonID, "Textures/DotGrey.png")
+	
+	function baseCell:SetValue(key, value, width, extra)
+		assignedKey = key
+		
+		local active = value
+		if extra and extra.Eval then
+			active = extra.Eval(value, key)
+		end
+		
+		if active == nil then
+			dotTexture:SetTextureAsync(addonID, "Textures/DotGrey.png")
+			interactable = nil
+		else
+			dotTexture:SetTextureAsync(addonID, active and "Textures/DotGreen.png" or "Textures/DotRed.png")
+			interactable = extra and extra.Interactable
+		end
+	end
+
+	function dotTexture.Event:LeftClick()
+		if assignedKey and type(interactable) == "function" then
+			interactable(assignedKey)
+		end
+		baseCell:GetParent().Event.LeftClick(baseCell:GetParent())
+	end
+
+	return baseCell
+end
+
+local function UnsavedChangesPopup(parent)
+	local frame = Yague.Popup(parent:GetName() .. ".UnsavedChangesPopup", parent)
+	
+	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
+	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
+	local continueButton = UICreateFrame("RiftButton", frame:GetName() .. ".ContinueButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())	
+	
+	frame:SetWidth(420)
+	frame:SetHeight(130)
+	
+	titleText:SetPoint("TOPCENTER", frame:GetContent(), "TOPCENTER", 0, 10)
+	titleText:SetFontSize(14)
+	titleText:SetFontColor(1, 1, 0.75, 1)
+	titleText:SetShadowOffset(2, 2)
+	titleText:SetText("WARNING") -- LOCALIZE
+	
+	contentText:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 10, 40)
+	contentText:SetText("You have unsaved changes, if you continue they'll be lost.") -- LOCALIZE
+	
+	continueButton:SetPoint("BOTTOMRIGHT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
+	continueButton:SetText("Continue") -- LOCALIZE
+	
+	cancelButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
+	cancelButton:SetText("Cancel") -- LOCALIZE
+	
+	function frame:SetData(onContinue, onCancel)
+		function continueButton.Event:LeftPress()
+			onContinue() 
+			parent:HidePopup(addonID .. ".UnsavedChanges", frame)
+		end
+
+		function cancelButton.Event:LeftPress()
+			onCancel() 
+			parent:HidePopup(addonID .. ".UnsavedChanges", frame)
+		end
+	end
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".UnsavedChanges", UnsavedChangesPopup)
 
 local function GeneralSettings(parent)
 	local frame = UICreateFrame("Frame", parent:GetName() .. ".GeneralSettings", parent)
@@ -111,7 +199,8 @@ local function SearchSettings(parent)
 	for id, name in pairs(searchers) do searchers[id] = { displayName = name } end
 	local defaultSearcher = InternalInterface.AccountSettings.Search.DefaultSearcher
 	defaultSearcherDropdown:SetValues(searchers)
-	if searchers[defaultSearcher] then defaultSearcherDropdown:SetSelectedKey(defaultSearcher) end	
+	if searchers[defaultSearcher] then defaultSearcherDropdown:SetSelectedKey(defaultSearcher) end
+	-- TODO Load new searchers when they're created
 	
 	defaultSearchModeText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 50)
 	defaultSearchModeText:SetFontSize(14)
@@ -145,24 +234,11 @@ local function PostingSettings(parent)
 	local rarityFilterText = UICreateFrame("Text", frame:GetName() .. ".RarityFilterText", frame)
 	local rarityFilterDropdown = Dropdown(frame:GetName() .. ".RarityFilterDropdown", frame)
 	-- TODO Action on right click => Absolute Undercut / Relative Undercut / Match
-	local defaultReferencePriceText = UICreateFrame("Text", frame:GetName() .. ".DefaultReferencePriceText", frame)
-	local defaultReferencePriceDropdown = Dropdown(frame:GetName() .. ".DefaultReferencePriceDropdown", frame)
-	local defaultFallbackPriceText = UICreateFrame("Text", frame:GetName() .. ".DefaultFallbackPriceText", frame)
-	local defaultFallbackPriceDropdown = Dropdown(frame:GetName() .. ".DefaultFallbackPriceDropdown", frame)
-	local defaultPriceMatchingCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".DefaultPriceMatchingCheck", frame)
-	local defaultPriceMatchingText = UICreateFrame("Text", frame:GetName() .. ".DefaultPriceMatchingText", frame)
-	local defaultStackSizeText = UICreateFrame("Text", frame:GetName() .. ".DefaultStackSizeText", frame)
-	local defaultStackSizeSlider = Slider(frame:GetName() .. ".DefaultStackSizeSlider", frame)
-	local defaultStackNumberText = UICreateFrame("Text", frame:GetName() .. ".DefaultStackNumberText", frame)
-	local defaultStackNumberSlider = Slider(frame:GetName() .. ".DefaultStackNumberSlider", frame)
-	-- TODO Stack limit?
+	-- TODO Pause queue on autopost
 	local defaultBidPercentageText = UICreateFrame("Text", frame:GetName() .. ".DefaultBidPercentageText", frame)
 	local defaultBidPercentageSlider = Slider(frame:GetName() .. ".DefaultBidPercentageSlider", frame)
 	local defaultBindPricesCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".DefaultBindPricesCheck", frame)
 	local defaultBindPricesText = UICreateFrame("Text", frame:GetName() .. ".DefaultBindPricesText", frame)
-	local defaultDurationText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultDurationText", frame)
-	local defaultDurationSlider = UI.CreateFrame("RiftSlider", frame:GetName() .. ".DefaultDurationSlider", frame)
-	local defaultDurationTime = UI.CreateFrame("Text", frame:GetName() .. ".DefaultDurationTime", frame)
 
 	frame:SetVisible(false)
 
@@ -188,131 +264,32 @@ local function PostingSettings(parent)
 	})
 	rarityFilterDropdown:SetSelectedKey(defaultRarity)
 
-	defaultReferencePriceText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 90)
-	defaultReferencePriceText:SetFontSize(14)
-	defaultReferencePriceText:SetText(L["ConfigPost/DefaultReferencePrice"])
-	
-	defaultReferencePriceDropdown:SetPoint("CENTERLEFT", defaultReferencePriceText, "CENTERLEFT", 200, 0)
-	defaultReferencePriceDropdown:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 85)
-	defaultReferencePriceDropdown:SetTextSelector("displayName")
-	defaultReferencePriceDropdown:SetOrderSelector("displayName")
-	local defaultReferencePrice = InternalInterface.AccountSettings.Posting.CategoryConfig[""].DefaultReferencePrice
-	local allPrices = GetPriceModels()
-	for id, name in pairs(allPrices) do allPrices[id] = { displayName = name } end
-	defaultReferencePriceDropdown:SetValues(allPrices)
-	if allPrices[defaultReferencePrice] then
-		defaultReferencePriceDropdown:SetSelectedKey(defaultReferencePrice)
-	end
-
-	defaultFallbackPriceText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 130)
-	defaultFallbackPriceText:SetFontSize(14)
-	defaultFallbackPriceText:SetText(L["ConfigPost/FallbackReferencePrice"])
-	
-	defaultFallbackPriceDropdown:SetPoint("CENTERLEFT", defaultFallbackPriceText, "CENTERLEFT", 200, 0)
-	defaultFallbackPriceDropdown:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 125)
-	defaultFallbackPriceDropdown:SetTextSelector("displayName")
-	defaultFallbackPriceDropdown:SetOrderSelector("displayName")
-	local defaultFallbackPrice = InternalInterface.AccountSettings.Posting.CategoryConfig[""].FallbackReferencePrice
-	local fallbackPrices = GetPriceModels("simple")
-	for id, name in pairs(fallbackPrices) do fallbackPrices[id] = { displayName = name } end
-	defaultFallbackPriceDropdown:SetValues(fallbackPrices)
-	if fallbackPrices[defaultFallbackPrice] then
-		defaultFallbackPriceDropdown:SetSelectedKey(defaultFallbackPrice)
-	end
-
-	defaultPriceMatchingCheck:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 170)
-	defaultPriceMatchingCheck:SetChecked(InternalInterface.AccountSettings.Posting.CategoryConfig[""].ApplyMatching)
-	
-	defaultPriceMatchingText:SetPoint("CENTERRIGHT", defaultPriceMatchingCheck, "CENTERLEFT", -5, 0)
-	defaultPriceMatchingText:SetFontSize(14)
-	defaultPriceMatchingText:SetText(L["ConfigPost/ApplyMatching"])
-
-	defaultStackSizeText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 250)
-	defaultStackSizeText:SetFontSize(14)
-	defaultStackSizeText:SetText(L["ConfigPost/DefaultStackSize"])
-	
-	defaultStackSizeSlider:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 250)
-	defaultStackSizeSlider:SetPoint("CENTERLEFT", defaultStackSizeText, "CENTERLEFT", 200, 0)
-	defaultStackSizeSlider:SetRange(1, 100)
-	defaultStackSizeSlider:AddPostValue(L["Misc/StackSizeMaxKeyShortcut"], "+", L["Misc/StackSizeMax"])
-	defaultStackSizeSlider:SetPosition(InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackSize)
-
-	defaultStackNumberText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 290)
-	defaultStackNumberText:SetFontSize(14)
-	defaultStackNumberText:SetText(L["ConfigPost/DefaultStackNumber"])
-	
-	defaultStackNumberSlider:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 290)
-	defaultStackNumberSlider:SetPoint("CENTERLEFT", defaultStackNumberText, "CENTERLEFT", 200, 0)
-	defaultStackNumberSlider:SetRange(1, 100)
-	defaultStackNumberSlider:AddPostValue(L["Misc/StacksFullKeyShortcut"], "F", L["Misc/StacksFull"])
-	defaultStackNumberSlider:AddPostValue(L["Misc/StacksAllKeyShortcut"], "A", L["Misc/StacksAll"])
-	defaultStackNumberSlider:SetPosition(InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackNumber)
-
-	defaultBidPercentageText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 410)
+	defaultBidPercentageText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 90)
 	defaultBidPercentageText:SetFontSize(14)
 	defaultBidPercentageText:SetText(L["ConfigPost/BidPercentage"])
 	
-	defaultBidPercentageSlider:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 410)
+	defaultBidPercentageSlider:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 90)
 	defaultBidPercentageSlider:SetPoint("CENTERLEFT", defaultBidPercentageText, "CENTERLEFT", 200, 0)
 	defaultBidPercentageSlider:SetRange(1, 100)
-	defaultBidPercentageSlider:SetPosition(InternalInterface.AccountSettings.Posting.CategoryConfig[""].BidPercentage)
+	defaultBidPercentageSlider:SetPosition(InternalInterface.AccountSettings.Posting.Config.BidPercentage)
 
-	defaultBindPricesCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 450)
-	defaultBindPricesCheck:SetChecked(InternalInterface.AccountSettings.Posting.CategoryConfig[""].BindPrices)
+	defaultBindPricesCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 130)
+	defaultBindPricesCheck:SetChecked(InternalInterface.AccountSettings.Posting.Config.BindPrices)
 	
 	defaultBindPricesText:SetPoint("CENTERLEFT", defaultBindPricesCheck, "CENTERRIGHT", 5, 0)
 	defaultBindPricesText:SetFontSize(14)
 	defaultBindPricesText:SetText(L["ConfigPost/DefaultBindPrices"])
-	
-	defaultDurationText:SetPoint("CENTERLEFT", frame, "TOPLEFT", 10, 540)
-	defaultDurationText:SetFontSize(14)
-	defaultDurationText:SetText(L["ConfigPost/DefaultDuration"])
-
-	defaultDurationTime:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 540)
-
-	defaultDurationSlider:SetPoint("CENTERLEFT", defaultDurationText, "CENTERLEFT", 200, 6)
-	defaultDurationSlider:SetPoint("CENTERRIGHT", defaultDurationTime, "CENTERLEFT", -40, 6)
-	defaultDurationSlider:SetRange(1, 3)
-	defaultDurationSlider:SetPosition(InternalInterface.AccountSettings.Posting.CategoryConfig[""].Duration)
-
-	defaultDurationTime:SetText(SFormat(L["Misc/DurationFormat"],  6 * 2 ^ defaultDurationSlider:GetPosition()))
 
 	function rarityFilterDropdown.Event:SelectionChanged(rarity)
 		InternalInterface.AccountSettings.Posting.RarityFilter = rarity
 	end
 
-	function defaultReferencePriceDropdown.Event:SelectionChanged(referencePrice)
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].DefaultReferencePrice = referencePrice
-	end
-
-	function defaultFallbackPriceDropdown.Event:SelectionChanged(fallbackPrice)
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].FallbackReferencePrice = fallbackPrice
-	end
-
-	function defaultPriceMatchingCheck.Event:CheckboxChange()
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].ApplyMatching = self:GetChecked()
-	end
-	
-	function defaultStackSizeSlider.Event:PositionChanged(position)
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackSize = position
-	end
-	
-	function defaultStackNumberSlider.Event:PositionChanged(position)
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackNumber = position
-	end
-	
 	function defaultBidPercentageSlider.Event:PositionChanged(position)
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].BidPercentage = position
+		InternalInterface.AccountSettings.Posting.Config.BidPercentage = position
 	end
 	
 	function defaultBindPricesCheck.Event:CheckboxChange()
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].BindPrices = self:GetChecked()
-	end
-	
-	function defaultDurationSlider.Event:SliderChange()
-		local position = self:GetPosition()
-		defaultDurationTime:SetText(SFormat(L["Misc/DurationFormat"], 6 * 2 ^ position))
-		InternalInterface.AccountSettings.Posting.CategoryConfig[""].Duration = position
+		InternalInterface.AccountSettings.Posting.Config.BindPrices = self:GetChecked()
 	end
 
 	return frame
@@ -685,6 +662,350 @@ local function ScoreSettings(parent)
 	return frame
 end
 
+local function PriceSettings(parent)
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".PriceSettings", parent)
+	
+	local topSelector, topControls = BuildConfigFrame(frame:GetName() .. ".TopSelector", frame, 
+		{
+			category =
+			{
+				name = "Item category", -- LOCALIZE
+				nameFontSize = 14,
+				value = "category",
+				defaultValue = "",
+			},
+			inheritance = 
+			{
+				name = "Category config.", -- LOCALIZE
+				nameFontSize = 14,
+				value = "selectOne",
+				textSelector = "name",
+				orderSelector = "order",
+				values =
+				{
+					["inherit"] = { name = "Inherit from parent category", order = 1 }, -- LOCALIZE
+					["own"] = { name = "Define custom parameters for this category", order = 2 }, -- LOCALIZE
+				},
+				defaultValue = "inherit",
+			},
+			Layout =
+			{ 
+				{ "category" },
+				{ "inheritance" },
+				columns = 1,
+			},		
+		})
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame)
+	
+	local postFrame = UICreateFrame("Frame", frame:GetName() .. ".PostFrame", frame)
+	local stackSelector, stackControls = BuildConfigFrame(postFrame:GetName() .. ".StackSelector", postFrame,
+		{
+			stackSize =
+			{
+				name = L["ConfigPost/DefaultStackSize"], -- TODO Remove colon / Move to ConfigPrice
+				nameFontSize = 14,
+				value = "integer",
+				minValue = 1,
+				maxValue = 100,
+				defaultValue = 100,
+			},
+			stackNumber =
+			{
+				name = L["ConfigPost/DefaultStackNumber"], -- TODO Remove colon / Move to ConfigPrice
+				nameFontSize = 14,
+				value = "integer",
+				minValue = 1,
+				maxValue = 100,
+				defaultValue = 100,
+			},
+			Layout =
+			{
+				{ "stackSize" },
+				{ "stackNumber" },
+				columns = 1,
+			},
+		})
+	local postSelector, postControls = BuildConfigFrame(postFrame:GetName() .. ".StackSelector", postFrame,
+		{
+			-- matchPrices =
+			-- {
+				-- name = L["ConfigPost/ApplyMatching"], -- TODO Move to ConfigPrice
+				-- nameFontSize = 14,
+				-- value = "boolean",
+				-- defaultValue = false,
+			-- },
+			duration =
+			{
+				name = L["ConfigPost/DefaultDuration"], -- TODO Remove colon / Move to ConfigPrice
+				nameFontSize = 14,
+				value = "integer",
+				minValue = 48,
+				maxValue = 48,
+				defaultValue = 48,
+			},
+			Layout =
+			{
+				-- { "matchPrices" },
+				{ "duration" },
+				columns = 1,
+			},
+		})
+	local priceGrid = DataGrid(postFrame:GetName() .. ".PriceModelGrid", postFrame)
+	local controlFrame = UICreateFrame("Frame", postFrame:GetName() .. ".ControlFrame", priceGrid:GetContent())
+	local deleteButton = UICreateFrame("RiftButton", postFrame:GetName() .. ".DeleteButton", controlFrame)
+	local editButton = UICreateFrame("RiftButton", postFrame:GetName() .. ".EditButton", controlFrame)
+	local newButton = UICreateFrame("RiftButton", postFrame:GetName() .. ".NewButton", controlFrame)
+	local matchPanel = Panel(postFrame:GetName() .. ".MatchPanel", controlFrame)
+	local matchCheck = UICreateFrame("RiftCheckbox", postFrame:GetName() .. ".MatchCheck", matchPanel:GetContent())
+	local matchText = UICreateFrame("Text", postFrame:GetName() .. ".MatchLabel", matchPanel:GetContent())
+	
+	local currentCategory = topControls.category:GetSelectedValue()
+	local currentDefaultModel = nil
+	local currentFallbackModel = nil
+	
+	local function GetSavedSettings(category)
+		return category and InternalInterface.AccountSettings.Posting.CategoryConfig[category] or nil
+	end
+	
+	local function SetSavedSettings(category, settings)
+		InternalInterface.AccountSettings.Posting.CategoryConfig[category] = settings
+	end
+	
+	local function GetEditSettings()
+		if (topControls.inheritance:GetSelectedValue()) == "inherit" then return nil end
+		
+		local blackList = {}
+		local models = priceGrid:GetData()
+		for modelID, modelInfo in pairs(models) do
+			if not modelInfo.enabled then
+				blackList[modelID] = true
+			end
+		end
+		
+		return
+		{
+			DefaultReferencePrice = currentDefaultModel,
+			FallbackReferencePrice = currentFallbackModel,
+			ApplyMatching = matchCheck:GetChecked(),
+			StackSize = stackControls.stackSize:GetPosition(),
+			StackNumber = stackControls.stackNumber:GetPosition(),
+			StackLimit = false,
+			Duration = MMin(postControls.duration:GetPosition() / 12, 3),
+			BlackList = blackList,
+		}
+	end
+	
+	local function SetEditSettings(settings, inherited)
+		topControls.inheritance:SetSelectedKey(inherited and "inherit" or "own")
+
+		currentDefaultModel = settings.DefaultReferencePrice
+		currentFallbackModel = settings.FallbackReferencePrice
+		
+		matchCheck:SetChecked(settings.ApplyMatching)
+		stackControls.stackSize:SetPosition(settings.StackSize)
+		stackControls.stackNumber:SetPosition(settings.StackNumber)
+		-- StackLimit
+		postControls.duration:SetPosition(45 + settings.Duration) -- HACK
+
+		local models = GetCategoryModels(currentCategory)
+		local blackList = settings.BlackList or {}
+		for model, modelInfo in pairs(models) do
+			modelInfo.enabled = not blackList[model]
+			modelInfo.original = true
+		end
+		priceGrid:SetData(models)
+	end
+	
+	local function CompareSettings(settings1, settings2)
+		if settings1 == nil or settings2 == nil then
+			return settings1 == settings2
+		end
+		
+		if settings1.DefaultReferencePrice ~= settings2.DefaultReferencePrice or
+	       settings1.FallbackReferencePrice ~= settings2.FallbackReferencePrice or
+	       settings1.ApplyMatching ~= settings2.ApplyMatching or
+	       settings1.StackSize ~= settings2.StackSize or
+	       settings1.StackNumber ~= settings2.StackNumber or
+	       settings1.StackLimit ~= settings2.StackLimit or
+	       settings1.Duration ~= settings2.Duration then
+			return false
+		end
+		
+		for modelID in pairs(settings1.BlackList) do
+			if not settings2.BlackList[modelID] then return false end
+		end
+		for modelID in pairs(settings2.BlackList) do
+			if not settings1.BlackList[modelID] then return false end
+		end
+		
+		local editModels = priceGrid:GetData() or {}
+		for modelID, modelInfo in pairs(editModels) do
+			if not modelInfo.original then return false end
+		end
+		
+		return true
+	end
+	
+	local function IsOriginal(value, key)
+		if not value.own then return nil end
+		return value.original
+	end
+	
+	local function IsDefaultModel(value, key)
+		if not value.enabled then return nil end
+		return key == currentDefaultModel
+	end
+	
+	local function IsFallbackModel(value, key)
+		if value.modelType ~= "simple" or not value.enabled then return nil end
+		return key == currentFallbackModel
+	end
+	
+	local function EnabledInteract(key)
+		local data = priceGrid:GetData()
+		if key and data and data[key] and key ~= currentDefaultModel and key ~= currentFallbackModel then
+			data[key].enabled = not data[key].enabled
+		end
+		priceGrid:RefreshFilter()
+	end
+	
+	local function DefaultInteract(key)
+		currentDefaultModel = key
+		priceGrid:RefreshFilter()
+	end
+	
+	local function FallbackInteract(key)
+		currentFallbackModel = key
+		priceGrid:RefreshFilter()
+	end
+	
+	saveButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 25)
+	saveButton:SetText("Save") -- LOCALIZE
+	
+	topSelector:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 5)
+	topSelector:SetPoint("RIGHT", saveButton, "LEFT")
+
+	topControls.inheritance:SetEnabled(false)
+	
+	postFrame:SetPoint("TOPLEFT", topSelector, "BOTTOMLEFT", 0, 20)
+	postFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, -5)
+	
+	stackSelector:SetPoint("TOPLEFT", postFrame, "TOPLEFT")
+	stackSelector:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT")
+	
+	stackControls.stackSize:AddPostValue(L["Misc/StackSizeMaxKeyShortcut"], "+", L["Misc/StackSizeMax"])
+	
+	stackControls.stackNumber:AddPostValue(L["Misc/StacksFullKeyShortcut"], "F", L["Misc/StacksFull"])
+	stackControls.stackNumber:AddPostValue(L["Misc/StacksAllKeyShortcut"], "A", L["Misc/StacksAll"])
+	
+	postSelector:SetPoint("BOTTOMLEFT", postFrame, "BOTTOMLEFT")
+	postSelector:SetPoint("BOTTOMRIGHT", postFrame, "BOTTOMRIGHT")
+
+	postControls.duration:AddPreValue("1", 12, "12")
+	postControls.duration:AddPreValue("2", 24, "24")
+	
+	priceGrid:SetPadding(1, 1, 1, 38)
+	priceGrid:SetHeadersVisible(true)
+	priceGrid:SetRowHeight(20)
+	priceGrid:SetRowMargin(0)
+	priceGrid:SetUnselectedRowBackgroundColor({0.2, 0.2, 0.2, 0.25})
+	priceGrid:SetSelectedRowBackgroundColor({0.6, 0.6, 0.6, 0.25})	
+	priceGrid:SetPoint("TOPLEFT", stackSelector, "BOTTOMLEFT", 0, 10)
+	priceGrid:SetPoint("BOTTOMRIGHT", postSelector, "TOPRIGHT", 0, -10)
+	priceGrid:AddColumn("own", "", BooleanDotCellType, 20, 0, nil, false, { Eval = IsOriginal, })
+	priceGrid:AddColumn("name", "Reference Price", "Text", 140, 2, "name", true, { Alignment = "left", Formatter = "none", }) -- LOCALIZE
+	priceGrid:AddColumn("enabled", "Active", BooleanDotCellType, 60, 0, "enabled", false, { Interactable = EnabledInteract, }) -- LOCALIZE
+	priceGrid:AddColumn("default", "Default", BooleanDotCellType, 60, 0, nil, false, { Eval = IsDefaultModel, Interactable = DefaultInteract, }) -- LOCALIZE
+	priceGrid:AddColumn("fallback", "Fallback", BooleanDotCellType, 60, 0, nil, false, { Eval = IsFallbackModel, Interactable = FallbackInteract, }) -- LOCALIZE
+	priceGrid:SetOrder("name", false)
+	priceGrid:GetInternalContent():SetBackgroundColor(0.05, 0, 0.05, 0.25)
+	
+	controlFrame:SetPoint("TOPLEFT", priceGrid:GetContent(), "BOTTOMLEFT", 3, -36)
+	controlFrame:SetPoint("BOTTOMRIGHT", priceGrid:GetContent(), "BOTTOMRIGHT", -3, -2)
+	
+	deleteButton:SetPoint("CENTERRIGHT", controlFrame, "CENTERRIGHT", 0, 0)
+	deleteButton:SetText("Delete") -- LOCALIZE
+	deleteButton:SetEnabled(false)
+
+	editButton:SetPoint("CENTERRIGHT", deleteButton, "CENTERLEFT", 10, 0)
+	editButton:SetText("Edit") -- LOCALIZE
+	editButton:SetEnabled(false)	
+
+	newButton:SetPoint("CENTERRIGHT", editButton, "CENTERLEFT", 10, 0)
+	newButton:SetText("New") -- LOCALIZE
+	newButton:SetEnabled(false)	-- FIXME Remove this line
+	
+	matchPanel:SetPoint("BOTTOMLEFT", controlFrame, "BOTTOMLEFT", 0, -2)
+	matchPanel:SetPoint("TOPRIGHT", newButton, "TOPLEFT", -3, 2)
+	matchPanel:SetInvertedBorder(true)
+	matchPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+
+	matchCheck:SetPoint("CENTERLEFT", matchPanel:GetContent(), "CENTERLEFT", 5, 0)
+
+	matchText:SetPoint("CENTERLEFT", matchCheck, "CENTERRIGHT", 5, 0)	
+	matchText:SetText("Apply matching rules for unconfigured items") -- LOCALIZE
+	
+	for controlName, control in pairs(topControls) do
+		control:SetLayer(9999)
+	end
+	
+	if currentCategory ~= BASE_CATEGORY then
+		currentCategory = BASE_CATEGORY
+		topControls.category:SetSelectedKey(BASE_CATEGORY)
+	end
+	SetEditSettings(GetSavedSettings(currentCategory))
+	
+	function topControls.category.Event:SelectionChanged(category)
+		if category ~= currentCategory then
+			local function ContinueChange()
+				currentCategory = category
+				local settings = nil
+				while not settings do
+					settings = GetSavedSettings(category)
+					if not settings then
+						local detail = CDetail(category)
+						category = detail and detail.parent or BASE_CATEGORY
+					end
+				end
+				SetEditSettings(settings, category ~= currentCategory)
+				topControls.inheritance:SetEnabled(currentCategory ~= BASE_CATEGORY)
+			end
+			
+			local function CancelChange()
+				topControls.category:SetSelectedKey(currentCategory)
+			end
+			
+			local equal = CompareSettings(GetEditSettings(), GetSavedSettings(currentCategory))
+			local manager = GetPopupManager()
+			
+			if not equal and manager then
+				manager:ShowPopup(addonID .. ".UnsavedChanges", ContinueChange, CancelChange)
+			else
+				ContinueChange()
+			end
+		end
+	end
+	
+	function topControls.inheritance.Event:SelectionChanged(inheritance)
+		postFrame:SetVisible(inheritance == "own")
+	end
+	
+	function saveButton.Event:LeftPress()
+		SetSavedSettings(currentCategory, GetEditSettings())
+	end
+--[[	
+	function priceGrid.Event:SelectionChanged(modelID, modelInfo)
+		editButton:SetEnabled(modelInfo and modelInfo.own and true or false)
+		
+		local deleteable = modelInfo and modelInfo.own and modelID:sub(1, 3) == "bah" and true or false
+		deleteable = deleteable and modelID ~= currentDefaultModel and modelID ~= currentFallbackModel
+		 -- TODO Check deleteable in children categories
+		deleteButton:SetEnabled(deleteable)
+	end
+]]	
+	return frame
+end
+
 local function LoadConfigScreens(parent)
 	local screens = {}
 	
@@ -694,7 +1015,7 @@ local function LoadConfigScreens(parent)
 	screens["selling"] = { title = L["ConfigFrame/CategorySelling"], frame = AuctionsSettings(parent), order = 300 }
 	screens["tracking"] = { title = L["ConfigFrame/CategoryTracking"], frame = nil, order = 400 }
 	screens["history"] = { title = L["ConfigFrame/CategoryHistory"], frame = nil, order = 500 }
-	screens["pricing"] = { title = L["ConfigFrame/CategoryPricing"], frame = nil, order = 1000 }
+	screens["pricing"] = { title = L["ConfigFrame/CategoryPricing"], frame = PriceSettings(parent), order = 1000 }
 	screens["scoring"] = { title = L["ConfigFrame/CategoryScoring"], frame = ScoreSettings(parent), order = 2000 }
 	
 	return screens

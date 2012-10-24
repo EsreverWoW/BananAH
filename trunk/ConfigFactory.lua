@@ -13,6 +13,8 @@ local PublicInterface = _G[addonID]
 
 local ROW_HEIGHT = 40
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
+local CDetail = InternalInterface.Category.Detail
 local Dropdown = Yague.Dropdown
 local MoneySelector = Yague.MoneySelector
 local Panel = Yague.Panel
@@ -20,11 +22,44 @@ local Slider = Yague.Slider
 local GetPriceModels = LibPGCEx.GetPriceModels
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local L = InternalInterface.Localization.L
+local MCeil = math.ceil
+local MLog10 = math.log10
 local MMax = math.max
 local UICreateFrame = UI.CreateFrame
 local ipairs = ipairs
 local pairs = pairs
 local type = type
+
+local maxLevel = 0
+local maxSiblingOrder = 0
+local function PrebuildCategoryTree(category, level, siblingOrder)
+	local detail = CDetail(category)
+	if detail then
+		maxLevel = MMax(level, maxLevel)
+		maxSiblingOrder = MMax(siblingOrder, maxSiblingOrder)
+		if detail.children then
+			for childOrder, childCategory in ipairs(detail.children) do
+				PrebuildCategoryTree(childCategory, level + 1, childOrder)
+			end
+		end
+	end
+end
+PrebuildCategoryTree(BASE_CATEGORY, 1, 1)
+
+local CategoryTree = {}
+local digitsPerLevel = MCeil(MLog10(maxSiblingOrder))
+local function BuildCategoryTree(category, level, siblingOrder)
+	local detail = CDetail(category)
+	if detail then
+		CategoryTree[category] = { displayName = ("   "):rep(level - 1) .. detail.name, order = (CategoryTree[detail.parent] and CategoryTree[detail.parent].order or 0) + siblingOrder * 10 ^ ((maxLevel - level) * digitsPerLevel) }
+		if detail.children then
+			for childOrder, childCategory in ipairs(detail.children) do
+				BuildCategoryTree(childCategory, level + 1, childOrder)
+			end
+		end		
+	end
+end
+BuildCategoryTree(BASE_CATEGORY, 1, 1)
 
 local ControlConstructors =
 {
@@ -89,6 +124,32 @@ local ControlConstructors =
 			
 			return control, GetExtra, SetExtra
 		end,
+	selectOne =
+		function(name, parent, extraDescription)
+			local control = Dropdown(name, parent)
+			
+			control:SetHeight(35)
+			control:SetTextSelector(extraDescription.textSelector)
+			control:SetOrderSelector(extraDescription.orderSelector)
+			control:SetColorSelector(extraDescription.colorSelector)
+			control:SetValues(extraDescription.values)
+			if extraDescription.defaultValue and extraDescription.values and extraDescription.values[extraDescription.defaultValue] then
+				control:SetSelectedKey(extraDescription.defaultValue)
+			end
+			
+			local function GetExtra()
+				return (control:GetSelectedValue())
+			end
+			
+			local function SetExtra(extra)
+				local key = extra or extraDescription.defaultValue
+				if key and extraDescription.values and extraDescription.values[key] then
+					control:SetSelectedKey(key)
+				end
+			end
+			
+			return control, GetExtra, SetExtra
+		end,
 	rarity =
 		function(name, parent, extraDescription)
 			local control = Dropdown(name, parent)
@@ -126,114 +187,8 @@ local ControlConstructors =
 			control:SetHeight(35)
 			control:SetTextSelector("displayName")
 			control:SetOrderSelector("order")
-			control:SetValues({
-				[""] = { displayName = "All", order = 000000, }, -- LOCALIZE
-				["armor"] = { displayName = "\t" .. "Armor", order = 010000, }, -- LOCALIZE
-				["armor plate"] = { displayName = "\t\t" .. "Plate", order = 010100, }, -- LOCALIZE
-				["armor plate head"] = { displayName = "\t\t\t" .. "Plate Head", order = 010101, }, -- LOCALIZE
-				["armor plate shoulders"] = { displayName = "\t\t\t" .. "Plate Shoulder", order = 010102, }, -- LOCALIZE
-				["armor plate chest"] = { displayName = "\t\t\t" .. "Plate Chest", order = 010103, }, -- LOCALIZE
-				["armor plate hands"] = { displayName = "\t\t\t" .. "Plate Hands", order = 010104, }, -- LOCALIZE
-				["armor plate waist"] = { displayName = "\t\t\t" .. "Plate Waist", order = 010105, }, -- LOCALIZE
-				["armor plate legs"] = { displayName = "\t\t\t" .. "Plate Legs", order = 010106, }, -- LOCALIZE
-				["armor plate feet"] = { displayName = "\t\t\t" .. "Plate Feet", order = 010107, }, -- LOCALIZE
-				["armor chain"] = { displayName = "\t\t" .. "Chain", order = 010200, }, -- LOCALIZE
-				["armor chain head"] = { displayName = "\t\t\t" .. "Chain Head", order = 010201, }, -- LOCALIZE
-				["armor chain shoulders"] = { displayName = "\t\t\t" .. "Chain Shoulder", order = 010202, }, -- LOCALIZE
-				["armor chain chest"] = { displayName = "\t\t\t" .. "Chain Chest", order = 010203, }, -- LOCALIZE
-				["armor chain hands"] = { displayName = "\t\t\t" .. "Chain Hands", order = 010204, }, -- LOCALIZE
-				["armor chain waist"] = { displayName = "\t\t\t" .. "Chain Waist", order = 010205, }, -- LOCALIZE
-				["armor chain legs"] = { displayName = "\t\t\t" .. "Chain Legs", order = 010206, }, -- LOCALIZE
-				["armor chain feet"] = { displayName = "\t\t\t" .. "Chain Feet", order = 010207, }, -- LOCALIZE
-				["armor leather"] = { displayName = "\t\t" .. "Leather", order = 010300, }, -- LOCALIZE
-				["armor leather head"] = { displayName = "\t\t\t" .. "Leather Head", order = 010301, }, -- LOCALIZE
-				["armor leather shoulders"] = { displayName = "\t\t\t" .. "Leather Shoulder", order = 010302, }, -- LOCALIZE
-				["armor leather chest"] = { displayName = "\t\t\t" .. "Leather Chest", order = 010303, }, -- LOCALIZE
-				["armor leather hands"] = { displayName = "\t\t\t" .. "Leather Hands", order = 010304, }, -- LOCALIZE
-				["armor leather waist"] = { displayName = "\t\t\t" .. "Leather Waist", order = 010305, }, -- LOCALIZE
-				["armor leather legs"] = { displayName = "\t\t\t" .. "Leather Legs", order = 010306, }, -- LOCALIZE
-				["armor leather feet"] = { displayName = "\t\t\t" .. "Leather Feet", order = 010307, }, -- LOCALIZE
-				["armor cloth"] = { displayName = "\t\t" .. "Cloth", order = 010400, }, -- LOCALIZE
-				["armor cloth head"] = { displayName = "\t\t\t" .. "Cloth Head", order = 010401, }, -- LOCALIZE
-				["armor cloth shoulders"] = { displayName = "\t\t\t" .. "Cloth Shoulder", order = 010402, }, -- LOCALIZE
-				["armor cloth chest"] = { displayName = "\t\t\t" .. "Cloth Chest", order = 010403, }, -- LOCALIZE
-				["armor cloth hands"] = { displayName = "\t\t\t" .. "Cloth Hands", order = 010404, }, -- LOCALIZE
-				["armor cloth waist"] = { displayName = "\t\t\t" .. "Cloth Waist", order = 010405, }, -- LOCALIZE
-				["armor cloth legs"] = { displayName = "\t\t\t" .. "Cloth Legs", order = 010406, }, -- LOCALIZE
-				["armor cloth feet"] = { displayName = "\t\t\t" .. "Cloth Feet", order = 010407, }, -- LOCALIZE
-				["armor accessory"] = { displayName = "\t\t" .. "Accessories", order = 010500, }, -- LOCALIZE
-				["armor accessory neck"] = { displayName = "\t\t\t" .. "Necklace", order = 010501, }, -- LOCALIZE
-				["armor accessory ring"] = { displayName = "\t\t\t" .. "Ring", order = 010502, }, -- LOCALIZE
-				["armor accessory trinket"] = { displayName = "\t\t\t" .. "Trinket", order = 010503, }, -- LOCALIZE
-				["armor accessory seal"] = { displayName = "\t\t\t" .. "Seal", order = 010504, }, -- LOCALIZE
-				["armor costume"] = { displayName = "\t\t" .. "Costume", order = 010600, }, -- LOCALIZE
-				["weapon"] = { displayName = "\t" .. "Weapon", order = 020000, }, -- LOCALIZE
-				["weapon onehand"] = { displayName = "\t\t" .. "One Handed", order = 020100, }, -- LOCALIZE
-				["weapon onehand sword"] = { displayName = "\t\t\t" .. "Sword", order = 020101, }, -- LOCALIZE
-				["weapon onehand axe"] = { displayName = "\t\t\t" .. "Axe", order = 020102, }, -- LOCALIZE
-				["weapon onehand mace"] = { displayName = "\t\t\t" .. "Mace", order = 020103, }, -- LOCALIZE
-				["weapon onehand dagger"] = { displayName = "\t\t\t" .. "Dagger", order = 020104, }, -- LOCALIZE
-				["weapon twohand"] = { displayName = "\t\t" .. "Two Handed", order = 020200, }, -- LOCALIZE
-				["weapon twohand sword"] = { displayName = "\t\t\t" .. "Sword", order = 020201, }, -- LOCALIZE
-				["weapon twohand axe"] = { displayName = "\t\t\t" .. "Axe", order = 020202, }, -- LOCALIZE
-				["weapon twohand mace"] = { displayName = "\t\t\t" .. "Mace", order = 020203, }, -- LOCALIZE
-				["weapon twohand polearm"] = { displayName = "\t\t\t" .. "Polearm", order = 020204, }, -- LOCALIZE
-				["weapon twohand staff"] = { displayName = "\t\t\t" .. "Staff", order = 020205, }, -- LOCALIZE
-				["weapon ranged"] = { displayName = "\t\t" .. "Ranged", order = 020300, }, -- LOCALIZE
-				["weapon ranged bow"] = { displayName = "\t\t\t" .. "Bows", order = 020301, }, -- LOCALIZE
-				["weapon ranged gun"] = { displayName = "\t\t\t" .. "Guns", order = 020302, }, -- LOCALIZE
-				["weapon ranged wand"] = { displayName = "\t\t\t" .. "Wands", order = 020303, }, -- LOCALIZE
-				["weapon totem"] = { displayName = "\t\t" .. "Totem", order = 020400, }, -- LOCALIZE
-				["weapon shield"] = { displayName = "\t\t" .. "Shield", order = 020500, }, -- LOCALIZE
-				["planar"] = { displayName = "\t" .. "Planar Items", order = 030000, }, -- LOCALIZE
-				["planar lesser"] = { displayName = "\t\t" .. "Lesser Essence", order = 030100, }, -- LOCALIZE
-				["planar greater"] = { displayName = "\t\t" .. "Greater Essence", order = 030200, }, -- LOCALIZE
-				["consumable"] = { displayName = "\t" .. "Consumables", order = 040000, }, -- LOCALIZE
-				["consumable food"] = { displayName = "\t\t" .. "Food", order = 040100, }, -- LOCALIZE
-				["consumable drink"] = { displayName = "\t\t" .. "Drink", order = 040200, }, -- LOCALIZE
-				["consumable potion"] = { displayName = "\t\t" .. "Potion", order = 040300, }, -- LOCALIZE
-				["consumable scroll"] = { displayName = "\t\t" .. "Scroll", order = 040400, }, -- LOCALIZE
-				["consumable enchantment"] = { displayName = "\t\t" .. "Item Enchantment", order = 040500, }, -- LOCALIZE
-				["consumable consumable"] = { displayName = "\t\t" .. "Rift Consumable", order = 040600, }, -- LOCALIZE
-				["container"] = { displayName = "\t" .. "Containers", order = 050000, }, -- LOCALIZE
-				["crafting"] = { displayName = "\t" .. "Crafting", order = 060000, }, -- LOCALIZE
-				["crafting recipe"] = { displayName = "\t\t" .. "Recipes", order = 060100, }, -- LOCALIZE
-				["crafting recipe alchemy"] = { displayName = "\t\t\t" .. "Apothecary", order = 060101, }, -- LOCALIZE
-				["crafting recipe armorsmith"] = { displayName = "\t\t\t" .. "Armorsmith", order = 060102, }, -- LOCALIZE
-				["crafting recipe artificer"] = { displayName = "\t\t\t" .. "Artificer", order = 060103, }, -- LOCALIZE
-				["crafting recipe butchering"] = { displayName = "\t\t\t" .. "Butchering", order = 060104, }, -- LOCALIZE
-				["crafting recipe foraging"] = { displayName = "\t\t\t" .. "Foraging", order = 060105, }, -- LOCALIZE
-				["crafting recipe weaponsmith"] = { displayName = "\t\t\t" .. "Weaponsmith", order = 060106, }, -- LOCALIZE
-				["crafting recipe outfitter"] = { displayName = "\t\t\t" .. "Outfitter", order = 060107, }, -- LOCALIZE
-				["crafting recipe mining"] = { displayName = "\t\t\t" .. "Mining", order = 060108, }, -- LOCALIZE
-				["crafting recipe runecrafting"] = { displayName = "\t\t\t" .. "Runecrafting", order = 060109, }, -- LOCALIZE
-				["crafting recipe fishing"] = { displayName = "\t\t\t" .. "Fishing", order = 060110, }, -- LOCALIZE
-				["crafting recipe survival"] = { displayName = "\t\t\t" .. "Survival", order = 060111, }, -- LOCALIZE
-				["crafting material"] = { displayName = "\t\t" .. "Materials", order = 060200, }, -- LOCALIZE
-				["crafting material metal"] = { displayName = "\t\t\t" .. "Metal", order = 060201, }, -- LOCALIZE
-				["crafting material gem"] = { displayName = "\t\t\t" .. "Gems", order = 060202, }, -- LOCALIZE
-				["crafting material wood"] = { displayName = "\t\t\t" .. "Wood", order = 060203, }, -- LOCALIZE
-				["crafting material plant"] = { displayName = "\t\t\t" .. "Plants", order = 060204, }, -- LOCALIZE
-				["crafting material hide"] = { displayName = "\t\t\t" .. "Hide", order = 060205, }, -- LOCALIZE
-				["crafting material meat"] = { displayName = "\t\t\t" .. "Meat", order = 060206, }, -- LOCALIZE
-				["crafting material cloth"] = { displayName = "\t\t\t" .. "Cloth", order = 060207, }, -- LOCALIZE
-				["crafting material component"] = { displayName = "\t\t\t" .. "Rune Components", order = 060208, }, -- LOCALIZE
-				["crafting material fish"] = { displayName = "\t\t\t" .. "Fish", order = 060209, }, -- LOCALIZE
-				["crafting ingredient"] = { displayName = "\t\t" .. "Ingredients", order = 060300, }, -- LOCALIZE
-				["crafting ingredient reagent"] = { displayName = "\t\t\t" .. "Reagents", order = 060301, }, -- LOCALIZE
-				["crafting ingredient drop"] = { displayName = "\t\t\t" .. "Drops", order = 060302, }, -- LOCALIZE
-				["crafting ingredient rift"] = { displayName = "\t\t\t" .. "Rifts", order = 060303, }, -- LOCALIZE
-				["crafting augment"] = { displayName = "\t\t" .. "Augments", order = 060400, }, -- LOCALIZE
-				["misc"] = { displayName = "\t" .. "Misc", order = 070000, }, -- LOCALIZE
-				["misc quest"] = { displayName = "\t\t" .. "Quest", order = 070100, }, -- LOCALIZE
-				["misc mount"] = { displayName = "\t\t" .. "Mounts", order = 070200, }, -- LOCALIZE
-				["misc pet"] = { displayName = "\t\t" .. "Pets", order = 070300, }, -- LOCALIZE
-				["misc collectible"] = { displayName = "\t\t" .. "Collectibles", order = 070400, }, -- LOCALIZE
-				["misc other"] = { displayName = "\t\t" .. "Other", order = 070500, }, -- LOCALIZE
-				["misc survival misc"] = { displayName = "\t\t" .. "Survival", order = 070600, }, -- LOCALIZE
-				["misc fishing misc"] = { displayName = "\t\t" .. "Fishing", order = 070700, }, -- LOCALIZE
-			})			
-			control:SetSelectedKey(extraDescription.defaultValue or "")
+			control:SetValues(CategoryTree)
+			control:SetSelectedKey(extraDescription.defaultValue or BASE_CATEGORY)
 			
 			local function GetExtra()
 				return (control:GetSelectedValue())
@@ -308,6 +263,7 @@ local ControlConstructors =
 			for modelID, modelName in pairs(models) do
 				values[modelID] = { displayName = modelName }
 			end
+			-- TODO Load new pricing models
 			
 			control:SetHeight(35)
 			control:SetTextSelector("displayName")
@@ -341,6 +297,7 @@ function InternalInterface.UI.BuildConfigFrame(name, parent, extraDescription)
 	local setters = {}
 	
 	local controls = {}
+	local frameControls = {}	
 	for column = 1, columns do
 		local maxColumnTitleWidth = 0
 		controls[column] = {}
@@ -356,6 +313,7 @@ function InternalInterface.UI.BuildConfigFrame(name, parent, extraDescription)
 				local columnTitle = UICreateFrame("Text", name .. "." .. valueID .. ".Title", frame)
 				columnTitle:SetPoint("CENTERLEFT", frame, (column - 1) / columns, (row * 2 - 1) / rows / 2, 5, 0)
 				columnTitle:SetText(valueData.name or "")
+				columnTitle:SetFontSize(valueData.nameFontSize or 12)
 				maxColumnTitleWidth = MMax(maxColumnTitleWidth, columnTitle:GetWidth())
 				
 				local controlName = name .. "." .. valueID .. ".Control"
@@ -363,6 +321,7 @@ function InternalInterface.UI.BuildConfigFrame(name, parent, extraDescription)
 				
 				if ControlConstructors[valueType] then
 					control, getters[valueID], setters[valueID], dontAnchorToRight = ControlConstructors[valueType](controlName, frame, valueData)
+					frameControls[valueID] = control
 				end
 			else
 				control = controls[column - 1][row]
@@ -398,5 +357,5 @@ function InternalInterface.UI.BuildConfigFrame(name, parent, extraDescription)
 		end
 	end
 	
-	return frame
+	return frame, frameControls
 end

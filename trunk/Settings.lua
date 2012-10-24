@@ -55,17 +55,20 @@ local function DefaultSettings()
 	InternalInterface.AccountSettings.Posting = InternalInterface.AccountSettings.Posting or {}
 	InternalInterface.AccountSettings.Posting.RarityFilter = InternalInterface.AccountSettings.Posting.RarityFilter or 1
 	InternalInterface.AccountSettings.Posting.HiddenItems = InternalInterface.AccountSettings.Posting.HiddenItems or {}
+	InternalInterface.AccountSettings.Posting.Config = InternalInterface.AccountSettings.Posting.Config or {}
+	InternalInterface.AccountSettings.Posting.Config.BidPercentage = InternalInterface.AccountSettings.Posting.Config.BidPercentage or 75
+	if InternalInterface.AccountSettings.Posting.Config.BindPrices == nil then InternalInterface.AccountSettings.Posting.Config.BindPrices = false end
+
 	InternalInterface.AccountSettings.Posting.CategoryConfig = InternalInterface.AccountSettings.Posting.CategoryConfig or {}
 	InternalInterface.AccountSettings.Posting.CategoryConfig[""] = InternalInterface.AccountSettings.Posting.CategoryConfig[""] or {}
-	InternalInterface.AccountSettings.Posting.CategoryConfig[""].DefaultReferencePrice = InternalInterface.AccountSettings.Posting.CategoryConfig[""].DefaultReferencePrice or "market"
-	InternalInterface.AccountSettings.Posting.CategoryConfig[""].FallbackReferencePrice = InternalInterface.AccountSettings.Posting.CategoryConfig[""].FallbackReferencePrice or "vendor"
+	InternalInterface.AccountSettings.Posting.CategoryConfig[""].DefaultReferencePrice = InternalInterface.AccountSettings.Posting.CategoryConfig[""].DefaultReferencePrice or "BMarket"
+	InternalInterface.AccountSettings.Posting.CategoryConfig[""].FallbackReferencePrice = InternalInterface.AccountSettings.Posting.CategoryConfig[""].FallbackReferencePrice or "BVendor"
 	if InternalInterface.AccountSettings.Posting.CategoryConfig[""].ApplyMatching == nil then InternalInterface.AccountSettings.Posting.CategoryConfig[""].ApplyMatching = false end
 	InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackSize = InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackSize or "+"
 	InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackNumber = InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackNumber or "A"
 	if InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackLimit == nil then InternalInterface.AccountSettings.Posting.CategoryConfig[""].StackLimit = false end
-	InternalInterface.AccountSettings.Posting.CategoryConfig[""].BidPercentage = InternalInterface.AccountSettings.Posting.CategoryConfig[""].BidPercentage or 75
-	if InternalInterface.AccountSettings.Posting.CategoryConfig[""].BindPrices == nil then InternalInterface.AccountSettings.Posting.CategoryConfig[""].BindPrices = false end
 	InternalInterface.AccountSettings.Posting.CategoryConfig[""].Duration = InternalInterface.AccountSettings.Posting.CategoryConfig[""].Duration or 3
+	InternalInterface.AccountSettings.Posting.CategoryConfig[""].BlackList = InternalInterface.AccountSettings.Posting.CategoryConfig[""].BlackList or {}
 
 	-- Account: Selling frame settings
 	--  + BypassCancelPopup: If active, the auction cancel popup won't be shown when cancelling auctions
@@ -84,7 +87,7 @@ local function DefaultSettings()
 	--  + ReferencePrice: Pricing model to use as reference when scoring
 	--  + ColorLimits: Percentage limits for the scores (Very low, Low, Medium, High, Very high)
 	InternalInterface.AccountSettings.Scoring = InternalInterface.AccountSettings.Scoring or {}
-	InternalInterface.AccountSettings.Scoring.ReferencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice or "market"
+	InternalInterface.AccountSettings.Scoring.ReferencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice or "BMarket"
 	InternalInterface.AccountSettings.Scoring.ColorLimits = InternalInterface.AccountSettings.Scoring.ColorLimits or { 85, 85, 115, 115 }
 	
 	InternalInterface.AccountSettings.PricingModels = InternalInterface.AccountSettings.PricingModels or {}
