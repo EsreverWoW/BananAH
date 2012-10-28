@@ -10,6 +10,7 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 local PublicInterface = _G[addonID]
 
+local CTooltip = Command.Tooltip
 local DataGrid = Yague.DataGrid
 local Dropdown = Yague.Dropdown
 local MoneySelector = Yague.MoneySelector
@@ -42,6 +43,7 @@ local ODate = os.date
 local UICreateFrame = UI.CreateFrame
 local ipairs = ipairs
 local pairs = pairs
+local pcall = pcall
 local tostring = tostring
 local unpack = unpack
 
@@ -82,11 +84,11 @@ local function SearchCellType(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		Command.Tooltip(itemType)
+		pcall(CTooltip, itemType)
 	end
 	
 	function itemTexture.Event:MouseOut()
-		Command.Tooltip(nil)
+		CTooltip(nil)
 	end
 	
 	return searchCell

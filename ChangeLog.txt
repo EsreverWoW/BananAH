@@ -1,3 +1,7 @@
+	r69
+- Added Price model editor
+- Fixed bug that prevented the "Min profit" matcher to be applied
+
 	r68
 - Updated to RIFT 1.11
 - Added "Settings per item category feature": Check Prices config. Relevant settings of the Post config moved there.	

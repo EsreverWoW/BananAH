@@ -18,259 +18,338 @@ local GetPriceModelUsage = LibPGCEx.GetPriceModelUsage
 local GetPriceModels = LibPGCEx.GetPriceModels
 local L = InternalInterface.Localization.L
 local RegisterPriceModel = LibPGCEx.RegisterPriceModel
+local UnregisterPriceModel = LibPGCEx.UnregisterPriceModel
 local pairs = pairs
 
 local categoryModels = {}
 
-RegisterPriceModel("BVendor", L["PriceModels/Vendor"], "simple",
+local builtInModels =
 {
-	id = "vendor",
-	extra =
+	[BASE_CATEGORY] =
 	{
-		bidMultiplier = 3,
-		buyMultiplier = 5,
-	},
-},
-{
-	{
-		id = "selfundercut",
-		extra = 
+		["BVendor"] =
 		{
-			selfRange = 25,
-			undercutRange = 25,
-			undercutRelative = 0,
-			undercutAbsolute = 1,
-			noCompetitionRelative = 25,
-			noCompetitionAbsolute = 0,
-		}
-	},
-	{
-		id = "minProfit",
-		extra = 
-		{
-			minProfit = 0,
-		}
-	},
-})
-
-RegisterPriceModel("BMean", L["PriceModels/Average"], "statistical",
-{
-	id = "avg",
-	extra =
-	{
-		weighted = true,
-	},
-	filters =
-	{
-		{
-			id = "time",
-			extra =
+			name = L["PriceModels/Vendor"],
+			modelType = "simple",
+			usage =
 			{
-				days = 3,
+				id = "vendor",
+				extra =
+				{
+					bidMultiplier = 3,
+					buyMultiplier = 5,
+				},			
+			},
+			matchers =
+			{
+				{
+					id = "selfundercut",
+					extra = 
+					{
+						selfRange = 25,
+						undercutRange = 25,
+						undercutRelative = 0,
+						undercutAbsolute = 1,
+						noCompetitionRelative = 25,
+						noCompetitionAbsolute = 0,
+					}
+				},
+				{
+					id = "minprofit",
+					extra = 
+					{
+						minProfit = 0,
+					}
+				},			
 			},
 		},
-	}
-},
-{
-	{
-		id = "selfundercut",
-		extra = 
+		["BMean"] =
 		{
-			selfRange = 25,
-			undercutRange = 25,
-			undercutRelative = 0,
-			undercutAbsolute = 1,
-			noCompetitionRelative = 25,
-			noCompetitionAbsolute = 0,
-		}
-	},
-	{
-		id = "minProfit",
-		extra = 
-		{
-			minProfit = 0,
-		}
-	},
-})
-
-RegisterPriceModel("BMedian", L["PriceModels/Median"], "statistical",
-{
-	id = "rpos",
-	extra =
-	{
-		weighted = true,
-		position = 50,
-	},
-	filters =
-	{
-		{
-			id = "time",
-			extra =
+			name = L["PriceModels/Average"],
+			modelType = "statistical",
+			usage =
 			{
-				days = 3,
+				id = "avg",
+				extra =
+				{
+					weighted = true,
+				},
+				filters =
+				{
+					{
+						id = "time",
+						extra =
+						{
+							days = 3,
+						},
+					},
+				},
+			},
+			matchers =
+			{
+				{
+					id = "selfundercut",
+					extra = 
+					{
+						selfRange = 25,
+						undercutRange = 25,
+						undercutRelative = 0,
+						undercutAbsolute = 1,
+						noCompetitionRelative = 25,
+						noCompetitionAbsolute = 0,
+					}
+				},
+				{
+					id = "minprofit",
+					extra = 
+					{
+						minProfit = 0,
+					}
+				},
 			},
 		},
-	}
-},
-{
-	{
-		id = "selfundercut",
-		extra = 
+		["BMedian"] =
 		{
-			selfRange = 25,
-			undercutRange = 25,
-			undercutRelative = 0,
-			undercutAbsolute = 1,
-			noCompetitionRelative = 25,
-			noCompetitionAbsolute = 0,
-		}
-	},
-	{
-		id = "minProfit",
-		extra = 
-		{
-			minProfit = 0,
-		}
-	},
-})
-
-RegisterPriceModel("BStdev", L["PriceModels/StandardDeviation"], "statistical",
-{
-	id = "avg",
-	extra =
-	{
-		weighted = true,
-	},
-	filters =
-	{
-		{
-			id = "time",
-			extra =
+			name = L["PriceModels/Median"],
+			modelType = "statistical",
+			usage =
 			{
-				days = 3,
+				id = "rpos",
+				extra =
+				{
+					weighted = true,
+					position = 50,
+				},
+				filters =
+				{
+					{
+						id = "time",
+						extra =
+						{
+							days = 3,
+						},
+					},
+				},
+			},
+			matchers =
+			{
+				{
+					id = "selfundercut",
+					extra = 
+					{
+						selfRange = 25,
+						undercutRange = 25,
+						undercutRelative = 0,
+						undercutAbsolute = 1,
+						noCompetitionRelative = 25,
+						noCompetitionAbsolute = 0,
+					}
+				},
+				{
+					id = "minprofit",
+					extra = 
+					{
+						minProfit = 0,
+					}
+				},			
 			},
 		},
+		["BStdev"] =
 		{
-			id = "stdev",
-			extra =
+			name = L["PriceModels/StandardDeviation"],
+			modelType = "statistical",
+			usage =
 			{
-				weighted = true,
-				lowDeviation = 15,
-				highDeviation = 15,
+				id = "avg",
+				extra =
+				{
+					weighted = true,
+				},
+				filters =
+				{
+					{
+						id = "time",
+						extra =
+						{
+							days = 3,
+						},
+					},
+					{
+						id = "stdev",
+						extra =
+						{
+							weighted = true,
+							lowDeviation = 15,
+							highDeviation = 15,
+						},
+					},
+				},		
+			},
+			matchers =
+			{
+				{
+					id = "selfundercut",
+					extra = 
+					{
+						selfRange = 25,
+						undercutRange = 25,
+						undercutRelative = 0,
+						undercutAbsolute = 1,
+						noCompetitionRelative = 25,
+						noCompetitionAbsolute = 0,
+					}
+				},
+				{
+					id = "minprofit",
+					extra = 
+					{
+						minProfit = 0,
+					}
+				},			
 			},
 		},
-	}
-},
-{
-	{
-		id = "selfundercut",
-		extra = 
+		["BInterpercentilerange"] =
 		{
-			selfRange = 25,
-			undercutRange = 25,
-			undercutRelative = 0,
-			undercutAbsolute = 1,
-			noCompetitionRelative = 25,
-			noCompetitionAbsolute = 0,
-		}
-	},
-	{
-		id = "minProfit",
-		extra = 
-		{
-			minProfit = 0,
-		}
-	},
-})
-
-RegisterPriceModel("BInterpercentilerange", L["PriceModels/TrimmedMean"], "statistical",
-{
-	id = "avg",
-	extra =
-	{
-		weighted = true,
-	},
-	filters =
-	{
-		{
-			id = "time",
-			extra =
+			name = L["PriceModels/TrimmedMean"],
+			modelType = "statistical",
+			usage =
 			{
-				days = 3,
+				id = "avg",
+				extra =
+				{
+					weighted = true,
+				},
+				filters =
+				{
+					{
+						id = "time",
+						extra =
+						{
+							days = 3,
+						},
+					},
+					{
+						id = "ptrim",
+						extra =
+						{
+							weighted = true,
+							lowTrim = 25,
+							highTrim = 25,
+						},
+					},
+				},
+			},
+			matchers =
+			{
+				{
+					id = "selfundercut",
+					extra = 
+					{
+						selfRange = 25,
+						undercutRange = 25,
+						undercutRelative = 0,
+						undercutAbsolute = 1,
+						noCompetitionRelative = 25,
+						noCompetitionAbsolute = 0,
+					}
+				},
+				{
+					id = "minprofit",
+					extra = 
+					{
+						minProfit = 0,
+					}
+				},			
 			},
 		},
+		["BMarket"] =
 		{
-			id = "ptrim",
-			extra =
+			name = L["PriceModels/Market"],
+			modelType = "composite",
+			usage =
 			{
-				weighted = true,
-				lowTrim = 25,
-				highTrim = 25,
+				["BMean"] = 1,
+				["BStdev"] = 3,
+				["BInterpercentilerange"] = 5,			
+			},
+			matchers =
+			{
+				{
+					id = "selfundercut",
+					extra = 
+					{
+						selfRange = 25,
+						undercutRange = 25,
+						undercutRelative = 0,
+						undercutAbsolute = 1,
+						noCompetitionRelative = 25,
+						noCompetitionAbsolute = 0,
+					}
+				},
+				{
+					id = "minprofit",
+					extra = 
+					{
+						minProfit = 0,
+					}
+				},			
 			},
 		},
-	}
-},
-{
-	{
-		id = "selfundercut",
-		extra = 
-		{
-			selfRange = 25,
-			undercutRange = 25,
-			undercutRelative = 0,
-			undercutAbsolute = 1,
-			noCompetitionRelative = 25,
-			noCompetitionAbsolute = 0,
-		}
 	},
-	{
-		id = "minProfit",
-		extra = 
-		{
-			minProfit = 0,
-		}
-	},
-})
-
-RegisterPriceModel("BMarket", L["PriceModels/Market"], "composite",
-{
-	BMean = 1,
-	BStdev = 3,
-	BInterpercentilerange = 5,
-},
-{
-	{
-		id = "selfundercut",
-		extra = 
-		{
-			selfRange = 25,
-			undercutRange = 25,
-			undercutRelative = 0,
-			undercutAbsolute = 1,
-			noCompetitionRelative = 25,
-			noCompetitionAbsolute = 0,
-		}
-	},
-	{
-		id = "minProfit",
-		extra = 
-		{
-			minProfit = 0,
-		}
-	},
-})
-
-categoryModels[BASE_CATEGORY] =
-{
-	["BVendor"] = true,
-	["BMean"] = true,
-	["BMedian"] = true,
-	["BStdev"] = true,
-	["BInterpercentilerange"] = true,
-	["BMarket"] = true,
 }
 
 InternalInterface.PGCConfig = InternalInterface.PGCConfig or {}
+
+function InternalInterface.PGCConfig.LoadBuiltInModels()
+	for category, models in pairs(builtInModels) do
+		categoryModels[category] = categoryModels[category] or {}
+		for modelID, modelInfo in pairs(models) do
+			UnregisterPriceModel(modelID)
+			RegisterPriceModel(modelID, modelInfo.name, modelInfo.modelType, modelInfo.usage, modelInfo.matchers)
+			categoryModels[category][modelID] = true
+		end
+	end
+end
+
+function InternalInterface.PGCConfig.LoadSavedPrices()
+	for category, models in pairs(InternalInterface.AccountSettings.Prices) do
+		categoryModels[category] = categoryModels[category] or {}
+		for modelID, modelInfo in pairs(models) do
+			UnregisterPriceModel(modelID)
+			RegisterPriceModel(modelID, modelInfo.name, modelInfo.modelType, modelInfo.usage, modelInfo.matchers)
+			categoryModels[category][modelID] = true
+		end
+	end
+end
+
+function InternalInterface.PGCConfig.SaveCategoryModels(category, preserveModels, addModels)
+	categoryModels[category] = categoryModels[category] or {}
+	InternalInterface.AccountSettings.Prices[category] = InternalInterface.AccountSettings.Prices[category] or {}
+	
+	for modelID in pairs(categoryModels[category]) do
+		if not preserveModels[modelID] then
+			UnregisterPriceModel(modelID)
+			categoryModels[category][modelID] = nil
+			InternalInterface.AccountSettings.Prices[category][modelID] = nil
+		end
+	end
+	
+	for modelID, modelInfo in pairs(addModels) do
+		RegisterPriceModel(modelID, modelInfo.name, modelInfo.modelType, modelInfo.usage, modelInfo.matchers)
+		categoryModels[category][modelID] = true
+		InternalInterface.AccountSettings.Prices[category][modelID] = { name = modelInfo.name, modelType = modelInfo.modelType, usage = modelInfo.usage, matchers = modelInfo.matchers, }
+	end
+end
+
+function InternalInterface.PGCConfig.ClearCategoryModels(category)
+	if categoryModels[category] then
+		for modelID in pairs(categoryModels[category]) do
+			UnregisterPriceModel(modelID)
+		end
+		categoryModels[category] = nil
+		InternalInterface.AccountSettings.Prices[category] = nil
+	end
+end
 
 function InternalInterface.PGCConfig.GetCategoryModels(category)
 	local allModels = GetPriceModels()
@@ -303,3 +382,5 @@ function InternalInterface.PGCConfig.GetCategoryModels(category)
 	
 	return models
 end
+
+InternalInterface.PGCConfig.LoadBuiltInModels()

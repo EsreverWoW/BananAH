@@ -150,7 +150,7 @@ local function ItemCellType(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		CTooltip(itemType)
+		pcall(CTooltip, itemType)
 	end
 	
 	function itemTexture.Event:MouseOut()
@@ -594,7 +594,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		CTooltip(currentItemType)
+		pcall(CTooltip, currentItemType)
 	end
 	
 	function itemTexture.Event:MouseOut()

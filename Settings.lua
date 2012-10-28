@@ -90,10 +90,8 @@ local function DefaultSettings()
 	InternalInterface.AccountSettings.Scoring.ReferencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice or "BMarket"
 	InternalInterface.AccountSettings.Scoring.ColorLimits = InternalInterface.AccountSettings.Scoring.ColorLimits or { 85, 85, 115, 115 }
 	
-	InternalInterface.AccountSettings.PricingModels = InternalInterface.AccountSettings.PricingModels or {}
-
-	InternalInterface.AccountSettings.PriceMatchers = InternalInterface.AccountSettings.PriceMatchers or {}
-	InternalInterface.AccountSettings.AuctionSearchers = InternalInterface.AccountSettings.AuctionSearchers or {}
+	InternalInterface.AccountSettings.Prices = InternalInterface.AccountSettings.Prices or {}
+	InternalInterface.PGCConfig.LoadSavedPrices()
 	
 	InternalInterface.CharacterSettings.Posting = InternalInterface.CharacterSettings.Posting or {}
 	InternalInterface.CharacterSettings.Posting.HiddenItems = InternalInterface.CharacterSettings.Posting.HiddenItems or {}
