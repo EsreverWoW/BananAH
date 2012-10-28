@@ -28,6 +28,7 @@ local ShadowedText = Yague.ShadowedText
 local TInsert = table.insert
 local UICreateFrame = UI.CreateFrame
 local tostring = tostring
+local pcall = pcall
 
 local function QueueCellType(name, parent)
 	local queueManagerCell = UICreateFrame("Mask", name, parent)
@@ -94,7 +95,7 @@ local function QueueCellType(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		CTooltip(itemType)
+		pcall(CTooltip, itemType)
 	end
 	
 	function itemTexture.Event:MouseOut()

@@ -37,6 +37,7 @@ local ScoreColorByScore = InternalInterface.UI.ScoreColorByScore
 local TInsert = table.insert
 local UICreateFrame = UI.CreateFrame
 local Write = InternalInterface.Output.Write
+local pcall = pcall
 local unpack = unpack
 
 local function CancelAuctionPopup(parent)
@@ -152,7 +153,7 @@ local function SellingAuctionCellType(name, parent)
 	end
 	
 	function itemTexture.Event:MouseIn()
-		CTooltip(itemType)
+		pcall(CTooltip, itemType)
 	end
 	
 	function itemTexture.Event:MouseOut()

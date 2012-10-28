@@ -324,7 +324,7 @@ function InternalInterface.UI.BuildConfigFrame(name, parent, extraDescription)
 					frameControls[valueID] = control
 				end
 			else
-				control = controls[column - 1][row]
+				control = controls[column - 1] and controls[column - 1][row] or nil
 			end
 			controls[column][row] = control
 				

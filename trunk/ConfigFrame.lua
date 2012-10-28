@@ -12,23 +12,39 @@ local addonID = addonInfo.identifier
 local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
 local BuildConfigFrame = InternalInterface.UI.BuildConfigFrame
 local CDetail = InternalInterface.Category.Detail
+local CList = InternalInterface.Category.List
+local ClearCategoryModels = InternalInterface.PGCConfig.ClearCategoryModels
 local DataGrid = Yague.DataGrid
 local Dropdown = Yague.Dropdown
 local GetAuctionSearchers = LibPGCEx.GetAuctionSearchers
 local GetCategoryModels = InternalInterface.PGCConfig.GetCategoryModels
 local GetPopupManager = InternalInterface.Output.GetPopupManager
+local GetPriceComplex = LibPGCEx.GetPriceComplex
+local GetPriceFallbacks = LibPGCEx.GetPriceFallbacks
+local GetPriceFallbackExtraDescription = LibPGCEx.GetPriceFallbackExtraDescription
+local GetPriceMatchers = LibPGCEx.GetPriceMatchers
+local GetPriceMatcherExtraDescription = LibPGCEx.GetPriceMatcherExtraDescription
 local GetPriceModels = LibPGCEx.GetPriceModels
+local GetPriceSamplers = LibPGCEx.GetPriceSamplers
+local GetPriceSamplerExtraDescription = LibPGCEx.GetPriceSamplerExtraDescription
+local GetPriceStats = LibPGCEx.GetPriceStats
+local GetPriceStatExtraDescription = LibPGCEx.GetPriceStatExtraDescription
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local L = InternalInterface.Localization.L
 local MMax = math.max
 local MMin = math.min
+local OsTime = os.time
 local Panel = Yague.Panel
 local RegisterPopupConstructor = Yague.RegisterPopupConstructor
 local SFormat = string.format
+local SLen = string.len
+local SaveCategoryModels = InternalInterface.PGCConfig.SaveCategoryModels
 local ScoreColorByIndex = InternalInterface.UI.ScoreColorByIndex
 local ShadowedText = Yague.ShadowedText
 local Slider = Yague.Slider
+local TInsert = table.insert
 local UICreateFrame = UI.CreateFrame
+local ipairs = ipairs
 local pairs = pairs
 local type = type
 local unpack = unpack
@@ -112,6 +128,1187 @@ local function UnsavedChangesPopup(parent)
 	return frame
 end
 RegisterPopupConstructor(addonID .. ".UnsavedChanges", UnsavedChangesPopup)
+
+local function NewModelPopup(parent)
+	local frame = Yague.Popup(parent:GetName() .. ".NewModelPopup", parent)
+	
+	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
+	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
+	local modelTypeSelector = Dropdown(frame:GetName() .. ".ModelTypeSelector", frame:GetContent())
+	local continueButton = UICreateFrame("RiftButton", frame:GetName() .. ".ContinueButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())	
+	
+	frame:SetWidth(420)
+	frame:SetHeight(140)
+	
+	titleText:SetPoint("TOPCENTER", frame:GetContent(), "TOPCENTER", 0, 10)
+	titleText:SetFontSize(14)
+	titleText:SetFontColor(1, 1, 0.75, 1)
+	titleText:SetShadowOffset(2, 2)
+	titleText:SetText("NEW MODEL") -- LOCALIZE
+	
+	contentText:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 10, 40)
+	contentText:SetText("Model Type:") -- LOCALIZE
+	
+	modelTypeSelector:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -10, 35)
+	modelTypeSelector:SetPoint("CENTERLEFT", contentText, "CENTERRIGHT", 10, 0)
+	modelTypeSelector:SetTextSelector("displayName")
+	modelTypeSelector:SetOrderSelector("order")
+	modelTypeSelector:SetValues({
+		["simple"] = { displayName = "Simple", order = 1 }, -- LOCALIZE
+		["statistical"] = { displayName = "Statistical", order = 2 }, -- LOCALIZE
+		["complex"] = { displayName = "Complex", order = 3 }, -- LOCALIZE
+		["composite"] = { displayName = "Composite", order = 4 }, -- LOCALIZE
+	})
+	
+	continueButton:SetPoint("BOTTOMRIGHT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
+	continueButton:SetText("Continue") -- LOCALIZE
+	
+	cancelButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
+	cancelButton:SetText("Cancel") -- LOCALIZE
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".NewModel", frame)
+	end
+
+	function frame:SetData(onContinue)
+		function continueButton.Event:LeftPress()
+			onContinue((modelTypeSelector:GetSelectedValue())) 
+			parent:HidePopup(addonID .. ".NewModel", frame)
+		end
+	end
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".NewModel", NewModelPopup)
+
+local function BuildMatcherFrame(name, parent, matcherID, matcherName, matcherMove)
+	local matcherFrame = UICreateFrame("Frame", name, parent)
+	
+	local matcherTitle = UICreateFrame("Text", name .. ".MatcherTitle", matcherFrame)
+	local matcherUnfold = UICreateFrame("Texture", name .. ".MatcherUnfold", matcherFrame)
+	local matcherDelete = UICreateFrame("Texture", name .. ".MatcherDelete", matcherFrame)
+	local matcherUp = UICreateFrame("Texture", name .. ".MatcherUp", matcherFrame)
+	local matcherDown = UICreateFrame("Texture", name .. ".MatcherDown", matcherFrame)
+	
+	local matcherExtra = GetPriceMatcherExtraDescription(matcherID)
+	local configFrame = BuildConfigFrame(name .. ".ConfigFrame", matcherFrame, matcherExtra)
+	
+	matcherFrame:SetHeight(24)
+	
+	matcherUnfold:SetPoint("TOPLEFT", matcherFrame, "TOPLEFT")
+	matcherUnfold:SetTextureAsync(addonID, "Textures/ArrowDown.png")
+	
+	matcherDelete:SetPoint("TOPRIGHT", matcherFrame, "TOPRIGHT")
+	matcherDelete:SetTextureAsync(addonID, "Textures/DeleteEnabled.png")
+	
+	matcherDown:SetPoint("TOPRIGHT", matcherDelete, "CENTERLEFT", -5, -3)
+	matcherDown:SetTextureAsync(addonID, "Textures/MoveDown.png")
+	
+	matcherUp:SetPoint("BOTTOMRIGHT", matcherDelete, "CENTERLEFT", -5, 3)
+	matcherUp:SetTextureAsync(addonID, "Textures/MoveUp.png")
+	
+	matcherTitle:SetPoint("CENTERLEFT", matcherUnfold, "CENTERRIGHT", 5, 1)
+	matcherTitle:SetFontSize(14)
+	matcherTitle:SetText(matcherName)
+	
+	if configFrame then
+		configFrame:SetPoint("TOPLEFT", matcherFrame, "TOPLEFT", 0, 30)
+		configFrame:SetPoint("TOPRIGHT", matcherFrame, "TOPRIGHT", 0, 30)
+		configFrame:SetVisible(false)
+	else
+		matcherUnfold:SetVisible(false)
+	end
+	
+	function matcherUnfold.Event:LeftClick()
+		if configFrame then
+			local unfolded = configFrame:GetVisible()
+			configFrame:SetVisible(not unfolded)
+			matcherUnfold:SetTextureAsync(addonID, unfolded and "Textures/ArrowDown.png" or "Textures/ArrowUp.png")
+			matcherFrame:SetHeight(unfolded and 24 or configFrame:GetBottom() - matcherFrame:GetTop())
+		end
+	end
+	
+	function matcherDelete.Event:LeftClick()
+		matcherMove(matcherID)
+	end
+	
+	function matcherUp.Event:LeftClick()
+		matcherMove(matcherID, -1)
+	end
+	
+	function matcherDown.Event:LeftClick()
+		matcherMove(matcherID, 1)
+	end
+	
+	function matcherFrame:GetExtra()
+		if configFrame then
+			return configFrame:GetExtra()
+		end
+	end
+	
+	function matcherFrame:SetExtra(extra)
+		if configFrame then
+			configFrame:SetExtra(extra)
+			if configFrame:GetVisible() then
+				matcherUnfold.Event.LeftClick(matcherUnfold) -- HACK
+			end
+		end
+	end
+	
+	return matcherFrame
+end
+
+local function BuildMatchersFrame(name, parent)
+	local frame = UICreateFrame("Frame", name, parent)
+
+	local titleLabel = ShadowedText(name .. ".TitleLabel", frame)
+	local startAnchor = UICreateFrame("Frame", name .. ".StartAnchor", frame)
+	local endAnchor = UICreateFrame("Frame", name .. ".EndAnchor", frame)
+	local matcherButton = UICreateFrame("RiftButton", name .. ".MatcherButton", frame)
+	local matcherSelector = Dropdown(name .. ".MatcherSelector", frame)
+	
+	local allMatchers = GetPriceMatchers()
+	local usedMatchers = {}
+	local matcherFrames = {}
+
+	local function ResetHeight()
+		frame:SetHeight(endAnchor:GetBottom() - frame:GetTop())
+	end
+	
+	local function RecalcMatchers()
+		local lastMatcher = startAnchor
+		
+		local exclude = {}
+		for _, matcherID in ipairs(usedMatchers) do
+			local matcherFrame = matcherFrames[matcherID]
+			
+			matcherFrame:SetPoint("TOPLEFT", lastMatcher, "BOTTOMLEFT", 0, 10)
+			matcherFrame:SetPoint("TOPRIGHT", lastMatcher, "BOTTOMRIGHT", 0, 10)
+			matcherFrame:SetVisible(true)
+			
+			lastMatcher = matcherFrame
+			exclude[matcherID] = true
+		end
+		
+		local unusedMatchers = {}
+		for matcherID, matcherName in pairs(allMatchers) do
+			if not exclude[matcherID] then
+				unusedMatchers[matcherID] = { displayName = matcherName, }
+				matcherFrames[matcherID]:SetVisible(false)
+			end
+		end
+
+		if next(unusedMatchers) then
+			matcherButton:ClearAll()
+			matcherButton:SetPoint("TOPRIGHT", lastMatcher, "BOTTOMRIGHT", 5, 10)
+			matcherButton:SetVisible(true)
+		
+			matcherSelector:ClearAll()
+			matcherSelector:SetPoint("TOPLEFT", lastMatcher, "BOTTOMLEFT", 0, 12)
+			matcherSelector:SetPoint("CENTERRIGHT", matcherButton, "CENTERLEFT", -5, 0)
+			matcherSelector:SetValues(unusedMatchers)
+			matcherSelector:SetVisible(true)
+			
+			endAnchor:ClearAll()
+			endAnchor:SetPoint("TOPLEFT", matcherSelector, "BOTTOMLEFT")
+			endAnchor:SetPoint("BOTTOMRIGHT", matcherSelector, "BOTTOMLEFT")
+		else
+			matcherButton:SetVisible(false)
+			matcherSelector:SetVisible(false)
+			
+			endAnchor:ClearAll()
+			endAnchor:SetPoint("TOPLEFT", lastMatcher, "BOTTOMLEFT")
+			endAnchor:SetPoint("BOTTOMRIGHT", lastMatcher, "BOTTOMLEFT")
+		end
+		
+		ResetHeight()
+	end
+
+	local function MoveMatcher(matcherID, direction)
+		local newUsedMatchers = {}
+		
+		local matcherIndex = nil
+		for index, id in ipairs(usedMatchers) do
+			if id ~= matcherID then
+				TInsert(newUsedMatchers, id)
+			else
+				matcherIndex = index
+			end
+		end
+		
+		if direction and matcherIndex then
+			matcherIndex = MMin(MMax(1, matcherIndex + direction), #usedMatchers)
+			TInsert(newUsedMatchers, matcherIndex, matcherID)
+		end
+
+		usedMatchers = newUsedMatchers
+		
+		RecalcMatchers()		
+	end
+	
+	for matcherID, matcherName in pairs(allMatchers) do
+		local matcherFrame = BuildMatcherFrame(name .. ".Matchers." .. matcherID, frame, matcherID, matcherName, MoveMatcher)
+		if matcherFrame then
+			matcherFrames[matcherID] = matcherFrame
+			matcherFrame.Event.Size = ResetHeight
+			matcherFrame:SetVisible(false)
+		end
+	end
+	
+	titleLabel:SetPoint("TOPCENTER", frame, "TOPCENTER")
+	titleLabel:SetFontSize(15)
+	titleLabel:SetFontColor(1, 1, 0.75, 1)
+	titleLabel:SetShadowOffset(2, 2)
+	titleLabel:SetText("Price Matchers") -- LOCALIZE
+	
+	startAnchor:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 20)
+	startAnchor:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, 20)
+	startAnchor:SetVisible(false)
+	
+	endAnchor:SetVisible(false)
+	
+	matcherButton:SetText("Add") -- LOCALIZE
+	
+	matcherSelector:SetTextSelector("displayName")
+	matcherSelector:SetOrderSelector("displayName")
+	
+	function matcherButton.Event:LeftPress()
+		local matcherID = matcherSelector:GetSelectedValue()
+		TInsert(usedMatchers, matcherID)
+		RecalcMatchers()
+	end
+
+	function frame:GetMatcherConfig()
+		local config = {}
+		
+		for _, matcherID in ipairs(usedMatchers) do
+			local matcherFrame = matcherFrames[matcherID]
+			local extra = matcherFrame:GetExtra()
+			TInsert(config, { id = matcherID, extra = extra, })
+		end
+		
+		return config
+	end
+	
+	function frame:SetMatcherConfig(config)
+		config = config or {}
+		
+		usedMatchers = {}
+		for _, matcherConfig in ipairs(config) do
+			local matcherID = matcherConfig.id
+			if allMatchers[matcherID] then
+				local matcherFrame = matcherFrames[matcherID]
+				TInsert(usedMatchers, matcherID)
+				matcherFrame:SetExtra(matcherConfig.extra)
+			end
+		end
+		
+		RecalcMatchers()
+	end
+	
+	RecalcMatchers()
+
+	return frame
+end
+
+local function BuildFilterFrame(name, parent, filterID, filterName, filterMove)
+	local filterFrame = UICreateFrame("Frame", name, parent)
+	
+	local filterTitle = UICreateFrame("Text", name .. ".FilterTitle", filterFrame)
+	local filterUnfold = UICreateFrame("Texture", name .. ".FilterUnfold", filterFrame)
+	local filterDelete = UICreateFrame("Texture", name .. ".FilterDelete", filterFrame)
+	local filterUp = UICreateFrame("Texture", name .. ".FilterUp", filterFrame)
+	local filterDown = UICreateFrame("Texture", name .. ".FilterDown", filterFrame)
+	
+	local filterExtra = GetPriceSamplerExtraDescription(filterID)
+	local configFrame = BuildConfigFrame(name .. ".ConfigFrame", filterFrame, filterExtra)
+	
+	filterFrame:SetHeight(24)
+	
+	filterUnfold:SetPoint("TOPLEFT", filterFrame, "TOPLEFT")
+	filterUnfold:SetTextureAsync(addonID, "Textures/ArrowDown.png")
+	
+	filterDelete:SetPoint("TOPRIGHT", filterFrame, "TOPRIGHT")
+	filterDelete:SetTextureAsync(addonID, "Textures/DeleteEnabled.png")
+	
+	filterDown:SetPoint("TOPRIGHT", filterDelete, "CENTERLEFT", -5, -3)
+	filterDown:SetTextureAsync(addonID, "Textures/MoveDown.png")
+	
+	filterUp:SetPoint("BOTTOMRIGHT", filterDelete, "CENTERLEFT", -5, 3)
+	filterUp:SetTextureAsync(addonID, "Textures/MoveUp.png")
+	
+	filterTitle:SetPoint("CENTERLEFT", filterUnfold, "CENTERRIGHT", 5, 1)
+	filterTitle:SetFontSize(14)
+	filterTitle:SetText(filterName)
+	
+	if configFrame then
+		configFrame:SetPoint("TOPLEFT", filterFrame, "TOPLEFT", 0, 30)
+		configFrame:SetPoint("TOPRIGHT", filterFrame, "TOPRIGHT", 0, 30)
+		configFrame:SetVisible(false)
+	else
+		filterUnfold:SetVisible(false)
+	end
+	
+	function filterUnfold.Event:LeftClick()
+		if configFrame then
+			local unfolded = configFrame:GetVisible()
+			configFrame:SetVisible(not unfolded)
+			filterUnfold:SetTextureAsync(addonID, unfolded and "Textures/ArrowDown.png" or "Textures/ArrowUp.png")
+			filterFrame:SetHeight(unfolded and 24 or configFrame:GetBottom() - filterFrame:GetTop())
+		end
+	end
+	
+	function filterDelete.Event:LeftClick()
+		filterMove(filterID)
+	end
+	
+	function filterUp.Event:LeftClick()
+		filterMove(filterID, -1)
+	end
+	
+	function filterDown.Event:LeftClick()
+		filterMove(filterID, 1)
+	end
+	
+	function filterFrame:GetExtra()
+		if configFrame then
+			return configFrame:GetExtra()
+		end
+	end
+	
+	function filterFrame:SetExtra(extra)
+		if configFrame then
+			configFrame:SetExtra(extra)
+			if configFrame:GetVisible() then
+				filterUnfold.Event.LeftClick(filterUnfold) -- HACK
+			end
+		end
+	end
+	
+	return filterFrame
+end
+
+local function BuildFiltersFrame(name, parent)
+	local frame = UICreateFrame("Frame", name, parent)
+
+	local titleLabel = ShadowedText(name .. ".TitleLabel", frame)
+	local startAnchor = UICreateFrame("Frame", name .. ".StartAnchor", frame)
+	local endAnchor = UICreateFrame("Frame", name .. ".EndAnchor", frame)
+	local filterButton = UICreateFrame("RiftButton", name .. ".FilterButton", frame)
+	local filterSelector = Dropdown(name .. ".FilterSelector", frame)
+	
+	local allFilters = GetPriceSamplers()
+	local usedFilters = {}
+	local filterFrames = {}
+
+	local function ResetHeight()
+		frame:SetHeight(endAnchor:GetBottom() - frame:GetTop())
+	end
+	
+	local function RecalcFilters()
+		local lastFilter = startAnchor
+		
+		local exclude = {}
+		for _, filterID in ipairs(usedFilters) do
+			local filterFrame = filterFrames[filterID]
+			
+			filterFrame:SetPoint("TOPLEFT", lastFilter, "BOTTOMLEFT", 0, 10)
+			filterFrame:SetPoint("TOPRIGHT", lastFilter, "BOTTOMRIGHT", 0, 10)
+			filterFrame:SetVisible(true)
+			
+			lastFilter = filterFrame
+			exclude[filterID] = true
+		end
+		
+		local unusedFilters = {}
+		for filterID, filterName in pairs(allFilters) do
+			if not exclude[filterID] then
+				unusedFilters[filterID] = { displayName = filterName, }
+				filterFrames[filterID]:SetVisible(false)
+			end
+		end
+
+		if next(unusedFilters) then
+			filterButton:ClearAll()
+			filterButton:SetPoint("TOPRIGHT", lastFilter, "BOTTOMRIGHT", 5, 10)
+			filterButton:SetVisible(true)
+		
+			filterSelector:ClearAll()
+			filterSelector:SetPoint("TOPLEFT", lastFilter, "BOTTOMLEFT", 0, 12)
+			filterSelector:SetPoint("CENTERRIGHT", filterButton, "CENTERLEFT", -5, 0)
+			filterSelector:SetValues(unusedFilters)
+			filterSelector:SetVisible(true)
+			
+			endAnchor:ClearAll()
+			endAnchor:SetPoint("TOPLEFT", filterSelector, "BOTTOMLEFT")
+			endAnchor:SetPoint("BOTTOMRIGHT", filterSelector, "BOTTOMLEFT")
+		else
+			filterButton:SetVisible(false)
+			filterSelector:SetVisible(false)
+			
+			endAnchor:ClearAll()
+			endAnchor:SetPoint("TOPLEFT", lastFilter, "BOTTOMLEFT")
+			endAnchor:SetPoint("BOTTOMRIGHT", lastFilter, "BOTTOMLEFT")
+		end
+		
+		ResetHeight()
+	end
+
+	local function MoveFilter(filterID, direction)
+		local newUsedFilters = {}
+		
+		local filterIndex = nil
+		for index, id in ipairs(usedFilters) do
+			if id ~= filterID then
+				TInsert(newUsedFilters, id)
+			else
+				filterIndex = index
+			end
+		end
+		
+		if direction and filterIndex then
+			filterIndex = MMin(MMax(1, filterIndex + direction), #usedFilters)
+			TInsert(newUsedFilters, filterIndex, filterID)
+		end
+
+		usedFilters = newUsedFilters
+		
+		RecalcFilters()		
+	end
+	
+	for filterID, filterName in pairs(allFilters) do
+		local filterFrame = BuildFilterFrame(name .. ".Filters." .. filterID, frame, filterID, filterName, MoveFilter)
+		if filterFrame then
+			filterFrames[filterID] = filterFrame
+			filterFrame.Event.Size = ResetHeight
+			filterFrame:SetVisible(false)
+		end
+	end
+	
+	titleLabel:SetPoint("TOPCENTER", frame, "TOPCENTER")
+	titleLabel:SetFontSize(15)
+	titleLabel:SetFontColor(1, 1, 0.75, 1)
+	titleLabel:SetShadowOffset(2, 2)
+	titleLabel:SetText("Filters") -- LOCALIZE
+	
+	startAnchor:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 20)
+	startAnchor:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, 20)
+	startAnchor:SetVisible(false)
+	
+	endAnchor:SetVisible(false)
+	
+	filterButton:SetText("Add") -- LOCALIZE
+	
+	filterSelector:SetTextSelector("displayName")
+	filterSelector:SetOrderSelector("displayName")
+	
+	function filterButton.Event:LeftPress()
+		local filterID = filterSelector:GetSelectedValue()
+		TInsert(usedFilters, filterID)
+		RecalcFilters()
+	end
+
+	function frame:GetFilterConfig()
+		local config = {}
+		
+		for _, filterID in ipairs(usedFilters) do
+			local filterFrame = filterFrames[filterID]
+			local extra = filterFrame:GetExtra()
+			TInsert(config, { id = filterID, extra = extra, })
+		end
+		
+		return config
+	end
+	
+	function frame:SetFilterConfig(config)
+		config = config or {}
+		
+		usedFilters = {}
+		for _, filterConfig in ipairs(config) do
+			local filterID = filterConfig.id
+			if allFilters[filterID] then
+				local filterFrame = filterFrames[filterID]
+				TInsert(usedFilters, filterID)
+				filterFrame:SetExtra(filterConfig.extra)
+			end
+		end
+		
+		RecalcFilters()
+	end
+	
+	RecalcFilters()
+
+	return frame
+end
+
+local function BuildModelFrame(name, parent, modelID, modelName, modelDrop)
+	local frame = UICreateFrame("Frame", name, parent)
+
+	local modelDelete = UICreateFrame("Texture", name .. ".ModelDelete", frame)
+	local modelTitle = UICreateFrame("Text", name .. ".ModelTitle", frame)
+	local modelSlider = Slider(name .. ".ModelSlider", frame)
+	
+	frame:SetHeight(24)
+	
+	modelDelete:SetPoint("TOPLEFT", frame, "TOPLEFT")
+	modelDelete:SetTextureAsync(addonID, "Textures/DeleteEnabled.png")	
+	
+	modelTitle:SetPoint("CENTERLEFT", modelDelete, "CENTERRIGHT", 5, 1)
+	modelTitle:SetFontSize(14)
+	modelTitle:SetText(modelName)
+	
+	modelSlider:SetPoint("RIGHT", frame, "RIGHT")
+	modelSlider:SetPoint("CENTERLEFT", modelTitle, "CENTERLEFT", 200, -2)
+	modelSlider:SetRange(1, 20)
+
+	function modelDelete.Event:LeftClick()
+		modelDrop(modelID)
+	end	
+	
+	function frame:SetModelName(modelName)
+		modelTitle:SetText(modelName or "")
+	end
+	
+	function frame:GetValue()
+		return (modelSlider:GetPosition())
+	end
+	
+	function frame:SetValue(value)
+		modelSlider:SetPosition(value)
+	end
+	
+	return frame
+end
+
+local function SimplePriceModelPopup(parent)
+	local frame = Yague.Popup(parent:GetName() .. ".SimplePriceModelPopup", parent)
+	
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	
+	local fallbackSelector = Dropdown(frame:GetName() .. ".FallbackSelector", frame:GetContent())
+	
+	local usageFrame = UICreateFrame("Frame", frame:GetName() .. ".UsageFrame", frame:GetContent())
+	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
+	
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	
+	local wasEnabled = false
+	
+	local allFallbacks = GetPriceFallbacks()
+	local fallbacks = {}
+	local fallbackFrames = {}
+	for fallbackID, fallbackName in pairs(allFallbacks) do
+		fallbacks[fallbackID] = { displayName = fallbackName }
+		
+		local fallbackFrame = BuildConfigFrame(usageFrame:GetName() .. fallbackID, usageFrame, GetPriceFallbackExtraDescription(fallbackID))
+		fallbackFrame:SetPoint("TOPLEFT", usageFrame, "TOPLEFT")
+		fallbackFrame:SetPoint("TOPRIGHT", usageFrame, "TOPRIGHT")
+		fallbackFrame:SetVisible(false)
+		
+		fallbackFrames[fallbackID] = fallbackFrame
+	end
+	
+	local function GetModelInfo()
+		local name = nameField:GetText()
+		local fallbackID = fallbackSelector:GetSelectedValue()
+		local fallbackExtra = fallbackFrames[fallbackID]:GetExtra()
+		local usage = { id = fallbackID, extra = fallbackExtra }
+		local matchers = matcherFrame:GetMatcherConfig()
+		
+		return { name = name, modelType = "simple", usage = usage, matchers = matchers, enabled = wasEnabled, original = false, own = true }
+	end
+	
+	local function ResetHeight()
+		frame:SetHeight(cancelButton:GetBottom() + 15 - frame:GetTop())
+	end
+	
+	local function RecalcFallbacks()
+		local fallbackID = fallbackSelector:GetSelectedValue()
+		
+		for id, fallbackFrame in pairs(fallbackFrames) do
+			if id == fallbackID then
+				fallbackFrame:SetVisible(true)
+				usageFrame:SetHeight(fallbackFrame:GetBottom() - usageFrame:GetTop())
+			else
+				fallbackFrame:SetVisible(false)
+			end
+		end
+		
+		ResetHeight()
+	end
+	
+	frame:SetWidth(800)
+	
+	nameLabel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 25, 15)
+	nameLabel:SetFontSize(14)
+	nameLabel:SetFontColor(1, 1, 0.75, 1)
+	nameLabel:SetShadowOffset(2, 2)
+	nameLabel:SetText("Name:") -- LOCALIZE
+	
+	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
+	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
+	namePanel:SetInvertedBorder(true)
+	namePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	
+	nameField:SetPoint("CENTERLEFT", namePanel:GetContent(), "CENTERLEFT", 2, 1)
+	nameField:SetPoint("CENTERRIGHT", namePanel:GetContent(), "CENTERRIGHT", -2, 1)
+	nameField:SetText("")
+	
+	fallbackSelector:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 15, 50)
+	fallbackSelector:SetPoint("BOTTOMRIGHT", frame:GetContent(), "TOPRIGHT", -15, 80)
+	fallbackSelector:SetTextSelector("displayName")
+	fallbackSelector:SetOrderSelector("displayName")
+	fallbackSelector:SetValues(fallbacks)
+	
+	usageFrame:SetPoint("TOPLEFT", fallbackSelector, "BOTTOMLEFT", 0, 10)
+	usageFrame:SetPoint("TOPRIGHT", fallbackSelector, "BOTTOMRIGHT", 0, 10)
+	
+	matcherFrame:SetPoint("TOPLEFT", usageFrame, "BOTTOMLEFT", 0, 10)
+	matcherFrame:SetPoint("TOPRIGHT", usageFrame, "BOTTOMRIGHT", 0, 10)
+	
+	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
+	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetEnabled(false)
+	
+	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
+	cancelButton:SetText("Cancel") -- LOCALIZE
+	
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
+
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
+
+	function nameField.Event:TextfieldChange()
+		saveButton:SetEnabled(self:GetText() ~= "")
+	end
+	
+	function fallbackSelector.Event:SelectionChanged()
+		RecalcFallbacks()
+	end
+	
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".SimplePriceModel", frame)
+	end
+
+	function frame:SetData(modelInfo, onSave)
+		nameField:SetText(modelInfo.name or "")
+		local usage = modelInfo.usage
+		if allFallbacks[usage.id] then
+			fallbackSelector:SetSelectedKey(usage.id)
+			fallbackFrames[usage.id]:SetExtra(usage.extra)
+		end
+		matcherFrame:SetMatcherConfig(modelInfo.matchers)
+		wasEnabled = modelInfo.enabled
+
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".SimplePriceModel", frame)
+		end
+	end
+	
+	RecalcFallbacks()
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".SimplePriceModel", SimplePriceModelPopup)
+
+local function StatisticalPriceModelPopup(parent)
+	local frame = Yague.Popup(parent:GetName() .. ".StatisticalPriceModelPopup", parent)
+	
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	
+	local statSelector = Dropdown(frame:GetName() .. ".StatSelector", frame:GetContent())
+
+	local usageFrame = UICreateFrame("Frame", frame:GetName() .. ".UsageFrame", frame:GetContent())
+	local filterFrame = BuildFiltersFrame(frame:GetName() .. ".FilterFrame", frame:GetContent())
+	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
+	
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	
+	local wasEnabled = false
+	
+	local allStats = GetPriceStats()
+	local stats = {}
+	local statFrames = {}
+	for statID, statName in pairs(allStats) do
+		stats[statID] = { displayName = statName }
+		
+		local statFrame = BuildConfigFrame(usageFrame:GetName() .. statID, usageFrame, GetPriceStatExtraDescription(statID))
+		statFrame:SetPoint("TOPLEFT", usageFrame, "TOPLEFT")
+		statFrame:SetPoint("TOPRIGHT", usageFrame, "TOPRIGHT")
+		statFrame:SetVisible(false)
+		
+		statFrames[statID] = statFrame
+	end
+	
+	local function GetModelInfo()
+		local name = nameField:GetText()
+		local statID = statSelector:GetSelectedValue()
+		local statExtra = statFrames[statID]:GetExtra()
+		local filters = filterFrame:GetFilterConfig()
+		local usage = { id = statID, extra = statExtra, filters = filters }
+		local matchers = matcherFrame:GetMatcherConfig()
+		
+		return { name = name, modelType = "statistical", usage = usage, matchers = matchers, enabled = wasEnabled, original = false, own = true }
+	end
+	
+	local function ResetHeight()
+		frame:SetHeight(cancelButton:GetBottom() + 15 - frame:GetTop())
+	end
+	
+	local function RecalcStats()
+		local statID = statSelector:GetSelectedValue()
+		
+		for id, statFrame in pairs(statFrames) do
+			if id == statID then
+				statFrame:SetVisible(true)
+				usageFrame:SetHeight(statFrame:GetBottom() - usageFrame:GetTop())
+			else
+				statFrame:SetVisible(false)
+			end
+		end
+		
+		ResetHeight()
+	end
+	
+	frame:SetWidth(800)
+	
+	nameLabel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 25, 15)
+	nameLabel:SetFontSize(14)
+	nameLabel:SetFontColor(1, 1, 0.75, 1)
+	nameLabel:SetShadowOffset(2, 2)
+	nameLabel:SetText("Name:") -- LOCALIZE
+	
+	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
+	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
+	namePanel:SetInvertedBorder(true)
+	namePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	
+	nameField:SetPoint("CENTERLEFT", namePanel:GetContent(), "CENTERLEFT", 2, 1)
+	nameField:SetPoint("CENTERRIGHT", namePanel:GetContent(), "CENTERRIGHT", -2, 1)
+	nameField:SetText("")
+	
+	statSelector:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 15, 50)
+	statSelector:SetPoint("BOTTOMRIGHT", frame:GetContent(), "TOPRIGHT", -15, 80)
+	statSelector:SetTextSelector("displayName")
+	statSelector:SetOrderSelector("displayName")
+	statSelector:SetValues(stats)
+	
+	usageFrame:SetPoint("TOPLEFT", statSelector, "BOTTOMLEFT", 0, 10)
+	usageFrame:SetPoint("TOPRIGHT", statSelector, "BOTTOMRIGHT", 0, 10)
+	
+	filterFrame:SetPoint("TOPLEFT", usageFrame, "BOTTOMLEFT", 0, 10)
+	filterFrame:SetPoint("TOPRIGHT", usageFrame, "BOTTOMRIGHT", 0, 10)
+	
+	matcherFrame:SetPoint("TOPLEFT", filterFrame, "BOTTOMLEFT", 0, 10)
+	matcherFrame:SetPoint("TOPRIGHT", filterFrame, "BOTTOMRIGHT", 0, 10)
+	
+	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
+	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetEnabled(false)
+	
+	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
+	cancelButton:SetText("Cancel") -- LOCALIZE
+	
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
+
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
+
+	function nameField.Event:TextfieldChange()
+		saveButton:SetEnabled(self:GetText() ~= "")
+	end
+	
+	function statSelector.Event:SelectionChanged()
+		RecalcStats()
+	end
+	
+	function filterFrame.Event:Size()
+		ResetHeight()
+	end
+	
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".StatisticalPriceModel", frame)
+	end
+
+	function frame:SetData(modelInfo, onSave)
+		nameField:SetText(modelInfo.name or "")
+		local usage = modelInfo.usage
+		if allStats[usage.id] then
+			statSelector:SetSelectedKey(usage.id)
+			statFrames[usage.id]:SetExtra(usage.extra)
+		end
+		filterFrame:SetFilterConfig(modelInfo.usage.filters)
+		matcherFrame:SetMatcherConfig(modelInfo.matchers)
+		wasEnabled = modelInfo.enabled
+
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".StatisticalPriceModel", frame)
+		end
+	end
+	
+	RecalcStats()
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".StatisticalPriceModel", StatisticalPriceModelPopup)
+
+local function ComplexPriceModelPopup(parent)
+	local frame = Yague.Popup(parent:GetName() .. ".ComplexPriceModelPopup", parent)
+	
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	
+	local complexSelector = Dropdown(frame:GetName() .. ".ComplexSelector", frame:GetContent())
+	
+	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
+	
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	
+	local wasEnabled = false
+	
+	local function GetModelInfo()
+		local name = nameField:GetText()
+		local complexID = complexSelector:GetSelectedValue()
+		local matchers = matcherFrame:GetMatcherConfig()
+		
+		return { name = name, modelType = "complex", usage = complexID, matchers = matchers, enabled = wasEnabled, original = false, own = true }
+	end
+	
+	local function ResetHeight()
+		frame:SetHeight(cancelButton:GetBottom() + 15 - frame:GetTop())
+	end
+	
+	frame:SetWidth(800)
+	
+	nameLabel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 25, 15)
+	nameLabel:SetFontSize(14)
+	nameLabel:SetFontColor(1, 1, 0.75, 1)
+	nameLabel:SetShadowOffset(2, 2)
+	nameLabel:SetText("Name:") -- LOCALIZE
+	
+	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
+	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
+	namePanel:SetInvertedBorder(true)
+	namePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	
+	nameField:SetPoint("CENTERLEFT", namePanel:GetContent(), "CENTERLEFT", 2, 1)
+	nameField:SetPoint("CENTERRIGHT", namePanel:GetContent(), "CENTERRIGHT", -2, 1)
+	nameField:SetText("")
+	
+	complexSelector:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 15, 50)
+	complexSelector:SetPoint("BOTTOMRIGHT", frame:GetContent(), "TOPRIGHT", -15, 80)
+	complexSelector:SetTextSelector("displayName")
+	complexSelector:SetOrderSelector("displayName")
+	local allComplex = GetPriceComplex()
+	local complex = {}
+	for complexID, complexName in pairs(allComplex) do
+		complex[complexID] = { displayName = complexName }
+	end
+	complexSelector:SetValues(complex)
+	
+	matcherFrame:SetPoint("TOPLEFT", complexSelector, "BOTTOMLEFT", 0, 10)
+	matcherFrame:SetPoint("TOPRIGHT", complexSelector, "BOTTOMRIGHT", 0, 10)
+	
+	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
+	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetEnabled(false)
+	
+	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
+	cancelButton:SetText("Cancel") -- LOCALIZE
+	
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
+
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
+
+	function nameField.Event:TextfieldChange()
+		saveButton:SetEnabled(self:GetText() ~= "" and (complexSelector:GetSelectedValue()) ~= nil)
+	end
+	
+	function complexSelector.Event:SelectionChanged()
+		saveButton:SetEnabled(nameField:GetText() ~= "" and (self:GetSelectedValue()) ~= nil)
+	end
+	
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".ComplexPriceModel", frame)
+	end
+
+	function frame:SetData(modelInfo, onSave)
+		nameField:SetText(modelInfo.name or "")
+		local usage = modelInfo.usage
+		complexSelector:SetSelectedKey(usage)
+		matcherFrame:SetMatcherConfig(modelInfo.matchers)
+		wasEnabled = modelInfo.enabled
+
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".ComplexPriceModel", frame)
+		end
+	end
+	
+	ResetHeight()
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".ComplexPriceModel", ComplexPriceModelPopup)
+
+local function CompositePriceModelPopup(parent)
+	local frame = Yague.Popup(parent:GetName() .. ".CompositePriceModelPopup", parent)
+	
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+
+	local startAnchor = UICreateFrame("Frame", frame:GetName() .. ".StartAnchor", frame:GetContent())
+	local endAnchor = UICreateFrame("Frame", frame:GetName() .. ".EndAnchor", frame:GetContent())
+	local addButton = UICreateFrame("RiftButton", frame:GetName() .. ".AddButton", frame:GetContent())	
+	local modelSelector = Dropdown(frame:GetName() .. ".ModelSelector", frame:GetContent())
+	
+	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
+	
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	
+	local wasEnabled = false
+	
+	local availableModels = {}
+	local usedModels = {}
+	local modelFrames = {}
+	
+	local function GetModelInfo()
+		local name = nameField:GetText()
+		local usage = { }
+		for _, modelID in ipairs(usedModels) do
+			local modelFrame = modelFrames[modelID]
+			usage[modelID] = modelFrame:GetValue()
+		end
+		local matchers = matcherFrame:GetMatcherConfig()
+		
+		return { name = name, modelType = "composite", usage = usage, matchers = matchers, enabled = wasEnabled, original = false, own = true }
+	end
+	
+	local function ResetHeight()
+		frame:SetHeight(cancelButton:GetBottom() + 15 - frame:GetTop())
+	end
+	
+	local function RecalcModels()
+		local lastModel = startAnchor
+		
+		local exclude = {}
+		for _, modelID in ipairs(usedModels) do
+			local modelFrame = modelFrames[modelID]
+			
+			modelFrame:SetPoint("TOPLEFT", lastModel, "BOTTOMLEFT", 0, 10)
+			modelFrame:SetPoint("TOPRIGHT", lastModel, "BOTTOMRIGHT", 0, 10)
+			modelFrame:SetVisible(true)
+			
+			lastModel = modelFrame
+			exclude[modelID] = true
+		end
+		
+		local unusedModels = {}
+		for modelID, modelName in pairs(availableModels) do
+			if not exclude[modelID] then
+				unusedModels[modelID] = { displayName = modelName, }
+				modelFrames[modelID]:SetVisible(false)
+			end
+		end
+
+		if next(unusedModels) then
+			addButton:ClearAll()
+			addButton:SetPoint("TOPRIGHT", lastModel, "BOTTOMRIGHT", 5, 10)
+			addButton:SetVisible(true)
+		
+			modelSelector:ClearAll()
+			modelSelector:SetPoint("TOPLEFT", lastModel, "BOTTOMLEFT", 0, 12)
+			modelSelector:SetPoint("CENTERRIGHT", addButton, "CENTERLEFT", -5, 0)
+			modelSelector:SetValues(unusedModels)
+			modelSelector:SetVisible(true)
+			
+			endAnchor:ClearAll()
+			endAnchor:SetPoint("TOPLEFT", modelSelector, "BOTTOMLEFT")
+			endAnchor:SetPoint("BOTTOMRIGHT", addButton, "BOTTOMRIGHT")
+		else
+			addButton:SetVisible(false)
+			modelSelector:SetVisible(false)
+			
+			endAnchor:ClearAll()
+			endAnchor:SetPoint("TOPLEFT", lastModel, "BOTTOMLEFT")
+			endAnchor:SetPoint("BOTTOMRIGHT", lastModel, "BOTTOMRIGHT")
+		end
+
+		saveButton:SetEnabled(nameField:GetText() ~= "" and #usedModels > 0)
+		
+		ResetHeight()
+	end
+	
+	local function DropModel(modelID)
+		local newUsedModels = {}
+		
+		for _, id in ipairs(usedModels) do
+			if id ~= modelID then
+				TInsert(newUsedModels, id)
+			end
+		end
+
+		usedModels = newUsedModels
+		
+		RecalcModels()	
+	end
+	
+	local function SetModels(models)
+		availableModels = {}
+		usedModels = {}
+		
+		for modelID, modelInfo in pairs(models) do
+			availableModels[modelID] = modelInfo.name
+			if not modelFrames[modelID] then
+				modelFrames[modelID] = BuildModelFrame(frame:GetName() .. ".Models." .. modelID, frame:GetContent(), modelID, modelInfo.name, DropModel)
+			end
+		end
+		
+		for modelID, modelFrame in pairs(modelFrames) do
+			modelFrame:SetVisible(false)
+			modelFrame:SetModelName(availableModels[modelID])
+			modelFrame:SetValue(1)
+		end
+	end
+
+	frame:SetWidth(800)
+	
+	nameLabel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 25, 15)
+	nameLabel:SetFontSize(14)
+	nameLabel:SetFontColor(1, 1, 0.75, 1)
+	nameLabel:SetShadowOffset(2, 2)
+	nameLabel:SetText("Name:") -- LOCALIZE
+	
+	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
+	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
+	namePanel:SetInvertedBorder(true)
+	namePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	
+	nameField:SetPoint("CENTERLEFT", namePanel:GetContent(), "CENTERLEFT", 2, 1)
+	nameField:SetPoint("CENTERRIGHT", namePanel:GetContent(), "CENTERRIGHT", -2, 1)
+	nameField:SetText("")
+	
+	startAnchor:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 15, 50)
+	startAnchor:SetPoint("BOTTOMRIGHT", frame:GetContent(), "TOPRIGHT", -15, 50)
+	startAnchor:SetVisible(false)
+	
+	endAnchor:SetVisible(false)
+	
+	addButton:SetText("Add") -- LOCALIZE
+	
+	modelSelector:SetTextSelector("displayName")
+	modelSelector:SetOrderSelector("displayName")
+	
+	matcherFrame:SetPoint("TOPLEFT", endAnchor, "BOTTOMLEFT", 0, 10)
+	matcherFrame:SetPoint("TOPRIGHT", endAnchor, "BOTTOMRIGHT", 0, 10)
+	
+	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
+	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetEnabled(false)
+	
+	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
+	cancelButton:SetText("Cancel") -- LOCALIZE
+	
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
+
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
+
+	function nameField.Event:TextfieldChange()
+		saveButton:SetEnabled(self:GetText() ~= "" and #usedModels > 0)
+	end
+	
+	function addButton.Event:LeftPress()
+		local modelID = modelSelector:GetSelectedValue()
+		TInsert(usedModels, modelID)
+		RecalcModels()
+	end
+	
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".CompositePriceModel", frame)
+	end
+
+	function frame:SetData(models, modelInfo, onSave)
+		SetModels(models)
+
+		nameField:SetText(modelInfo.name or "")
+		local usage = modelInfo.usage
+		for modelID, modelValue in pairs(usage) do
+			if availableModels[modelID] then
+				TInsert(usedModels, modelID)
+				local modelFrame = modelFrames[modelID]
+				modelFrame:SetValue(modelValue)
+			end
+		end
+		RecalcModels()
+
+		matcherFrame:SetMatcherConfig(modelInfo.matchers)
+		wasEnabled = modelInfo.enabled
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".CompositePriceModel", frame)
+		end
+	end
+	
+	RecalcModels()
+	
+	return frame
+end
+RegisterPopupConstructor(addonID .. ".CompositePriceModel", CompositePriceModelPopup)
 
 local function GeneralSettings(parent)
 	local frame = UICreateFrame("Frame", parent:GetName() .. ".GeneralSettings", parent)
@@ -727,13 +1924,6 @@ local function PriceSettings(parent)
 		})
 	local postSelector, postControls = BuildConfigFrame(postFrame:GetName() .. ".StackSelector", postFrame,
 		{
-			-- matchPrices =
-			-- {
-				-- name = L["ConfigPost/ApplyMatching"], -- TODO Move to ConfigPrice
-				-- nameFontSize = 14,
-				-- value = "boolean",
-				-- defaultValue = false,
-			-- },
 			duration =
 			{
 				name = L["ConfigPost/DefaultDuration"], -- TODO Remove colon / Move to ConfigPrice
@@ -762,6 +1952,21 @@ local function PriceSettings(parent)
 	local currentCategory = topControls.category:GetSelectedValue()
 	local currentDefaultModel = nil
 	local currentFallbackModel = nil
+	local modelDeleted = false
+
+	local function CheckInheritEnabled()
+		local enable = currentCategory ~= BASE_CATEGORY
+		
+		local models = priceGrid:GetData()
+		for modelID, modelInfo in pairs(models) do
+			if modelInfo.own then
+				enable = false
+				break
+			end
+		end
+		
+		topControls.inheritance:SetEnabled(enable)
+	end
 	
 	local function GetSavedSettings(category)
 		return category and InternalInterface.AccountSettings.Posting.CategoryConfig[category] or nil
@@ -769,6 +1974,28 @@ local function PriceSettings(parent)
 	
 	local function SetSavedSettings(category, settings)
 		InternalInterface.AccountSettings.Posting.CategoryConfig[category] = settings
+		
+		if settings then
+			local preserve = {}
+			local new = {}
+
+			local models = priceGrid:GetData()
+			for modelID, modelInfo in pairs(models) do
+				if modelInfo.own then
+					if modelInfo.original then
+						preserve[modelID] = true
+					else
+						new[modelID] = { name = modelInfo.name, modelType = modelInfo.modelType, usage = modelInfo.usage, matchers = modelInfo.matchers }
+						modelInfo.original = true
+					end
+				end
+			end
+			SaveCategoryModels(category, preserve, new)
+			modelDeleted = false
+			priceGrid:RefreshFilter()
+		else
+			ClearCategoryModels(category)
+		end
 	end
 	
 	local function GetEditSettings()
@@ -813,7 +2040,8 @@ local function PriceSettings(parent)
 			modelInfo.enabled = not blackList[model]
 			modelInfo.original = true
 		end
-		priceGrid:SetData(models)
+		modelDeleted = false
+		priceGrid:SetData(models, nil, CheckInheritEnabled)
 	end
 	
 	local function CompareSettings(settings1, settings2)
@@ -843,7 +2071,56 @@ local function PriceSettings(parent)
 			if not modelInfo.original then return false end
 		end
 		
+		if modelDeleted then return false end
+		
 		return true
+	end
+	
+	local function OpenEditor(manager, modelID, modelType, modelInfo, onSave)
+		if modelType == "simple" then
+			manager:ShowPopup(addonID .. ".SimplePriceModel", modelInfo, onSave)
+		elseif modelType == "statistical" then
+			manager:ShowPopup(addonID .. ".StatisticalPriceModel", modelInfo, onSave)
+		elseif modelType == "complex" then
+			manager:ShowPopup(addonID .. ".ComplexPriceModel", modelInfo, onSave)
+		elseif modelType == "composite" then
+			local allModels = priceGrid:GetData()
+			local availableModels = {}
+			for id, info in pairs(allModels) do
+				if id ~= modelID and (info.modelType ~= "composite" or not info.usage[modelID]) then
+					availableModels[id] = { name = info.name }
+				end
+			end
+			manager:ShowPopup(addonID .. ".CompositePriceModel", availableModels, modelInfo, onSave)
+		end
+	end
+	
+	local function UpdateButtons()
+		local modelID, modelInfo = priceGrid:GetSelectedData()
+		
+		editButton:SetEnabled(modelInfo and modelInfo.own and true or false)
+		
+		local deleteable = modelInfo and modelInfo.own and modelID:sub(1, 3) == "bah" and true or false
+		deleteable = deleteable and modelID ~= currentDefaultModel and modelID ~= currentFallbackModel
+		if deleteable then
+			local allCategories = CList()
+			for category in pairs(allCategories) do
+				if category ~= currentCategory then
+					local categoryConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[category] or {}
+					if modelID == categoryConfig.DefaultReferencePrice or modelID == categoryConfig.FallbackReferencePrice then
+						deleteable = false
+						break
+					end
+				end
+			end
+		end
+		deleteButton:SetEnabled(deleteable)
+	end
+	
+	local function ModifyModel(modelID, modelInfo)
+		local allModels = priceGrid:GetData()
+		allModels[modelID] = modelInfo
+		priceGrid:SetData(allModels, nil, CheckInheritEnabled)
 	end
 	
 	local function IsOriginal(value, key)
@@ -871,22 +2148,22 @@ local function PriceSettings(parent)
 	
 	local function DefaultInteract(key)
 		currentDefaultModel = key
+		UpdateButtons()
 		priceGrid:RefreshFilter()
 	end
 	
 	local function FallbackInteract(key)
 		currentFallbackModel = key
+		UpdateButtons()
 		priceGrid:RefreshFilter()
 	end
-	
+
 	saveButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 25)
 	saveButton:SetText("Save") -- LOCALIZE
 	
 	topSelector:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 5)
 	topSelector:SetPoint("RIGHT", saveButton, "LEFT")
 
-	topControls.inheritance:SetEnabled(false)
-	
 	postFrame:SetPoint("TOPLEFT", topSelector, "BOTTOMLEFT", 0, 20)
 	postFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, -5)
 	
@@ -933,7 +2210,6 @@ local function PriceSettings(parent)
 
 	newButton:SetPoint("CENTERRIGHT", editButton, "CENTERLEFT", 10, 0)
 	newButton:SetText("New") -- LOCALIZE
-	newButton:SetEnabled(false)	-- FIXME Remove this line
 	
 	matchPanel:SetPoint("BOTTOMLEFT", controlFrame, "BOTTOMLEFT", 0, -2)
 	matchPanel:SetPoint("TOPRIGHT", newButton, "TOPLEFT", -3, 2)
@@ -945,9 +2221,7 @@ local function PriceSettings(parent)
 	matchText:SetPoint("CENTERLEFT", matchCheck, "CENTERRIGHT", 5, 0)	
 	matchText:SetText("Apply matching rules for unconfigured items") -- LOCALIZE
 	
-	for controlName, control in pairs(topControls) do
-		control:SetLayer(9999)
-	end
+	topSelector:SetLayer(9999)
 	
 	if currentCategory ~= BASE_CATEGORY then
 		currentCategory = BASE_CATEGORY
@@ -968,7 +2242,7 @@ local function PriceSettings(parent)
 					end
 				end
 				SetEditSettings(settings, category ~= currentCategory)
-				topControls.inheritance:SetEnabled(currentCategory ~= BASE_CATEGORY)
+				CheckInheritEnabled()
 			end
 			
 			local function CancelChange()
@@ -993,16 +2267,46 @@ local function PriceSettings(parent)
 	function saveButton.Event:LeftPress()
 		SetSavedSettings(currentCategory, GetEditSettings())
 	end
---[[	
-	function priceGrid.Event:SelectionChanged(modelID, modelInfo)
-		editButton:SetEnabled(modelInfo and modelInfo.own and true or false)
-		
-		local deleteable = modelInfo and modelInfo.own and modelID:sub(1, 3) == "bah" and true or false
-		deleteable = deleteable and modelID ~= currentDefaultModel and modelID ~= currentFallbackModel
-		 -- TODO Check deleteable in children categories
-		deleteButton:SetEnabled(deleteable)
+
+	function priceGrid.Event:SelectionChanged()
+		UpdateButtons()
 	end
-]]	
+	
+	function newButton.Event:LeftPress()
+		local manager = GetPopupManager()
+		if manager then
+			local modelID = "bah" .. OsTime()
+			local onSave = function(info) ModifyModel(modelID, info) end
+			local modelInfo = { id = modelID, name = "", matchers = {}, enabled = true, original = false, own = true }
+			manager:ShowPopup(addonID .. ".NewModel", 
+				function(modelType)
+					modelInfo.modelType = modelType
+					modelInfo.usage = modelType == "complex" and "" or {}
+					OpenEditor(manager, modelID, modelType, modelInfo, onSave) 
+				end)
+		end
+	end
+	
+	function editButton.Event:LeftPress()
+		local manager = GetPopupManager()
+		local modelID, modelInfo = priceGrid:GetSelectedData()
+		if manager and modelID and modelInfo then
+			local modelType = modelInfo.modelType
+			local onSave = function(info) ModifyModel(modelID, info) end
+			OpenEditor(manager, modelID, modelType, modelInfo, onSave)
+		end
+	end
+	
+	function deleteButton.Event:LeftPress()
+		local modelID = priceGrid:GetSelectedData()
+		if modelID then
+			local allModels = priceGrid:GetData()
+			allModels[modelID] = nil
+			priceGrid:SetData(allModels, nil, CheckInheritEnabled)
+			modelDeleted = true
+		end
+	end
+
 	return frame
 end
 
