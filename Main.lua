@@ -49,7 +49,8 @@ local function InitializeLayout()
 	local statusPanel = Panel(addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
 	local statusText = UICreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
 
-	local refreshButton = UICreateFrame("Texture", addonID .. ".UI.MainWindow.RefreshButton", mainWindow:GetContent())
+	local refreshPanel = Panel(mainWindow:GetName() .. ".RefreshPanel", mainWindow:GetContent())
+	local refreshText = Yague.ShadowedText(mainWindow:GetName() .. ".RefreshText", refreshPanel:GetContent())
 	
 	local refreshEnabled = false
 
@@ -79,17 +80,21 @@ local function InitializeLayout()
 	
 	mapContext:SetStrata("hud")
 
-	mapIcon:SetPoint("CENTER", UNMapMini, "BOTTOMLEFT", 24, -25)
 	mapIcon:SetTextureAsync(addonID, "Textures/MapIcon.png")
-	mapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon or false)
 	InternalInterface.UI.MapIcon = mapIcon
+	if MINIMAPDOCKER then
+		MINIMAPDOCKER.Register(addonID, mapIcon)
+	else
+		mapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon or false)
+		mapIcon:SetPoint("CENTER", UNMapMini, "BOTTOMLEFT", 24, -25)
+	end
 	
 	mainWindow:SetVisible(false)
 	mainWindow:SetMinWidth(MIN_WIDTH)
 	mainWindow:SetMinHeight(MIN_HEIGHT)
 	mainWindow:SetWidth(DEFAULT_WIDTH)
 	mainWindow:SetHeight(DEFAULT_HEIGHT)
-	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0) -- TODO Get from config
+	mainWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 	mainWindow:SetTitle(addonID)
 	mainWindow:SetAlpha(1)
 	mainWindow:SetCloseable(true)
@@ -108,7 +113,7 @@ local function InitializeLayout()
 	mainTab:AddTab("config", L["Main/MenuConfig"], configFrame)
 	
 	queueManager:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
-	queueManager:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -125, -35)
+	queueManager:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -155, -35)
 
 	statusPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMLEFT", 5, -35)
 	statusPanel:SetPoint("BOTTOMRIGHT", queueManager, "BOTTOMLEFT", -5, 0)
@@ -117,9 +122,17 @@ local function InitializeLayout()
 	statusText:SetPoint("CENTERLEFT", statusPanel:GetContent(), "CENTERLEFT", 5, 0)
 	statusText:SetPoint("CENTERRIGHT", statusPanel:GetContent(), "CENTERRIGHT", -5, 0)
 	
-	refreshButton:SetTextureAsync(addonID, "Textures/RefreshDisabled.png")
-	refreshButton:SetPoint("TOPRIGHT", mainWindow:GetContent(), "TOPRIGHT", -20, 5)
-	refreshButton:SetPoint("BOTTOMLEFT", mainWindow:GetContent(), "TOPRIGHT", -56, 41)
+	refreshPanel:SetPoint("TOPRIGHT", mainTab, "TOPRIGHT", -20, 0)
+	refreshPanel:SetBottomBorderVisible(false)
+	refreshPanel:SetHeight(44)
+
+	refreshText:SetPoint("CENTER", refreshPanel:GetContent(), "CENTER")
+	refreshText:SetFontSize(16)
+	refreshText:SetFontColor(0.5, 0.5, 0.5)
+	refreshText:SetShadowOffset(2, 2)
+	refreshText:SetText(L["Main/MenuFullScan"])
+	
+	refreshPanel:SetWidth(refreshText:GetWidth() + 60)
 
 	function UNMapMini.Event:Layer()
 		mapContext:SetLayer(UNMapMini:GetLayer() + 1)
@@ -153,27 +166,27 @@ local function InitializeLayout()
 		HideSelectedFrame(oldFrame)
 	end
 	
-	function refreshButton.Event:MouseIn()
-		self:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshOn.png" or "Textures/RefreshDisabled.png")
+	function refreshPanel.Event:MouseIn()
+		refreshText:SetFontSize(refreshEnabled and 18 or 16)
 	end
 	
-	function refreshButton.Event:MouseOut()
-		self:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
+	function refreshPanel.Event:MouseOut()
+		refreshText:SetFontSize(16)
 	end
 	
-	function refreshButton.Event:LeftClick()
+	function refreshPanel.Event:LeftClick()
 		if not refreshEnabled then return end
 		if not pcall(CAScan, { type = "search", sort = "time", sortOrder = "descending" }) then
 			Write(L["Main/FullScanError"])
 		else
 			Write(L["Main/FullScanStarted"])
-		end
-	end	
+		end	
+	end
 	
 	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
 			refreshEnabled = state
-			refreshButton:SetTextureAsync(addonID, state and "Textures/RefreshOff.png" or "Textures/RefreshDisabled.png")
+			refreshText:SetFontColor(0.5, refreshEnabled and 1 or 0.5, 0.5)
 		end
 	end
 	TInsert(Event.Interaction, { OnInteractionChanged, addonID, addonID .. ".OnInteractionChanged" })
@@ -205,6 +218,20 @@ local function InitializeLayout()
 	end
 	InternalInterface.Output.SetOutputFunction(StatusBarOutput)
 	InternalInterface.Output.SetPopupManager(popupManager)
+	
+	local IMHOBAGS = Inspect.Addon.Detail("ImhoBags")
+	if IMHOBAGS and IMHOBAGS.toc and IMHOBAGS.toc.publicAPI == 1 then
+		local function OnImhoBagsRightClick(params)
+			if not params.cancel and mainWindow:GetVisible() then
+				local tabFrame = mainTab:GetSelectedFrame()
+				if tabFrame and tabFrame.ItemRightClick then
+					params.cancel = tabFrame:ItemRightClick(params) and true or false
+				end
+			end			
+		end	
+		TInsert(ImhoBags.Event.Item.Standard.Right, { OnImhoBagsRightClick, addonID, "PostingFrame.OnImhoBagsRightClick" })
+	end
+
 end
 
 local function OnAddonLoaded(addonId)

@@ -8,10 +8,40 @@ Name =
 NameShort = "BananAH"
 Description =
 {
-	English = "Auction house addon for RIFT.\n\n* Work in progress *\n\nPosting features:\n - Auto splitting of item stacks\n - Auto posting\n - Undercut on right click\n - Posting queue management\n\nOwn auctions tracking features:\n - Tracks all your characters' auctions\n - Shows competition for your auctions\n - Fast auction cancel\n\n**Use /bah or /bananah to show the window.**\n\nMore features will come soon!\n\nWebsite: http://www.bananah.net",
+	English = [[
+Auction house addon for RIFT.
+
+* Work in progress *
+
+Searching features:
+ - Extended search options: Find the best bargains
+ - Offline search: Search auctions everywhere
+
+Posting features:
+ - Batch posting: Configure your auctions once and post them with a single click
+ - Auto stack splitting: Don't lose time doing it yourself
+ 
+Own auctions tracking features:
+ - Tracks all your characters' auctions
+ - Shows competition for your auctions
+
+Other features:
+ - Powerful price calculation & matching features: Will suggest you the most profitable prices
+ - Extendable: Create your own auction searchers & price models
+ 
+Integration with other AddOns:
+ - ImhoBags
+ - Docker
+ - Shares auction data with any PGC-based addon
+ 
+**Use /bah or /bananah to show the window.**
+
+Website: http://www.bananah.net
+]],
+ 
 }
 Author = "Baanano"
-Version = "0.4.1 r69"
+Version = "0.4.4 RC1"
 Email = "baanano.rift@gmail.com"
 Website = "http://www.bananah.net/"
 Environment = "1.11"
@@ -25,6 +55,7 @@ Dependencies =
 	Yague = {"required", "before"},
 	LibPGCEx = {"required", "before"},
 	ImhoBags = { "optional", "before" },
+	Docker = {"optional", "before"},
 }
 SavedVariables =
 {
@@ -47,6 +78,7 @@ RunOnStartup =
 	"Misc/Categories.lua",
 	"PGCConfig.lua",
 	"PGCExtensions.lua",
+	"Helper.lua",
 	"CustomCellTypes.lua",
 	"ConfigFactory.lua",
 	"ItemAuctionsGrid.lua",

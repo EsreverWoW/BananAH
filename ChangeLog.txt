@@ -1,3 +1,23 @@
+	Beta 0.4.4 RC1
+- If the posting queue gets jammed, the number will turn red and it'll start shuffling items to try to unblock itself
+- Changes in the Post Tab 
+ + Posting parameters will only save on demand (either by clicking on Post or the lightning icon in the right side). This reverts the "seen" behavior from now on, but old items could need a Reset.
+ + Reset now also clears the auto posting flag
+ + Bid & Buyout price selectors in the Post tab will turn red when the price is below vendor price
+ + Reduced flickering
+- Reworked Auto Posting:
+ + Auto posting will be deactivated upon item selection if the reference price isn't available
+ + Auto posting will be deactivated if any parameter is changed in the Post Tab
+ + Activating auto posting through the lightning icon in the right side of the Post Tab will use the item parameters
+ + Activating auto posting through the lightning icon in the item list will use the default parameters (as if clicking Reset before the lightning icon)
+ + Right click on the lightning icon no longer starts autoposting. Use the new lightning icon in the Queue Manager (bottom right corner) instead
+- New config options: 
+ + Added option to pause the posting queue when autoposting
+ + Added option to set the amount to undercut on right click
+- Integration with other AddOns:
+ + ImhoBags: Right clicking on items can now interact with the Search, Post and Selling tabs. Care: if you're on other tab or the BananAH window is closed, the item will be used as usual.
+ + Docker: If Docker is installed, the MiniMap button will be added to it.
+
 	r69
 - Added Price model editor
 - Fixed bug that prevented the "Min profit" matcher to be applied

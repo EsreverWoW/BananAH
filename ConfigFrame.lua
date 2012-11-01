@@ -33,6 +33,7 @@ local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local L = InternalInterface.Localization.L
 local MMax = math.max
 local MMin = math.min
+local MoneySelector = Yague.MoneySelector
 local OsTime = os.time
 local Panel = Yague.Panel
 local RegisterPopupConstructor = Yague.RegisterPopupConstructor
@@ -102,16 +103,16 @@ local function UnsavedChangesPopup(parent)
 	titleText:SetFontSize(14)
 	titleText:SetFontColor(1, 1, 0.75, 1)
 	titleText:SetShadowOffset(2, 2)
-	titleText:SetText("WARNING") -- LOCALIZE
+	titleText:SetText(L["UnsavedChangesPopup/Title"])
 	
 	contentText:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 10, 40)
-	contentText:SetText("You have unsaved changes, if you continue they'll be lost.") -- LOCALIZE
+	contentText:SetText(L["UnsavedChangesPopup/ContentText"])
 	
 	continueButton:SetPoint("BOTTOMRIGHT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
-	continueButton:SetText("Continue") -- LOCALIZE
+	continueButton:SetText(L["UnsavedChangesPopup/ButtonContinue"])
 	
 	cancelButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
-	cancelButton:SetText("Cancel") -- LOCALIZE
+	cancelButton:SetText(L["UnsavedChangesPopup/ButtonCancel"])
 	
 	function frame:SetData(onContinue, onCancel)
 		function continueButton.Event:LeftPress()
@@ -145,27 +146,27 @@ local function NewModelPopup(parent)
 	titleText:SetFontSize(14)
 	titleText:SetFontColor(1, 1, 0.75, 1)
 	titleText:SetShadowOffset(2, 2)
-	titleText:SetText("NEW MODEL") -- LOCALIZE
+	titleText:SetText(L["NewModelPopup/Title"])
 	
 	contentText:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 10, 40)
-	contentText:SetText("Model Type:") -- LOCALIZE
+	contentText:SetText(L["NewModelPopup/ModelType"])
 	
 	modelTypeSelector:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -10, 35)
 	modelTypeSelector:SetPoint("CENTERLEFT", contentText, "CENTERRIGHT", 10, 0)
 	modelTypeSelector:SetTextSelector("displayName")
 	modelTypeSelector:SetOrderSelector("order")
 	modelTypeSelector:SetValues({
-		["simple"] = { displayName = "Simple", order = 1 }, -- LOCALIZE
-		["statistical"] = { displayName = "Statistical", order = 2 }, -- LOCALIZE
-		["complex"] = { displayName = "Complex", order = 3 }, -- LOCALIZE
-		["composite"] = { displayName = "Composite", order = 4 }, -- LOCALIZE
+		["simple"] = { displayName = L["General/ModelTypeSimple"], order = 1 },
+		["statistical"] = { displayName = L["General/ModelTypeStatistical"], order = 2 },
+		["complex"] = { displayName = L["General/ModelTypeComplex"], order = 3 },
+		["composite"] = { displayName = L["General/ModelTypeComposite"], order = 4 },
 	})
 	
 	continueButton:SetPoint("BOTTOMRIGHT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
-	continueButton:SetText("Continue") -- LOCALIZE
+	continueButton:SetText(L["NewModelPopup/ButtonContinue"])
 	
 	cancelButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
-	cancelButton:SetText("Cancel") -- LOCALIZE
+	cancelButton:SetText(L["NewModelPopup/ButtonCancel"])
 	
 	function cancelButton.Event:LeftPress()
 		parent:HidePopup(addonID .. ".NewModel", frame)
@@ -356,11 +357,13 @@ local function BuildMatchersFrame(name, parent)
 		end
 	end
 	
+	frame:SetLayer(9800)
+	
 	titleLabel:SetPoint("TOPCENTER", frame, "TOPCENTER")
 	titleLabel:SetFontSize(15)
 	titleLabel:SetFontColor(1, 1, 0.75, 1)
 	titleLabel:SetShadowOffset(2, 2)
-	titleLabel:SetText("Price Matchers") -- LOCALIZE
+	titleLabel:SetText(L["MatcherPopupFrame/Title"])
 	
 	startAnchor:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 20)
 	startAnchor:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, 20)
@@ -368,7 +371,7 @@ local function BuildMatchersFrame(name, parent)
 	
 	endAnchor:SetVisible(false)
 	
-	matcherButton:SetText("Add") -- LOCALIZE
+	matcherButton:SetText(L["MatcherPopupFrame/ButtonAdd"])
 	
 	matcherSelector:SetTextSelector("displayName")
 	matcherSelector:SetOrderSelector("displayName")
@@ -586,11 +589,13 @@ local function BuildFiltersFrame(name, parent)
 		end
 	end
 	
+	frame:SetLayer(9900)
+	
 	titleLabel:SetPoint("TOPCENTER", frame, "TOPCENTER")
 	titleLabel:SetFontSize(15)
 	titleLabel:SetFontColor(1, 1, 0.75, 1)
 	titleLabel:SetShadowOffset(2, 2)
-	titleLabel:SetText("Filters") -- LOCALIZE
+	titleLabel:SetText(L["FilterPopupFrame/Title"])
 	
 	startAnchor:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 20)
 	startAnchor:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, 20)
@@ -598,7 +603,7 @@ local function BuildFiltersFrame(name, parent)
 	
 	endAnchor:SetVisible(false)
 	
-	filterButton:SetText("Add") -- LOCALIZE
+	filterButton:SetText(L["FilterPopupFrame/ButtonAdd"])
 	
 	filterSelector:SetTextSelector("displayName")
 	filterSelector:SetOrderSelector("displayName")
@@ -741,13 +746,17 @@ local function SimplePriceModelPopup(parent)
 		ResetHeight()
 	end
 	
+	local function ResetSaveButton()
+		saveButton:SetEnabled(nameField:GetText() ~= "")
+	end
+	
 	frame:SetWidth(800)
 	
 	nameLabel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 25, 15)
 	nameLabel:SetFontSize(14)
 	nameLabel:SetFontColor(1, 1, 0.75, 1)
 	nameLabel:SetShadowOffset(2, 2)
-	nameLabel:SetText("Name:") -- LOCALIZE
+	nameLabel:SetText(L["SimpleModelPopup/Name"])
 	
 	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
 	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
@@ -771,11 +780,11 @@ local function SimplePriceModelPopup(parent)
 	matcherFrame:SetPoint("TOPRIGHT", usageFrame, "BOTTOMRIGHT", 0, 10)
 	
 	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
-	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetText(L["SimpleModelPopup/ButtonSave"])
 	saveButton:SetEnabled(false)
 	
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
-	cancelButton:SetText("Cancel") -- LOCALIZE
+	cancelButton:SetText(L["SimpleModelPopup/ButtonCancel"])
 	
 	function namePanel.Event:LeftClick()
 		nameField:SetKeyFocus(true)
@@ -789,7 +798,7 @@ local function SimplePriceModelPopup(parent)
 	end
 
 	function nameField.Event:TextfieldChange()
-		saveButton:SetEnabled(self:GetText() ~= "")
+		ResetSaveButton()
 	end
 	
 	function fallbackSelector.Event:SelectionChanged()
@@ -818,6 +827,8 @@ local function SimplePriceModelPopup(parent)
 			onSave(GetModelInfo())
 			parent:HidePopup(addonID .. ".SimplePriceModel", frame)
 		end
+		
+		ResetSaveButton()
 	end
 	
 	RecalcFallbacks()
@@ -888,13 +899,17 @@ local function StatisticalPriceModelPopup(parent)
 		ResetHeight()
 	end
 	
+	local function ResetSaveButton()
+		saveButton:SetEnabled(nameField:GetText() ~= "")
+	end
+	
 	frame:SetWidth(800)
 	
 	nameLabel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 25, 15)
 	nameLabel:SetFontSize(14)
 	nameLabel:SetFontColor(1, 1, 0.75, 1)
 	nameLabel:SetShadowOffset(2, 2)
-	nameLabel:SetText("Name:") -- LOCALIZE
+	nameLabel:SetText(L["StatisticalModelPopup/Name"])
 	
 	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
 	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
@@ -921,11 +936,11 @@ local function StatisticalPriceModelPopup(parent)
 	matcherFrame:SetPoint("TOPRIGHT", filterFrame, "BOTTOMRIGHT", 0, 10)
 	
 	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
-	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetText(L["StatisticalModelPopup/ButtonSave"])
 	saveButton:SetEnabled(false)
 	
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
-	cancelButton:SetText("Cancel") -- LOCALIZE
+	cancelButton:SetText(L["StatisticalModelPopup/ButtonCancel"])
 	
 	function namePanel.Event:LeftClick()
 		nameField:SetKeyFocus(true)
@@ -939,7 +954,7 @@ local function StatisticalPriceModelPopup(parent)
 	end
 
 	function nameField.Event:TextfieldChange()
-		saveButton:SetEnabled(self:GetText() ~= "")
+		ResetSaveButton()
 	end
 	
 	function statSelector.Event:SelectionChanged()
@@ -973,6 +988,8 @@ local function StatisticalPriceModelPopup(parent)
 			onSave(GetModelInfo())
 			parent:HidePopup(addonID .. ".StatisticalPriceModel", frame)
 		end
+		
+		ResetSaveButton()
 	end
 	
 	RecalcStats()
@@ -1009,13 +1026,17 @@ local function ComplexPriceModelPopup(parent)
 		frame:SetHeight(cancelButton:GetBottom() + 15 - frame:GetTop())
 	end
 	
+	local function ResetSaveButton()
+		saveButton:SetEnabled(nameField:GetText() ~= "" and (complexSelector:GetSelectedValue()) ~= nil)
+	end
+	
 	frame:SetWidth(800)
 	
 	nameLabel:SetPoint("TOPLEFT", frame:GetContent(), "TOPLEFT", 25, 15)
 	nameLabel:SetFontSize(14)
 	nameLabel:SetFontColor(1, 1, 0.75, 1)
 	nameLabel:SetShadowOffset(2, 2)
-	nameLabel:SetText("Name:") -- LOCALIZE
+	nameLabel:SetText(L["ComplexModelPopup/Name"])
 	
 	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
 	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
@@ -1041,11 +1062,11 @@ local function ComplexPriceModelPopup(parent)
 	matcherFrame:SetPoint("TOPRIGHT", complexSelector, "BOTTOMRIGHT", 0, 10)
 	
 	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
-	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetText(L["ComplexModelPopup/ButtonSave"])
 	saveButton:SetEnabled(false)
 	
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
-	cancelButton:SetText("Cancel") -- LOCALIZE
+	cancelButton:SetText(L["ComplexModelPopup/ButtonCancel"])
 	
 	function namePanel.Event:LeftClick()
 		nameField:SetKeyFocus(true)
@@ -1059,11 +1080,11 @@ local function ComplexPriceModelPopup(parent)
 	end
 
 	function nameField.Event:TextfieldChange()
-		saveButton:SetEnabled(self:GetText() ~= "" and (complexSelector:GetSelectedValue()) ~= nil)
+		ResetSaveButton()
 	end
 	
 	function complexSelector.Event:SelectionChanged()
-		saveButton:SetEnabled(nameField:GetText() ~= "" and (self:GetSelectedValue()) ~= nil)
+		ResetSaveButton()
 	end
 	
 	function matcherFrame.Event:Size()
@@ -1085,6 +1106,8 @@ local function ComplexPriceModelPopup(parent)
 			onSave(GetModelInfo())
 			parent:HidePopup(addonID .. ".ComplexPriceModel", frame)
 		end
+
+		ResetSaveButton()
 	end
 	
 	ResetHeight()
@@ -1130,6 +1153,10 @@ local function CompositePriceModelPopup(parent)
 	
 	local function ResetHeight()
 		frame:SetHeight(cancelButton:GetBottom() + 15 - frame:GetTop())
+	end
+	
+	local function ResetSaveButton()
+		saveButton:SetEnabled(nameField:GetText() ~= "" and #usedModels > 0)
 	end
 	
 	local function RecalcModels()
@@ -1178,7 +1205,7 @@ local function CompositePriceModelPopup(parent)
 			endAnchor:SetPoint("BOTTOMRIGHT", lastModel, "BOTTOMRIGHT")
 		end
 
-		saveButton:SetEnabled(nameField:GetText() ~= "" and #usedModels > 0)
+		ResetSaveButton()
 		
 		ResetHeight()
 	end
@@ -1221,7 +1248,7 @@ local function CompositePriceModelPopup(parent)
 	nameLabel:SetFontSize(14)
 	nameLabel:SetFontColor(1, 1, 0.75, 1)
 	nameLabel:SetShadowOffset(2, 2)
-	nameLabel:SetText("Name:") -- LOCALIZE
+	nameLabel:SetText(L["CompositeModelPopup/Name"])
 	
 	namePanel:SetPoint("CENTERLEFT", nameLabel, "CENTERRIGHT", 10, 0)
 	namePanel:SetPoint("TOPRIGHT", frame:GetContent(), "TOPRIGHT", -25, 12)
@@ -1238,7 +1265,7 @@ local function CompositePriceModelPopup(parent)
 	
 	endAnchor:SetVisible(false)
 	
-	addButton:SetText("Add") -- LOCALIZE
+	addButton:SetText(L["CompositeModelPopup/ButtonAdd"])
 	
 	modelSelector:SetTextSelector("displayName")
 	modelSelector:SetOrderSelector("displayName")
@@ -1247,11 +1274,11 @@ local function CompositePriceModelPopup(parent)
 	matcherFrame:SetPoint("TOPRIGHT", endAnchor, "BOTTOMRIGHT", 0, 10)
 	
 	saveButton:SetPoint("TOPCENTER", matcherFrame, 1/3, 1, 0, 10)
-	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetText(L["CompositeModelPopup/ButtonSave"])
 	saveButton:SetEnabled(false)
 	
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
-	cancelButton:SetText("Cancel") -- LOCALIZE
+	cancelButton:SetText(L["CompositeModelPopup/ButtonCancel"])
 	
 	function namePanel.Event:LeftClick()
 		nameField:SetKeyFocus(true)
@@ -1265,7 +1292,7 @@ local function CompositePriceModelPopup(parent)
 	end
 
 	function nameField.Event:TextfieldChange()
-		saveButton:SetEnabled(self:GetText() ~= "" and #usedModels > 0)
+		ResetSaveButton()
 	end
 	
 	function addButton.Event:LeftPress()
@@ -1354,7 +1381,9 @@ local function GeneralSettings(parent)
 	
 	function showMapIconCheck.Event:CheckboxChange()
 		InternalInterface.AccountSettings.General.ShowMapIcon = self:GetChecked()
-		InternalInterface.UI.MapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon)
+		if not MINIMAPDOCKER then
+			InternalInterface.UI.MapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon)
+		end
 	end
 	
 	function autoOpenCheck.Event:CheckboxChange()
@@ -1397,7 +1426,6 @@ local function SearchSettings(parent)
 	local defaultSearcher = InternalInterface.AccountSettings.Search.DefaultSearcher
 	defaultSearcherDropdown:SetValues(searchers)
 	if searchers[defaultSearcher] then defaultSearcherDropdown:SetSelectedKey(defaultSearcher) end
-	-- TODO Load new searchers when they're created
 	
 	defaultSearchModeText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 50)
 	defaultSearchModeText:SetFontSize(14)
@@ -1430,12 +1458,16 @@ local function PostingSettings(parent)
 
 	local rarityFilterText = UICreateFrame("Text", frame:GetName() .. ".RarityFilterText", frame)
 	local rarityFilterDropdown = Dropdown(frame:GetName() .. ".RarityFilterDropdown", frame)
-	-- TODO Action on right click => Absolute Undercut / Relative Undercut / Match
-	-- TODO Pause queue on autopost
 	local defaultBidPercentageText = UICreateFrame("Text", frame:GetName() .. ".DefaultBidPercentageText", frame)
 	local defaultBidPercentageSlider = Slider(frame:GetName() .. ".DefaultBidPercentageSlider", frame)
 	local defaultBindPricesCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".DefaultBindPricesCheck", frame)
 	local defaultBindPricesText = UICreateFrame("Text", frame:GetName() .. ".DefaultBindPricesText", frame)
+	local undercutAbsoluteText = UICreateFrame("Text", frame:GetName() .. ".UndercutAbsoluteText", frame)
+	local undercutAbsoluteSelector = MoneySelector(frame:GetName() .. ".UndercutAbsoluteSelector", frame)
+	local undercutRelativeText = UICreateFrame("Text", frame:GetName() .. ".UndercutRelativeText", frame)
+	local undercutRelativeSlider = Slider(frame:GetName() .. ".UndercutRelativeSlider", frame)
+	local autoPauseCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".AutoPauseCheck", frame)
+	local autoPauseText = UICreateFrame("Text", frame:GetName() .. ".AutoPauseText", frame)
 
 	frame:SetVisible(false)
 
@@ -1443,7 +1475,7 @@ local function PostingSettings(parent)
 	rarityFilterText:SetFontSize(14)
 	rarityFilterText:SetText(L["ConfigPost/RarityFilter"])
 	
-	rarityFilterDropdown:SetPoint("CENTERLEFT", rarityFilterText, "CENTERLEFT", 200, 0)
+	rarityFilterDropdown:SetPoint("CENTERLEFT", rarityFilterText, "CENTERLEFT", 400, 0)
 	rarityFilterDropdown:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 5)
 	rarityFilterDropdown:SetTextSelector("displayName")
 	rarityFilterDropdown:SetOrderSelector("order")
@@ -1466,7 +1498,7 @@ local function PostingSettings(parent)
 	defaultBidPercentageText:SetText(L["ConfigPost/BidPercentage"])
 	
 	defaultBidPercentageSlider:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 90)
-	defaultBidPercentageSlider:SetPoint("CENTERLEFT", defaultBidPercentageText, "CENTERLEFT", 200, 0)
+	defaultBidPercentageSlider:SetPoint("CENTERLEFT", defaultBidPercentageText, "CENTERLEFT", 400, 0)
 	defaultBidPercentageSlider:SetRange(1, 100)
 	defaultBidPercentageSlider:SetPosition(InternalInterface.AccountSettings.Posting.Config.BidPercentage)
 
@@ -1476,6 +1508,31 @@ local function PostingSettings(parent)
 	defaultBindPricesText:SetPoint("CENTERLEFT", defaultBindPricesCheck, "CENTERRIGHT", 5, 0)
 	defaultBindPricesText:SetFontSize(14)
 	defaultBindPricesText:SetText(L["ConfigPost/DefaultBindPrices"])
+
+	undercutAbsoluteText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 210)
+	undercutAbsoluteText:SetFontSize(14)
+	undercutAbsoluteText:SetText(L["ConfigPost/UndercutAbsolute"])
+	
+	undercutAbsoluteSelector:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 210)
+	undercutAbsoluteSelector:SetPoint("CENTERLEFT", undercutAbsoluteText, "CENTERLEFT", 400, 0)
+	undercutAbsoluteSelector:SetHeight(30)
+	undercutAbsoluteSelector:SetValue(InternalInterface.AccountSettings.Posting.AbsoluteUndercut)
+
+	undercutRelativeText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 250)
+	undercutRelativeText:SetFontSize(14)
+	undercutRelativeText:SetText(L["ConfigPost/UndercutPercentage"])
+	
+	undercutRelativeSlider:SetPoint("CENTERRIGHT", frame, "TOPRIGHT", -10, 250)
+	undercutRelativeSlider:SetPoint("CENTERLEFT", undercutRelativeText, "CENTERLEFT", 400, 0)
+	undercutRelativeSlider:SetRange(0, 100)
+	undercutRelativeSlider:SetPosition(InternalInterface.AccountSettings.Posting.RelativeUndercut)
+
+	autoPauseCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 330)
+	autoPauseCheck:SetChecked(InternalInterface.AccountSettings.Posting.AutoPostPause)
+	
+	autoPauseText:SetPoint("CENTERLEFT", autoPauseCheck, "CENTERRIGHT", 5, 0)
+	autoPauseText:SetFontSize(14)
+	autoPauseText:SetText(L["ConfigPost/AutoPostPause"])
 
 	function rarityFilterDropdown.Event:SelectionChanged(rarity)
 		InternalInterface.AccountSettings.Posting.RarityFilter = rarity
@@ -1487,6 +1544,24 @@ local function PostingSettings(parent)
 	
 	function defaultBindPricesCheck.Event:CheckboxChange()
 		InternalInterface.AccountSettings.Posting.Config.BindPrices = self:GetChecked()
+	end
+
+	function undercutAbsoluteSelector.Event:ValueChanged(newValue)
+		InternalInterface.AccountSettings.Posting.AbsoluteUndercut = newValue
+		if newValue > 0 then
+			undercutRelativeSlider:SetPosition(0)
+		end
+	end
+
+	function undercutRelativeSlider.Event:PositionChanged(position)
+		InternalInterface.AccountSettings.Posting.RelativeUndercut = position
+		if position > 0 then
+			undercutAbsoluteSelector:SetValue(0)
+		end
+	end
+	
+	function autoPauseCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Posting.AutoPostPause = self:GetChecked()
 	end
 
 	return frame
@@ -1672,7 +1747,7 @@ local function ScoreSettings(parent)
 	local propagateFlag = false
 	
 	local function ResetDefaultPriceScorer()
-		local priceModels = GetPriceModels() -- FIXME Use those of BananAH, not the LibPGCEx ones
+		local priceModels = GetPriceModels() -- TODO Move to category config and use BananAH ones instead of LibPGCEx ones
 		for id, name in pairs(priceModels) do priceModels[id] = { displayName = name } end
 		local defaultScorer = InternalInterface.AccountSettings.Scoring.ReferencePrice
 		defaultPriceScorerDropdown:SetValues(priceModels)
@@ -1866,22 +1941,22 @@ local function PriceSettings(parent)
 		{
 			category =
 			{
-				name = "Item category", -- LOCALIZE
+				name = L["ConfigPrice/ItemCategory"],
 				nameFontSize = 14,
 				value = "category",
 				defaultValue = "",
 			},
 			inheritance = 
 			{
-				name = "Category config.", -- LOCALIZE
+				name = L["ConfigPrice/CategoryConfig"],
 				nameFontSize = 14,
 				value = "selectOne",
 				textSelector = "name",
 				orderSelector = "order",
 				values =
 				{
-					["inherit"] = { name = "Inherit from parent category", order = 1 }, -- LOCALIZE
-					["own"] = { name = "Define custom parameters for this category", order = 2 }, -- LOCALIZE
+					["inherit"] = { name = L["ConfigPrice/CategoryInherit"], order = 1 },
+					["own"] = { name = L["ConfigPrice/CategoryOwn"], order = 2 },
 				},
 				defaultValue = "inherit",
 			},
@@ -1899,7 +1974,7 @@ local function PriceSettings(parent)
 		{
 			stackSize =
 			{
-				name = L["ConfigPost/DefaultStackSize"], -- TODO Remove colon / Move to ConfigPrice
+				name = L["ConfigPrice/DefaultStackSize"],
 				nameFontSize = 14,
 				value = "integer",
 				minValue = 1,
@@ -1908,7 +1983,7 @@ local function PriceSettings(parent)
 			},
 			stackNumber =
 			{
-				name = L["ConfigPost/DefaultStackNumber"], -- TODO Remove colon / Move to ConfigPrice
+				name = L["ConfigPrice/DefaultStackNumber"],
 				nameFontSize = 14,
 				value = "integer",
 				minValue = 1,
@@ -1926,7 +2001,7 @@ local function PriceSettings(parent)
 		{
 			duration =
 			{
-				name = L["ConfigPost/DefaultDuration"], -- TODO Remove colon / Move to ConfigPrice
+				name = L["ConfigPrice/DefaultDuration"],
 				nameFontSize = 14,
 				value = "integer",
 				minValue = 48,
@@ -1935,7 +2010,6 @@ local function PriceSettings(parent)
 			},
 			Layout =
 			{
-				-- { "matchPrices" },
 				{ "duration" },
 				columns = 1,
 			},
@@ -2159,7 +2233,7 @@ local function PriceSettings(parent)
 	end
 
 	saveButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 25)
-	saveButton:SetText("Save") -- LOCALIZE
+	saveButton:SetText(L["ConfigPrice/ButtonSave"])
 	
 	topSelector:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 5)
 	topSelector:SetPoint("RIGHT", saveButton, "LEFT")
@@ -2190,10 +2264,10 @@ local function PriceSettings(parent)
 	priceGrid:SetPoint("TOPLEFT", stackSelector, "BOTTOMLEFT", 0, 10)
 	priceGrid:SetPoint("BOTTOMRIGHT", postSelector, "TOPRIGHT", 0, -10)
 	priceGrid:AddColumn("own", "", BooleanDotCellType, 20, 0, nil, false, { Eval = IsOriginal, })
-	priceGrid:AddColumn("name", "Reference Price", "Text", 140, 2, "name", true, { Alignment = "left", Formatter = "none", }) -- LOCALIZE
-	priceGrid:AddColumn("enabled", "Active", BooleanDotCellType, 60, 0, "enabled", false, { Interactable = EnabledInteract, }) -- LOCALIZE
-	priceGrid:AddColumn("default", "Default", BooleanDotCellType, 60, 0, nil, false, { Eval = IsDefaultModel, Interactable = DefaultInteract, }) -- LOCALIZE
-	priceGrid:AddColumn("fallback", "Fallback", BooleanDotCellType, 60, 0, nil, false, { Eval = IsFallbackModel, Interactable = FallbackInteract, }) -- LOCALIZE
+	priceGrid:AddColumn("name", L["ConfigPrice/ColumnReferencePrice"], "Text", 140, 2, "name", true, { Alignment = "left", Formatter = "none", })
+	priceGrid:AddColumn("enabled", L["ConfigPrice/ColumnActive"], BooleanDotCellType, 60, 0, "enabled", false, { Interactable = EnabledInteract, })
+	priceGrid:AddColumn("default", L["ConfigPrice/ColumnDefault"], BooleanDotCellType, 60, 0, nil, false, { Eval = IsDefaultModel, Interactable = DefaultInteract, })
+	priceGrid:AddColumn("fallback", L["ConfigPrice/ColumnFallback"], BooleanDotCellType, 60, 0, nil, false, { Eval = IsFallbackModel, Interactable = FallbackInteract, })
 	priceGrid:SetOrder("name", false)
 	priceGrid:GetInternalContent():SetBackgroundColor(0.05, 0, 0.05, 0.25)
 	
@@ -2201,15 +2275,15 @@ local function PriceSettings(parent)
 	controlFrame:SetPoint("BOTTOMRIGHT", priceGrid:GetContent(), "BOTTOMRIGHT", -3, -2)
 	
 	deleteButton:SetPoint("CENTERRIGHT", controlFrame, "CENTERRIGHT", 0, 0)
-	deleteButton:SetText("Delete") -- LOCALIZE
+	deleteButton:SetText(L["ConfigPrice/ButtonDelete"])
 	deleteButton:SetEnabled(false)
 
 	editButton:SetPoint("CENTERRIGHT", deleteButton, "CENTERLEFT", 10, 0)
-	editButton:SetText("Edit") -- LOCALIZE
+	editButton:SetText(L["ConfigPrice/ButtonEdit"])
 	editButton:SetEnabled(false)	
 
 	newButton:SetPoint("CENTERRIGHT", editButton, "CENTERLEFT", 10, 0)
-	newButton:SetText("New") -- LOCALIZE
+	newButton:SetText(L["ConfigPrice/ButtonNew"])
 	
 	matchPanel:SetPoint("BOTTOMLEFT", controlFrame, "BOTTOMLEFT", 0, -2)
 	matchPanel:SetPoint("TOPRIGHT", newButton, "TOPLEFT", -3, 2)
@@ -2219,7 +2293,7 @@ local function PriceSettings(parent)
 	matchCheck:SetPoint("CENTERLEFT", matchPanel:GetContent(), "CENTERLEFT", 5, 0)
 
 	matchText:SetPoint("CENTERLEFT", matchCheck, "CENTERRIGHT", 5, 0)	
-	matchText:SetText("Apply matching rules for unconfigured items") -- LOCALIZE
+	matchText:SetText(L["ConfigPrice/ApplyMatching"])
 	
 	topSelector:SetLayer(9999)
 	

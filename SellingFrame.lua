@@ -23,6 +23,7 @@ local GetOwnAuctionsScoredCompetition = InternalInterface.PGCExtensions.GetOwnAu
 local GetPlayerName = InternalInterface.Utility.GetPlayerName
 local GetPopupManager = InternalInterface.Output.GetPopupManager
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
+local IIDetail = Inspect.Item.Detail
 local IInteraction = Inspect.Interaction
 local L = InternalInterface.Localization.L
 local MFloor = math.floor
@@ -399,6 +400,17 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	function sellingFrame:Hide()
 		auctionsGrid:SetEnabled(false)
 	end	
+	
+	function sellingFrame:ItemRightClick(params)
+		if params and params.id then
+			local ok, itemDetail = pcall(IIDetail, params.id)
+			if not ok or not itemDetail or not itemDetail.name then return false end
+			filterTextField:SetText(itemDetail.name)
+			UpdateFilter()
+			return true
+		end
+		return false
+	end
 	
 	TInsert(Event.Interaction, { function(interaction) if sellingFrame:GetVisible() and interaction == "auction" then UpdateFilter() end end, addonID, addonID .. ".SellingFrame.OnInteraction" })
 	TInsert(Event.LibPGC.AuctionData, { function() if sellingFrame:GetVisible() then ResetAuctions() end end, addonID, addonID .. ".SellingFrame.OnAuctionData" })
