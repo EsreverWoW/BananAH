@@ -26,6 +26,7 @@ local GetAuctionSearcherExtraDescription = LibPGCEx.GetAuctionSearcherExtraDescr
 local GetLocalizedDateString = InternalInterface.Utility.GetLocalizedDateString
 local GetPopupManager = InternalInterface.Output.GetPopupManager
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
+local IIDetail = Inspect.Item.Detail
 local IInteraction = Inspect.Interaction
 local L = InternalInterface.Localization.L
 local MFloor = math.floor
@@ -531,7 +532,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 		
 		local onlineCapable = searchInfo and searchInfo.online or false
 		if onlineCapable and onlineMode then
-			onlineInfo = { page = 1, sortType = "time", sortOrder = "descending", } -- FIXME
+			onlineInfo = { page = 1, sortType = "time", sortOrder = "descending", } -- FIXME Don't remember what needs to be fixed
 		else
 			onlineInfo = false
 		end
@@ -654,6 +655,16 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	end
 	
 	function searchFrame:Hide()
+	end
+	
+	function searchFrame:ItemRightClick(params)
+		if params and params.id then
+			local ok, itemDetail = pcall(IIDetail, params.id)
+			if not ok or not itemDetail or not itemDetail.name then return false end
+			itemNameField:SetText(itemDetail.name)
+			return true
+		end
+		return false
 	end
 	
 	ResetSearchers()

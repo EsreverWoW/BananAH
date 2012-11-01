@@ -10,25 +10,39 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 local PublicInterface = _G[addonID]
 
+local FIXED_MODEL_ID = "fixed"
+
 local CTooltip = Command.Tooltip
 local CancelAll = LibPGC.CancelAll
 local CancelPostingByIndex = LibPGC.CancelPostingByIndex
 local DataGrid = Yague.DataGrid
+local GetOwnAuctionData = LibPGC.GetOwnAuctionData
 local GetPostingQueue = LibPGC.GetPostingQueue
 local GetPostingQueuePaused = LibPGC.GetPostingQueuePaused
 local GetPostingQueueStatus = LibPGC.GetPostingQueueStatus
+local GetPostingSettings = InternalInterface.Helper.GetPostingSettings
+local GetPrices = LibPGCEx.GetPrices
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local IIDetail = Inspect.Item.Detail
+local IIList = Inspect.Item.List
+local MCeil = math.ceil
 local MFloor = math.floor
+local MMax = math.max
+local MMin = math.min
 local MoneyDisplay = Yague.MoneyDisplay
 local Panel = Yague.Panel
+local PostItem = LibPGC.PostItem
 local SFormat = string.format
 local SetPostingQueuePaused = LibPGC.SetPostingQueuePaused
 local ShadowedText = Yague.ShadowedText
 local TInsert = table.insert
 local UICreateFrame = UI.CreateFrame
-local tostring = tostring
+local UISInventory = Utility.Item.Slot.Inventory
+local next = next
+local pairs = pairs
 local pcall = pcall
+local tostring = tostring
+local type = type
 
 local function QueueCellType(name, parent)
 	local queueManagerCell = UICreateFrame("Mask", name, parent)
@@ -112,6 +126,7 @@ function InternalInterface.UI.QueueManager(name, parent)
 	local queueSizeText = UICreateFrame("Text", queuePanel:GetName() .. ".QueueSizeText", queuePanel:GetContent())
 	local clearButton = UICreateFrame("Texture", name .. ".ClearButton", queueFrame)
 	local playButton = UICreateFrame("Texture", name .. ".PlayButton", queueFrame)
+	local autoPostButton = UICreateFrame("Texture", name .. ".AutoPostButton", queueFrame)
 	
 	local queueGrid = DataGrid(name .. ".QueueGrid", parent)
 		
@@ -131,6 +146,8 @@ function InternalInterface.UI.QueueManager(name, parent)
 			queueSizeText:SetFontColor(0, 0.75, 0.75, 1)
 		elseif status == 3 then
 			queueSizeText:SetFontColor(1, 0.5, 0, 1)
+		elseif status == 5 then
+			queueSizeText:SetFontColor(1, 0, 0, 1)
 		else
 			queueSizeText:SetFontColor(1, 1, 1, 1)
 		end
@@ -142,8 +159,13 @@ function InternalInterface.UI.QueueManager(name, parent)
 	clearButton:SetPoint("CENTERLEFT", queueFrame, "CENTERLEFT", 30, 0)
 	clearButton:SetTextureAsync(addonID, "Textures/Stop.png")
 
+	autoPostButton:SetPoint("CENTERRIGHT", queueFrame, "CENTERRIGHT", -5, 0)
+	autoPostButton:SetTextureAsync(addonID, "Textures/AutoOn.png")
+	autoPostButton:SetWidth(20)
+	autoPostButton:SetHeight(20)
+	
 	queuePanel:SetPoint("CENTERLEFT", queueFrame, "CENTERLEFT", 60, 0)
-	queuePanel:SetPoint("CENTERRIGHT", queueFrame, "CENTERRIGHT")
+	queuePanel:SetPoint("CENTERRIGHT", queueFrame, "CENTERRIGHT", -30, 0)
 	queuePanel:SetHeight(30)
 	queuePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.5)
 	
@@ -181,6 +203,129 @@ function InternalInterface.UI.QueueManager(name, parent)
 		queueGrid:SetVisible(not queueGrid:GetVisible())
 	end
 	queuePanel.Event.RightClick = queuePanel.Event.LeftClick
+	
+	function autoPostButton.Event:LeftClick()
+		-- 1.- Get Items
+		local slot = UISInventory()
+		local items = IIList(slot)
+		local itemTypeTable = {}
+		for _, itemID in pairs(items) do repeat
+			if type(itemID) == "boolean" then break end 
+			local ok, itemDetail = pcall(IIDetail, itemID)
+			if not ok or not itemDetail or itemDetail.bound then break end
+			
+			local itemType = itemDetail.type
+			if InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then
+				itemTypeTable[itemType] = itemTypeTable[itemType] or { stack = 0, stackMax = itemDetail.stackMax or 1, category = itemDetail.category, stacksInAH = 0, stacksInQueue = 0, }
+				itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
+			end
+		until true end
+		
+		-- 2.- Substract queued stacks
+		local queue = GetPostingQueue()
+		for _, post in ipairs(queue) do
+			local itemType = post.itemType
+			if itemType and itemTypeTable[itemType] then
+				local newStack = itemTypeTable[itemType].stack - post.amount
+				if newStack > 0 then
+					itemTypeTable[itemType].stack = newStack
+					itemTypeTable[itemType].stacksInQueue = itemTypeTable[itemType].stacksInQueue + MCeil(post.amount / post.stackSize)
+				else
+					itemTypeTable[itemType] = nil
+				end
+			end
+		end
+		if not next(itemTypeTable) then return end
+		
+		-- 3.- Get posting settings for each itemType
+		for itemType, itemInfo in pairs(itemTypeTable) do
+			itemInfo.settings = GetPostingSettings(itemType, itemInfo.category)
+		end
+		
+		-- 4.- Get own auctions
+		local function ProcessOwnAuctions(auctions)
+			auctions = auctions or {}
+			for _, auctionData in pairs(auctions) do
+				local itemType = auctionData.itemType
+				if itemTypeTable[itemType] then
+					itemTypeTable[itemType].stacksInAH = itemTypeTable[itemType].stacksInAH + 1
+				end
+			end
+			
+			for itemType, itemInfo in pairs(itemTypeTable) do repeat
+				-- 5.- Convert stackSize to number
+				itemInfo.settings.stackSize = itemInfo.settings.stackSize == "+" and itemInfo.stackMax or itemInfo.settings.stackSize
+				-- 6.- Recalc stackNumber for stackLimited items
+				if itemInfo.settings.stackLimit and type(itemInfo.settings.stackNumber) == "number" then
+					local currentStacks = itemInfo.stacksInAH + itemInfo.stacksInQueue
+					local newStackNumber = itemInfo.settings.stackNumber - currentStacks
+					if newStackNumber > 0 then
+						itemInfo.settings.stackNumber = newStackNumber
+					else
+						itemTypeTable[itemType] = nil
+						break
+					end
+				end
+				-- 7.- Convert stackNumber to number
+				if itemInfo.settings.stackNumber == "A" then
+					itemInfo.settings.stackNumber = MCeil(itemInfo.stack / itemInfo.settings.stackSize)
+				elseif itemInfo.settings.stackNumber == "F" then
+					local newStackNumber = MFloor(itemInfo.stack / itemInfo.settings.stackSize)
+					if newStackNumber > 0 then
+						itemInfo.settings.stackNumber = newStackNumber
+					else
+						itemTypeTable[itemType] = nil
+						break
+					end
+				end
+			until true end
+			
+			if not next(itemTypeTable) then return end
+			
+			-- 8.- Get item prices
+			local function ProcessItemPrice(itemType, prices)
+				local itemInfo = itemTypeTable[itemType]
+				prices = prices and prices[itemInfo.settings.referencePrice]
+				if not prices then return end
+				
+				itemInfo.bid = itemInfo.settings.matchPrices and prices.adjustedBid or prices.bid
+				itemInfo.buy = itemInfo.settings.matchPrices and prices.adjustedBuy or prices.buy
+				
+				if itemInfo.settings.bindPrices then
+					itemInfo.bid = MMax(itemInfo.bid or 0, itemInfo.buy or 0)
+					itemInfo.buy = itemInfo.bid
+				end
+
+				if itemInfo.buy <= 0 then 
+					itemInfo.buy = nil
+				end
+				
+				if itemInfo.bid <= 0 then return end
+				if itemInfo.buy and itemInfo.buy < itemInfo.bid then return end
+				
+				-- 9.- Post the item
+				if InternalInterface.AccountSettings.Posting.AutoPostPause then
+					SetPostingQueuePaused(true)
+				end
+				
+				if PostItem(itemType, itemInfo.settings.stackSize, MMin(itemInfo.stack, itemInfo.settings.stackSize * itemInfo.settings.stackNumber), itemInfo.bid, itemInfo.buy, 6 * 2 ^ itemInfo.settings.duration) then
+					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] = InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] or {}
+					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBid = bid or 0
+					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBuy = buy or 0
+				end
+			end
+			
+			for itemType, itemInfo in pairs(itemTypeTable) do
+				local preferredPrice = itemInfo.settings.referencePrice
+				if preferredPrice == FIXED_MODEL_ID then
+					ProcessItemPrice(itemType, { [FIXED_MODEL_ID] = { bid = itemInfo.settings.lastBid or 0, buy = itemInfo.settings.lastBuy or 0, } })
+				else
+					GetPrices(function(prices) ProcessItemPrice(itemType, prices) end, itemType, itemInfo.settings.bidPercentage, preferredPrice, false)
+				end
+			end
+		end
+		GetOwnAuctionData(ProcessOwnAuctions)
+	end
 
 	TInsert(Event.LibPGC.PostingQueueStatusChanged, { UpdateQueueStatus, addonID, addonID .. ".OnQueueStatusChanged" })
 	UpdateQueueStatus()

@@ -25,6 +25,7 @@ local L = InternalInterface.Localization.L
 local MCeil = math.ceil
 local MLog10 = math.log10
 local MMax = math.max
+local TInsert = table.insert
 local UICreateFrame = UI.CreateFrame
 local ipairs = ipairs
 local pairs = pairs
@@ -258,17 +259,25 @@ local ControlConstructors =
 		function(name, parent, extraDescription)
 			local control = Dropdown(name, parent)
 			
-			local models = GetPriceModels()
-			local values = {}
-			for modelID, modelName in pairs(models) do
-				values[modelID] = { displayName = modelName }
+			local function ReloadPriceModels()
+				local currentModel = control:GetSelectedValue()
+				
+				local models = GetPriceModels()
+				local values = {}
+				for modelID, modelName in pairs(models) do
+					values[modelID] = { displayName = modelName }
+				end
+				control:SetValues(values)
+			
+				if currentModel and values[currentModel] then
+					control:SetSelectedKey(currentModel)
+				end
 			end
-			-- TODO Load new pricing models
 			
 			control:SetHeight(35)
 			control:SetTextSelector("displayName")
 			control:SetOrderSelector("displayName")
-			control:SetValues(values)			
+			ReloadPriceModels()
 			
 			local function GetExtra()
 				return (control:GetSelectedValue())
@@ -277,6 +286,9 @@ local ControlConstructors =
 			local function SetExtra(extra)
 				control:SetSelectedKey(extra or InternalInterface.AccountSettings.Scoring.ReferencePrice)
 			end
+			
+			TInsert(Event.LibPGCEx.PriceModelRegistered, { ReloadPriceModels, addonID, addonID .. ".ReloadPriceModels" })
+			TInsert(Event.LibPGCEx.PriceModelUnregistered, { ReloadPriceModels, addonID, addonID .. ".ReloadPriceModels" })
 			
 			return control, GetExtra, SetExtra
 		end,

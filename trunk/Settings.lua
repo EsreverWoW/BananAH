@@ -41,6 +41,8 @@ local function DefaultSettings()
 	
 	-- Account: Post frame settings
 	--  + RarityFilter: Minimum rarity for items to show in the item list
+	--  + BidPercentage: Percentage of the buyout price to use as bid price
+	--  + BindPrices: If active and the item hasn't its own config for price binding, bid price will be matched to the buyout price
 	--  * HiddenItems: Container for account-level hidden items (initialization only)
 	--  * CategoryConfig: Container for default posting settings, by item category (initialization for global category only)
 	--    + DefaultReferencePrice: Pricing model to use for items of this category that haven't their own reference price
@@ -49,11 +51,12 @@ local function DefaultSettings()
 	--    + StackSize: Stack size to use if the item hasn't its own config for stack size
 	--    + StackNumber: Stack number to use if the item hasn't its own config for stack number
 	--    + StackLimit: If active and the item hasn't its own config for stack limit, this will prevent the number of active auctions to be higher than the stack number
-	--    + BidPercentage: Percentage of the buyout price to use as bid price
-	--    + BindPrices: If active and the item hasn't its own config for price binding, bid price will be matched to the buyout price
 	--    + Duration: Duration to use if the item hasn't its own config for duration
 	InternalInterface.AccountSettings.Posting = InternalInterface.AccountSettings.Posting or {}
 	InternalInterface.AccountSettings.Posting.RarityFilter = InternalInterface.AccountSettings.Posting.RarityFilter or 1
+	if InternalInterface.AccountSettings.Posting.AutoPostPause == nil then InternalInterface.AccountSettings.Posting.AutoPostPause = true end
+	InternalInterface.AccountSettings.Posting.AbsoluteUndercut = InternalInterface.AccountSettings.Posting.AbsoluteUndercut or 1
+	InternalInterface.AccountSettings.Posting.RelativeUndercut = InternalInterface.AccountSettings.Posting.RelativeUndercut or 0
 	InternalInterface.AccountSettings.Posting.HiddenItems = InternalInterface.AccountSettings.Posting.HiddenItems or {}
 	InternalInterface.AccountSettings.Posting.Config = InternalInterface.AccountSettings.Posting.Config or {}
 	InternalInterface.AccountSettings.Posting.Config.BidPercentage = InternalInterface.AccountSettings.Posting.Config.BidPercentage or 75

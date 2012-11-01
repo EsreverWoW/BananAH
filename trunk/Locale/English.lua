@@ -29,7 +29,12 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["General/Rarity5"] = "Epic",
 	["General/Rarity6"] = "Relic",
 	["General/Rarity7"] = "Transcendant",
-	["General/RarityQuest"] = "Quest",	
+	["General/RarityQuest"] = "Quest",
+	
+	["General/ModelTypeSimple"] = "Simple",
+	["General/ModelTypeStatistical"] = "Statistical",
+	["General/ModelTypeComplex"] = "Complex",
+	["General/ModelTypeComposite"] = "Composite",
 
 	-- Main window
 	["Main/MenuSearch"] = "SEARCH",
@@ -38,6 +43,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["Main/MenuBids"] = "TRACKING",
 	["Main/MenuHistory"] = "HISTORY",
 	["Main/MenuConfig"] = "CONFIG",
+	["Main/MenuFullScan"] = "FULL SCAN",
 	
 	["Main/ScanMessage"] = "Scan results: %d total auctions%s%s%s.",
 	["Main/ScanNewCount"] = ", %d new",
@@ -61,6 +67,47 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["CancelAuctionPopup/ButtonYes"] = "Yes",
 	["CancelAuctionPopup/ButtonNo"] = "No",
 	["CancelAuctionPopup/IgnoreText"] = "Don't ask again",
+	
+	-- Unsaved Changes Popup
+	["UnsavedChangesPopup/Title"] = "WARNING",
+	["UnsavedChangesPopup/ContentText"] = "You have unsaved changes. If you continue, they'll be lost.",
+	["UnsavedChangesPopup/ButtonContinue"] = "Continue",
+	["UnsavedChangesPopup/ButtonCancel"] = "Cancel",
+
+	-- New Model Popup
+	["NewModelPopup/Title"] = "NEW MODEL",
+	["NewModelPopup/ModelType"] = "Model Type:",
+	["NewModelPopup/ButtonContinue"] = "Continue",
+	["NewModelPopup/ButtonCancel"] = "Cancel",
+	
+	-- Matcher Popup Frame
+	["MatcherPopupFrame/Title"] = "Price Matchers",
+	["MatcherPopupFrame/ButtonAdd"] = "Add",
+	
+	-- Filter Popup Frame
+	["FilterPopupFrame/Title"] = "Filters",
+	["FilterPopupFrame/ButtonAdd"] = "Add",
+	
+	-- Simple Model Popup
+	["SimpleModelPopup/Name"] = "Name:",
+	["SimpleModelPopup/ButtonSave"] = "Save",
+	["SimpleModelPopup/ButtonCancel"] = "Cancel",
+	
+	-- Statistical Model Popup
+	["StatisticalModelPopup/Name"] = "Name:",
+	["StatisticalModelPopup/ButtonSave"] = "Save",
+	["StatisticalModelPopup/ButtonCancel"] = "Cancel",
+	
+	-- Complex Model Popup
+	["ComplexModelPopup/Name"] = "Name:",
+	["ComplexModelPopup/ButtonSave"] = "Save",
+	["ComplexModelPopup/ButtonCancel"] = "Cancel",
+	
+	-- Composite Model Popup
+	["CompositeModelPopup/Name"] = "Name:",
+	["CompositeModelPopup/ButtonAdd"] = "Add",
+	["CompositeModelPopup/ButtonSave"] = "Save",
+	["CompositeModelPopup/ButtonCancel"] = "Cancel",
 	
 	-- Item Auctions Grid
 	["ItemAuctionsGrid/ButtonBuy"] = "Buy",
@@ -121,11 +168,12 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["PostFrame/LabelUnitBid"] = "UNIT BID:",
 	["PostFrame/LabelUnitBuy"] = "UNIT BUYOUT:",
 	["PostFrame/LabelDuration"] = "DURATION:",
-	["PostFrame/ErrorPostBase"] = "Couldn't post the item, %s.",
-	["PostFrame/ErrorPostStackSize"] = "invalid stack size",
-	["PostFrame/ErrorPostStackNumber"] = "no stacks to post",
-	["PostFrame/ErrorPostBidPrice"] = "no bid price",
-	["PostFrame/ErrorPostBuyPrice"] = "buy price less than bid price",
+	["PostFrame/ErrorPostBase"] = "Couldn't post the item: %s.",
+	["PostFrame/ErrorPostStackSize"] = "Invalid stack size",
+	["PostFrame/ErrorPostStackNumber"] = "No stacks to post",
+	["PostFrame/ErrorPostBidPrice"] = "No bid price",
+	["PostFrame/ErrorPostBuyPrice"] = "Buy price less than bid price",
+	["PostFrame/ErrorAutoPostModelMissing"] = "Auto post disabled: Reference price unavailable",
 	
 	-- Selling frame
 	["SellingFrame/ColumnItem"] = "Item",
@@ -152,7 +200,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["ConfigFrame/CategoryPricing"] = "PRICES",
 	["ConfigFrame/CategoryScoring"] = "SCORE",
 	
-	["ConfigGeneral/MapIconShow"] = "Show map icon",
+	["ConfigGeneral/MapIconShow"] = "Show map icon (ignored if using Docker)",
 	["ConfigGeneral/AutoOpenWindow"] = "Open the addon window when the native Auction House window is opened",
 	["ConfigGeneral/AutoCloseWindow"] = "Close the addon window when the native Auction House window is closed",
 	["ConfigGeneral/PausePostingQueue"] = "Pause posting queue on load (note other Auction House addons may override this setting)",
@@ -163,18 +211,34 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["ConfigPost/RarityFilter"] = "Minimum rarity filter:",
 	["ConfigPost/DefaultReferencePrice"] = "Default reference price:",
 	["ConfigPost/FallbackReferencePrice"] = "Fallback reference price:",
-	["ConfigPost/ApplyMatching"] = "Apply matching rules for unconfigured items",
-	["ConfigPost/DefaultStackSize"] = "Default stack size:",
-	["ConfigPost/DefaultStackNumber"] = "Default auctions:",
 	["ConfigPost/BidPercentage"] = "Bid percentage (of buyout price):",
 	["ConfigPost/DefaultBindPrices"] = "Bind bid & buyout prices for unconfigured items",
-	["ConfigPost/DefaultDuration"] = "Default duration:",
+	["ConfigPost/UndercutAbsolute"] = "Amount to undercut on right click:",
+	["ConfigPost/UndercutPercentage"] = "Percentage to undercut on right click:",
+	["ConfigPost/AutoPostPause"] = "Pause the posting queue when autoposting",
 	
 	["ConfigSelling/BypassCancelPopup"] = "Cancel auctions with a single click (don't ask for confirmation)",
 	["ConfigSelling/FilterRestrictCharacter"] = "Show only auctions posted by the current character by default",
 	["ConfigSelling/FilterCompetition"] = "Default min. competition:",
 	["ConfigSelling/FilterBelow"] = "Default min. auctions below:",
 	["ConfigSelling/FilterScore"] = "Default scores:",
+	
+	["ConfigPrice/ItemCategory"] = "Item category",
+	["ConfigPrice/CategoryConfig"] = "Category config.",
+	["ConfigPrice/CategoryInherit"] = "Inherit from parent category",
+	["ConfigPrice/CategoryOwn"] = "Define custom parameters for this category",
+	["ConfigPrice/DefaultStackSize"] = "Default stack size",
+	["ConfigPrice/DefaultStackNumber"] = "Default auctions",
+	["ConfigPrice/DefaultDuration"] = "Default duration",
+	["ConfigPrice/ButtonSave"] = "Save",
+	["ConfigPrice/ColumnReferencePrice"] = "Reference Price",
+	["ConfigPrice/ColumnActive"] = "Active",
+	["ConfigPrice/ColumnDefault"] = "Default",
+	["ConfigPrice/ColumnFallback"] = "Fallback",
+	["ConfigPrice/ButtonDelete"] = "Delete",
+	["ConfigPrice/ButtonEdit"] = "Edit",
+	["ConfigPrice/ButtonNew"] = "New",
+	["ConfigPrice/ApplyMatching"] = "Apply matching rules for unconfigured items",
 	
 	["ConfigScore/ReferencePrice"] = "Reference price for scoring:",
 	
