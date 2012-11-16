@@ -41,10 +41,10 @@ Website: http://www.bananah.net
  
 }
 Author = "Baanano"
-Version = "0.4.4 RC1"
+Version = "0.4.4 RC2"
 Email = "baanano.rift@gmail.com"
 Website = "http://www.bananah.net/"
-Environment = "1.11"
+Environment = "2.0"
 Embed =
 {
 	Yague = true,

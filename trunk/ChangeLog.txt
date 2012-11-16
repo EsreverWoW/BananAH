@@ -1,3 +1,7 @@
+	Beta 0.4.4 RC2
+- Updated to RIFT 2.0	
+- Fixed some bugs	
+
 	Beta 0.4.4 RC1
 - If the posting queue gets jammed, the number will turn red and it'll start shuffling items to try to unblock itself
 - Changes in the Post Tab 
