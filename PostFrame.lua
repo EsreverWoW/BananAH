@@ -615,7 +615,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 		if itemType ~= currentItemType then
 			auctionsGrid:SetItemType(itemType)
 		end
-		if itemType ~= currentItemType or itemData.adjustedStack ~= currentAdjustedStack then
+		if itemType ~= currentItemType or (itemData and itemData.adjustedStack or nil) ~= currentAdjustedStack then
 			RefreshPostArea(itemType, itemData)
 		end
 	end
