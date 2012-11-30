@@ -1,3 +1,9 @@
+	Beta 0.4.4 RC3
+- Raised level cap to 60
+- Added SL new item categories (capes and dimension stuff)
+- Fixed a bug that emptied saved variables when the auction DB had over 65k auctions stored
+- Fixed a bug that crashed the addon when scanning more than 50k auctions in a full scan
+
 	Beta 0.4.4 RC2
 - Updated to RIFT 2.0	
 - Fixed some bugs	
