@@ -109,22 +109,22 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	end
 	
 	local function ResetAuctions(firstKey)
+		itemAuctionsGrid:SetData({})
+		RefreshAuctionButtons()
 		if itemType then
+			local lastTimeSeen = GetLastTimeSeen(itemType)
+			if lastTimeSeen then
+				refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], GetLocalizedDateString(L["ItemAuctionsGrid/LastUpdateDateFormat"], lastTimeSeen)))
+			else
+				refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], L["ItemAuctionsGrid/LastUpdateDateFallback"]))
+			end				
 			local function GetAuctionsCallback(auctions)
 				itemAuctionsGrid:SetData(auctions, firstKey)
-				local lastTimeSeen = GetLastTimeSeen(itemType)
-				if lastTimeSeen then
-					refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], GetLocalizedDateString(L["ItemAuctionsGrid/LastUpdateDateFormat"], lastTimeSeen)))
-				else
-					refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], L["ItemAuctionsGrid/LastUpdateDateFallback"]))
-				end				
 				RefreshAuctionButtons()
 			end
 			GetActiveAuctionsScored(GetAuctionsCallback, itemType)
 		else
-			itemAuctionsGrid:SetData({})
 			refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], L["ItemAuctionsGrid/LastUpdateDateFallback"]))
-			RefreshAuctionButtons()
 		end
 	end
 	
@@ -156,7 +156,7 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	itemAuctionsGrid:AddColumn("score", L["ItemAuctionsGrid/ColumnScore"], "Text", 60, 0, "score", true, { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor })
 	itemAuctionsGrid:AddColumn("background", nil, "ItemAuctionBackgroundCellType", 0, 0, "score", false, { Color = ScoreColor })
 	itemAuctionsGrid:SetOrder("unitbuy", false)
-	itemAuctionsGrid:GetInternalContent():SetBackgroundColor(0.05, 0, 0.05, 0.25)	
+	itemAuctionsGrid:GetInternalContent():SetBackgroundColor(0.05, 0, 0.05, 0.25)
 	
 	controlFrame:SetPoint("TOPLEFT", itemAuctionsGrid:GetContent(), "BOTTOMLEFT", 3, -36)
 	controlFrame:SetPoint("BOTTOMRIGHT", itemAuctionsGrid:GetContent(), "BOTTOMRIGHT", -3, -2)

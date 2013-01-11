@@ -896,7 +896,16 @@ function InternalInterface.UI.PostFrame(name, parent)
 		if not itemType then return end
 		local settings = CollectPostingSettings()
 		
-		if settings.lastBuy and settings.lastBuy < settings.lastBid then
+		if type(settings.stackSize) == "number" and settings.stackSize <= 0 then
+			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackSize"]))
+			return
+		elseif type(settings.stackNumber) == "number" and settings.stackNumber <= 0 then
+			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackNumber"]))
+			return
+		elseif settings.lastBid <= 0 then
+			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBidPrice"]))
+			return
+		elseif settings.lastBuy and settings.lastBuy ~= 0 and settings.lastBuy < settings.lastBid then
 			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBuyPrice"]))
 			return
 		end

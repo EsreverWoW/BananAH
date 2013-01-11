@@ -310,8 +310,8 @@ function InternalInterface.UI.QueueManager(name, parent)
 				
 				if PostItem(itemType, itemInfo.settings.stackSize, MMin(itemInfo.stack, itemInfo.settings.stackSize * itemInfo.settings.stackNumber), itemInfo.bid, itemInfo.buy, 6 * 2 ^ itemInfo.settings.duration) then
 					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] = InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] or {}
-					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBid = bid or 0
-					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBuy = buy or 0
+					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBid = itemInfo.bid or 0
+					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBuy = itemInfo.buy or 0
 				end
 			end
 			

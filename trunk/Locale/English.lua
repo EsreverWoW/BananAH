@@ -130,8 +130,8 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["ItemAuctionsGrid/LastUpdateMessage"] = "Last time seen: %s",
 	["ItemAuctionsGrid/LastUpdateDateFormat"] = "%A %x, %X",
 	["ItemAuctionsGrid/LastUpdateDateFallback"] = "Never",
-	["ItemAuctionsGrid/ItemScanError"] = "Item scan started...",
-	["ItemAuctionsGrid/ItemScanStarted"] = "Can't issue an item scan right now, try again later.",
+	["ItemAuctionsGrid/ItemScanError"] = "Can't issue an item scan right now, try again later.",
+	["ItemAuctionsGrid/ItemScanStarted"] = "Item scan started...",
 	
 	-- Search frame
 	["SearchFrame/ButtonReset"] = "Reset",

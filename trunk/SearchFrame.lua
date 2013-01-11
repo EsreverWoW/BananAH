@@ -203,9 +203,9 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	local searchers = {}
 	local currentSearcher = nil
 	local lastSearcherUsed = nil
-	local lastSearcherExtraInfo = {}
 	local onlineMode = InternalInterface.AccountSettings.Search.DefaultOnline or false
 	local onlineInfo = nil
+	local extraColumns = {}
 	
 	local function PerformSearch()
 		local searchInfo = currentSearcher and searchers[currentSearcher] or nil
@@ -267,6 +267,27 @@ function InternalInterface.UI.SearchFrame(name, parent)
 					extraInfo = searcherExtraDescription.ExtraInfo or {},
 					online = searcherExtraDescription.Online,
 				}
+				
+				local extraInfo = searchers[searcherID].extraInfo
+				local neededColumns = {}
+				
+				for _, columnID in ipairs(extraInfo) do
+					local columnType = extraInfo[columnID].value
+					if columnType then
+						neededColumns[columnType] = neededColumns[columnType] and neededColumns[columnType] + 1 or 1
+					end
+				end
+				
+				for columnType, num in pairs(neededColumns) do
+					extraColumns[columnType] = extraColumns[columnType] or {}
+					for index = #extraColumns[columnType] + 1, num do
+						local columnID = tostring(columnType) .. "." .. index
+						TInsert(extraColumns[columnType], columnID)
+						if columnType == "money" then
+							searchGrid:AddColumn(columnID, columnID, "MoneyCellType", 120, 0, columnID, true, nil, true)
+						end
+					end
+				end
 			end
 		end
 		
@@ -427,8 +448,9 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	searchGrid:AddColumn("unitbuy", L["SearchFrame/ColumnBuyPerUnit"], "MoneyCellType", 120, 0, "buyoutUnitPrice", true)
 	searchGrid:AddColumn("score", L["SearchFrame/ColumnScore"], "Text", 60, 0, "score", true, { Alignment = "center", Formatter = ScoreValue, Color = ScoreColor })
 	searchGrid:AddColumn("background", nil, "WideBackgroundCellType", 0, 0)
-	searchGrid:SetOrder("minexpire", false)
-	searchGrid:GetInternalContent():SetBackgroundColor(0, 0.05, 0.05, 0.5)	
+	searchGrid:SetOrder("unitbuy", false)
+	searchGrid:GetInternalContent():SetBackgroundColor(0, 0.05, 0.05, 0.5)
+	searchGrid:SetLoadingBarEnabled(true)
 
 	controlFrame:SetPoint("TOPLEFT", searchGrid:GetContent(), "BOTTOMLEFT", 3, -36)
 	controlFrame:SetPoint("BOTTOMRIGHT", searchGrid:GetContent(), "BOTTOMRIGHT", -3, -2)
@@ -512,27 +534,37 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	function searchButton.Event:LeftPress()
 		local searchInfo = currentSearcher and searchers[currentSearcher] or nil
 		local extraInfo = searchInfo and searchInfo.extraInfo or {}
+		
+		searchGrid:SetData(nil, nil, nil, true)
+		searchGrid:ShowLoadingBar()
+		
 		if currentSearcher ~= lastSearcherUsed then
-			for columnID in pairs(lastSearcherExtraInfo) do
-				searchGrid:RemoveColumn(columnID)
-			end
 			lastSearcherUsed = currentSearcher
-			lastSearcherExtraInfo = {}
-			for index, columnID in ipairs(extraInfo) do
-				local columnInfo = extraInfo[columnID] or {}
+			
+			local columnsConsumed = {}
+			for index, extraID in ipairs(extraInfo) do
+				local columnInfo = extraInfo[extraID] or {}
 				
 				local columnName = columnInfo.name or ""
 				local columnType = columnInfo.value
-				if columnType == "money" then
-					searchGrid:AddColumn(columnID, columnName, "MoneyCellType", 120, 0, columnID, true)
-					lastSearcherExtraInfo[columnID] = true
+				
+				columnsConsumed[columnType] = columnsConsumed[columnType] and columnsConsumed[columnType] + 1 or 1
+				local columnID = tostring(columnType) .. "." .. columnsConsumed[columnType]
+				
+				searchGrid:ModifyColumn(columnID, columnName, extraID, true, false)
+			end
+			
+			for columnType, columnCollection in pairs(extraColumns) do
+				for index = columnsConsumed[columnType] and columnsConsumed[columnType] + 1 or 1, #columnCollection do
+					local columnID = columnCollection[index]
+					searchGrid:ModifyColumn(columnID, columnID, nil, false, true)
 				end
 			end
 		end
 		
 		local onlineCapable = searchInfo and searchInfo.online or false
 		if onlineCapable and onlineMode then
-			onlineInfo = { page = 1, sortType = "time", sortOrder = "descending", } -- FIXME Don't remember what needs to be fixed
+			onlineInfo = { page = 1, sortType = "time", sortOrder = "descending", } -- FIXME Don't use time, but whatever the user has selected as order column
 		else
 			onlineInfo = false
 		end
