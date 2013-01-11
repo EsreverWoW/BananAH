@@ -1,3 +1,13 @@
+	Beta 0.4.4 RC4
+- Updated to RIFT 2.1
+- Searchers default order is "Unit buyout price" instead of "Min. expire time"
+- Added loading bar to the Search tab when a large number of auctions match the criteria
+- Fixed some validation checks that allowed to activate Autoposting mode on items with a null price
+- Fixed a bug in Autoposting that caused the prices to be resetted when using User Defined prices
+- Fixed individual item scanning message (showed the error message instead of the right one)
+- Reduced CPU usage
+- LibPGC only stores 5 days of data now. This is a temporary fix to avoid crashing the game client when reloading/logging out
+
 	Beta 0.4.4 RC3
 - Raised level cap to 60
 - Added SL new item categories (capes and dimension stuff)
