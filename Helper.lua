@@ -44,9 +44,9 @@ function InternalInterface.Helper.GetPostingSettings(itemType, category)
 	if postingSettings.bindPrices == nil then postingSettings.bindPrices = generalSettings.BindPrices end
 	
 	postingSettings.stackSize = itemSettings.stackSize or categorySettings.StackSize
-	postingSettings.stackNumber = itemSettings.stackNumber or categorySettings.StackNumber
-	postingSettings.stackLimit = itemSettings.limitActive
-	if postingSettings.stackLimit == nil then postingSettings.stackLimit = categorySettings.StackLimit end
+	postingSettings.auctionLimit = itemSettings.auctionLimit or categorySettings.AuctionLimit
+	postingSettings.postIncomplete = itemSettings.postIncomplete
+	if postingSettings.postIncomplete == nil then postingSettings.postIncomplete = categorySettings.PostIncomplete end
 	
 	postingSettings.duration = itemSettings.duration or categorySettings.Duration
 	

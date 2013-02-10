@@ -112,7 +112,7 @@ local CATEGORIES =
 	      ["crafting ingredient drop"] =       { name = "Drops",                parent = "crafting ingredient",   children = nil, }, -- LOCALIZE
 	      ["crafting ingredient rift"] =       { name = "Rifts",                parent = "crafting ingredient",   children = nil, }, -- LOCALIZE
 	    ["crafting augment"] =                 { name = "Augments",             parent = "crafting",              children = nil, }, -- LOCALIZE
-	  ["misc"] =                               { name = "Misc",                 parent = "",                      children = { "misc quest", "misc mount", "misc pet", "misc collectible", "misc other", "misc survival misc", "misc fishing misc", }, }, -- LOCALIZE
+	  ["misc"] =                               { name = "Misc",                 parent = "",                      children = { "misc quest", "misc mount", "misc pet", "misc collectible", "misc other", "misc survival", "misc fishing", }, }, -- LOCALIZE
 	    ["misc quest"] =                       { name = "Quest",                parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc mount"] =                       { name = "Mounts",               parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc pet"] =                         { name = "Pets",                 parent = "misc",                  children = nil, }, -- LOCALIZE

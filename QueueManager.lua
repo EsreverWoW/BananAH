@@ -255,29 +255,22 @@ function InternalInterface.UI.QueueManager(name, parent)
 			for itemType, itemInfo in pairs(itemTypeTable) do repeat
 				-- 5.- Convert stackSize to number
 				itemInfo.settings.stackSize = itemInfo.settings.stackSize == "+" and itemInfo.stackMax or itemInfo.settings.stackSize
-				-- 6.- Recalc stackNumber for stackLimited items
-				if itemInfo.settings.stackLimit and type(itemInfo.settings.stackNumber) == "number" then
-					local currentStacks = itemInfo.stacksInAH + itemInfo.stacksInQueue
-					local newStackNumber = itemInfo.settings.stackNumber - currentStacks
-					if newStackNumber > 0 then
-						itemInfo.settings.stackNumber = newStackNumber
-					else
-						itemTypeTable[itemType] = nil
-						break
-					end
+				if itemInfo.settings.stackSize <= 0 then
+					itemTypeTable[itemType] = nil
+					break
 				end
-				-- 7.- Convert stackNumber to number
-				if itemInfo.settings.stackNumber == "A" then
-					itemInfo.settings.stackNumber = MCeil(itemInfo.stack / itemInfo.settings.stackSize)
-				elseif itemInfo.settings.stackNumber == "F" then
-					local newStackNumber = MFloor(itemInfo.stack / itemInfo.settings.stackSize)
-					if newStackNumber > 0 then
-						itemInfo.settings.stackNumber = newStackNumber
-					else
-						itemTypeTable[itemType] = nil
-						break
-					end
+
+				-- 6.- Recalc limit
+				local Round = itemInfo.settings.postIncomplete and MCeil or MFloor
+				if type(itemInfo.settings.auctionLimit) == "number" then
+					itemInfo.settings.auctionLimit = MMax(MMin(itemInfo.settings.auctionLimit - itemInfo.stacksInAH - itemInfo.stacksInQueue, Round(itemInfo.stack / itemInfo.settings.stackSize)), 0)
+				else
+					itemInfo.settings.auctionLimit = Round(itemInfo.stack / itemInfo.settings.stackSize)
 				end
+				if itemInfo.settings.auctionLimit <= 0 then
+					itemTypeTable[itemType] = nil
+					break
+				end				
 			until true end
 			
 			if not next(itemTypeTable) then return end
@@ -308,7 +301,7 @@ function InternalInterface.UI.QueueManager(name, parent)
 					SetPostingQueuePaused(true)
 				end
 				
-				if PostItem(itemType, itemInfo.settings.stackSize, MMin(itemInfo.stack, itemInfo.settings.stackSize * itemInfo.settings.stackNumber), itemInfo.bid, itemInfo.buy, 6 * 2 ^ itemInfo.settings.duration) then
+				if PostItem(itemType, itemInfo.settings.stackSize, MMin(itemInfo.stack, itemInfo.settings.stackSize * itemInfo.settings.auctionLimit), itemInfo.bid, itemInfo.buy, 6 * 2 ^ itemInfo.settings.duration) then
 					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] = InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] or {}
 					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBid = itemInfo.bid or 0
 					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBuy = itemInfo.buy or 0

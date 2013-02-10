@@ -41,7 +41,7 @@ Website: http://www.bananah.net
  
 }
 Author = "Baanano"
-Version = "0.4.4 RC4"
+Version = "0.4.4 RC5"
 Email = "baanano.rift@gmail.com"
 Website = "http://www.bananah.net/"
 Environment = "2.1"
@@ -81,8 +81,10 @@ RunOnStartup =
 	"Helper.lua",
 	"CustomCellTypes.lua",
 	"ConfigFactory.lua",
+	"OldItemAuctionsGrid.lua",
 	"ItemAuctionsGrid.lua",
 	"QueueManager.lua",
+	"PostController.lua",
 	"PostFrame.lua",
 	"SearchFrame.lua",
 	"SellingFrame.lua",

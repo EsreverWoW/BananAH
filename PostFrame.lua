@@ -3,56 +3,54 @@
 -- ***************************************************************************************************************************************************
 -- * Post tab frame                                                                                                                                  *
 -- ***************************************************************************************************************************************************
+-- * 0.4.4 / 2013.02.07 / Baanano: Extracted model logic to PostController                                                                           *
 -- * 0.4.1 / 2012.07.31 / Baanano: Rewritten for 0.4.1                                                                                               *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
-local PublicInterface = _G[addonID]
 
-local AH_FEE_MULTIPLIER = 0.95
 local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
-local DataGrid = Yague.DataGrid
-local Dropdown = Yague.Dropdown
-local MoneySelector = Yague.MoneySelector
-local Panel = Yague.Panel
-local ShadowedText = Yague.ShadowedText
-local Slider = Yague.Slider
 local CDetail = InternalInterface.Category.Detail
 local CTooltip = Command.Tooltip
+local ClearItemAuto = InternalInterface.Control.PostController.ClearItemAuto
+local DataGrid = Yague.DataGrid
+local Dropdown = Yague.Dropdown
 local GetCategoryConfig = InternalInterface.Helper.GetCategoryConfig
-local GetCategoryModels = InternalInterface.PGCConfig.GetCategoryModels
-local GetOwnAuctionData = LibPGC.GetOwnAuctionData
+local GetHiddenVisibility = InternalInterface.Control.PostController.GetHiddenVisibility
 local GetPostingQueue = LibPGC.GetPostingQueue
 local GetPostingSettings = InternalInterface.Helper.GetPostingSettings
-local GetPriceModels = LibPGCEx.GetPriceModels
-local GetPrices = LibPGCEx.GetPrices
 local GetRarityColor = InternalInterface.Utility.GetRarityColor
+local GetSelectedItemType = InternalInterface.Control.PostController.GetSelectedItemType
 local IIDetail = Inspect.Item.Detail
-local IIList = Inspect.Item.List
 local ITReal = Inspect.Time.Real
 local L = InternalInterface.Localization.L
 local MCeil = math.ceil
 local MFloor = math.floor
 local MMax = math.max
 local MMin = math.min
-local PostItem = LibPGC.PostItem
-local SFind = string.find
-local SFormat = string.format
-local SLen = string.len
-local SUpper = string.upper
+local MoneySelector = Yague.MoneySelector
+local Panel = Yague.Panel
+local PostItem = InternalInterface.Control.PostController.PostItem
+local ResetPostingSettings = InternalInterface.Control.PostController.ResetPostingSettings
+local SetControllerActive = InternalInterface.Control.PostController.SetActive
+local SetHiddenVisibility = InternalInterface.Control.PostController.SetHiddenVisibility
+local SetItemAuto = InternalInterface.Control.PostController.SetItemAuto
+local SetSelectedItemType = InternalInterface.Control.PostController.SetSelectedItemType
+local ShadowedText = Yague.ShadowedText
+local Slider = Yague.Slider
 local TInsert = table.insert
+local TRemove = table.remove
+local ToggleItemVisibility = InternalInterface.Control.PostController.ToggleItemVisibility
 local UICreateFrame = UI.CreateFrame
-local UISInventory = Utility.Item.Slot.Inventory
 local Write = InternalInterface.Output.Write
 local ipairs = ipairs
-local next = next
 local pairs = pairs
 local pcall = pcall
 local type = type
 
+local AH_FEE_MULTIPLIER = 0.95
 local FIXED_MODEL_ID = "fixed"
-local FIXED_MODEL_NAME = L["PriceModels/Fixed"]
 
 local function ItemCellType(name, parent)
 	local itemCell = UICreateFrame("Mask", name, parent)
@@ -66,8 +64,9 @@ local function ItemCellType(name, parent)
 	local itemStackLabel = UICreateFrame("Text", name .. ".ItemStackLabel", itemCell)
 	
 	local itemType = nil
+	local visibility = "Show"
+	local auto = nil
 	local itemCategory = nil
-	local resetGridFunction = nil
 
 	cellBackground:SetAllPoints()
 	cellBackground:SetTextureAsync(addonID, "Textures/ItemRowBackground.png")
@@ -99,74 +98,46 @@ local function ItemCellType(name, parent)
 		itemStackLabel:SetText("x" .. (value.adjustedStack or 0))
 		
 		itemType = value.itemType
+		visibility = value.visibility
+		auto = value.auto
 		itemCategory = value.category
 		
-		if itemType then
-			if InternalInterface.AccountSettings.Posting.HiddenItems[itemType] then
-				visibilityIcon:SetTextureAsync(addonID, "Textures/HideIcon.png")
-			elseif InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] then
-				visibilityIcon:SetTextureAsync(addonID, "Textures/CharacterHideIcon.png")
-			else
-				visibilityIcon:SetTextureAsync(addonID, "Textures/ShowIcon.png")
-			end
-			autoPostingIcon:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-		end
-
-		resetGridFunction = extra and extra.ResetGridFunction or nil
+		visibilityIcon:SetTextureAsync(addonID, (visibility == "HideAll" and "Textures/HideIcon.png") or (visibility == "HideChar" and "Textures/CharacterHideIcon.png") or "Textures/ShowIcon.png")
+		autoPostingIcon:SetTexture(addonID, auto and "Textures/AutoOn.png" or "Textures/AutoOff.png")
 	end
 	
 	function visibilityIcon.Event:LeftClick()
-		if itemType then
-			if InternalInterface.AccountSettings.Posting.HiddenItems[itemType] then
-				InternalInterface.AccountSettings.Posting.HiddenItems[itemType] = nil
-			elseif InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] then
-				InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] = nil
-			else
-				InternalInterface.AccountSettings.Posting.HiddenItems[itemType] = true
-			end
-		end
+		ToggleItemVisibility(itemType, "HideAll")
 		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
-		if resetGridFunction then resetGridFunction(itemType) end
 	end
 	
 	function visibilityIcon.Event:RightClick()
-		if itemType then
-			if InternalInterface.AccountSettings.Posting.HiddenItems[itemType] then
-				InternalInterface.AccountSettings.Posting.HiddenItems[itemType] = nil
-			elseif InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] then
-				InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] = nil
-			else
-				InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] = true
-			end
-		end
+		ToggleItemVisibility(itemType, "HideChar")
 		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
-		if resetGridFunction then resetGridFunction(itemType) end
 	end
 	
 	function autoPostingIcon.Event:LeftClick()
 		if itemType then
-			if InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then
-				InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = nil
+			if auto then
+				ClearItemAuto(itemType)
 			else
-				InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] = nil
-				local itemSettings = GetPostingSettings(itemType, itemCategory)
+				local categoryConfig = GetCategoryConfig(itemCategory)
 				
-				InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] =
+				SetItemAuto(itemType,
 				{
-					pricingModelOrder = itemSettings.referencePrice,
-					usePriceMatching = itemSettings.matchPrices,
-					bindPrices = itemSettings.bindPrices,
-					stackSize = itemSettings.stackSize,
-					stackNumber = itemSettings.stackNumber,
-					limitActive = itemSettings.stackLimit,
-					duration = itemSettings.duration,
-				}
-				
-				InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = true
+					pricingModelOrder = categoryConfig.DefaultReferencePrice,
+					usePriceMatching = categoryConfig.ApplyMatching,
+					lastBid = 0,
+					lastBuy = 0,
+					bindPrices = InternalInterface.AccountSettings.Posting.Config.BindPrices,
+					stackSize = categoryConfig.StackSize,
+					auctionLimit = categoryConfig.AuctionLimit,
+					postIncomplete = categoryConfig.PostIncomplete,
+					duration = categoryConfig.Duration,
+				})
 			end
 		end
 		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
-		if resetGridFunction then resetGridFunction(itemType) end
 	end
 	
 	function itemTexture.Event:MouseIn()
@@ -184,6 +155,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	local postFrame = UICreateFrame("Frame", name, parent)
 	
 	local itemGrid = DataGrid(name .. ".ItemGrid", postFrame)
+	local categoryFilter = Dropdown(name .. ".CategoryFilter", itemGrid:GetContent())
 	local filterFrame = UICreateFrame("Frame", name .. ".FilterFrame", itemGrid:GetContent())
 	local filterTextPanel = Panel(filterFrame:GetName() .. ".FilterTextPanel", filterFrame)
 	local visibilityIcon = UICreateFrame("Texture", filterFrame:GetName() .. ".VisibilityIcon", filterTextPanel:GetContent())
@@ -196,10 +168,11 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	local stackSizeLabel = ShadowedText(name .. ".StackSizeLabel", postFrame)
 	local stackSizeSelector = Slider(name .. ".StackSizeSelector", postFrame)
-	local stackNumberLabel = ShadowedText(name .. ".StackNumberLabel", postFrame)
-	local stackNumberSelector = Slider(name .. ".StackNumberSelector", postFrame)
-	local stackLimitCheck = UICreateFrame("RiftCheckbox", name .. ".StackLimitCheck", postFrame)
-	local stackLimitLabel = ShadowedText(name .. ".StackLimitLabel", postFrame)
+	local auctionLimitLabel = ShadowedText(name .. ".AuctionLimitLabel", postFrame)
+	local auctionLimitSelector = Slider(name .. ".AuctionLimitSelector", postFrame)
+	local auctionsLabel = ShadowedText(name .. ".AuctionsLabel", postFrame)
+	local incompleteStackLabel = ShadowedText(name .. ".IncompleteStackLabel", postFrame)
+	local incompleteStackCheck = UICreateFrame("RiftCheckbox", name .. ".IncompleteStackCheck", postFrame)
 	local durationLabel = ShadowedText(name .. ".DurationLabel", postFrame)
 	local durationSlider = UICreateFrame("RiftSlider", name .. ".DurationSlider", postFrame)
 	local durationTimeLabel = ShadowedText(name .. ".DurationTimeLabel", postFrame)
@@ -220,191 +193,41 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	local auctionsGrid = InternalInterface.UI.ItemAuctionsGrid(name .. ".ItemAuctionsGrid", postFrame)
 	
-	local frameActive = false
-	local resetNeeded = false
-	local visibilityMode = false
-	local currentItemType = nil
-	local currentAdjustedStack = nil
-	local pricesSetByModel = false
+	local noPropagateAuto = false
+	local noPropagatePrices = false
+	local waitUntil = 0
 
 	local function ItemGridFilter(itemType, itemInfo)
+		if itemInfo.adjustedStack <= 0 then return false end
+		
+		if not GetHiddenVisibility() and itemInfo.visibility ~= "Show" then
+			return false
+		end
+
 		local rarity = itemInfo.rarity and itemInfo.rarity ~= "" and itemInfo.rarity or "common"
 		rarity = ({ sellable = 1, common = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, quest = 8 })[rarity] or 1
 		local minRarity = InternalInterface.AccountSettings.Posting.RarityFilter or 1
 		if rarity < minRarity then return false end
-
-		local filterText = SUpper(filterTextField:GetText())
-		local upperName = SUpper(itemInfo.name)
-		if not SFind(upperName, filterText) then return false end
 		
-		if not visibilityMode then
-			if InternalInterface.AccountSettings.Posting.HiddenItems[itemType] or InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] then
-				return false
-			end
-		end
+		local _, filterCategory = categoryFilter:GetSelectedValue()
+		if not filterCategory.filter[itemInfo.category or ""] then return false end
 
-		local auctionAmount = 0
-		local postingQueue = GetPostingQueue()
-		for index, post in ipairs(postingQueue) do
-			if post.itemType == itemType then
-				auctionAmount = auctionAmount + post.amount
-			end
-		end
-		itemInfo.adjustedStack = itemInfo.stack - auctionAmount
-		if itemInfo.adjustedStack <= 0 then return false end
+		local filterText = (filterTextField:GetText()):upper()
+		local upperName = itemInfo.name:upper()
+		if not upperName:find(filterText) then return false end
 		
 		return true
 	end
 	
 	local function RefreshFilter()
-		if not frameActive then return end
 		itemGrid:RefreshFilter()
-	end
-
-	local function ResetItems()
-		if not frameActive then return end
-		
-		local slot = UISInventory()
-		local items = IIList(slot)
-		
-		local itemTypeTable = {}
-		for _, itemID in pairs(items) do repeat
-			if type(itemID) == "boolean" then break end 
-			local ok, itemDetail = pcall(IIDetail, itemID)
-			if not ok or not itemDetail or itemDetail.bound then break end
-			
-			local itemType = itemDetail.type
-			itemTypeTable[itemType] = itemTypeTable[itemType] or { name = itemDetail.name, icon = itemDetail.icon, rarity = itemDetail.rarity, stack = 0, stackMax = itemDetail.stackMax or 1, sell = itemDetail.sell, itemType = itemType, category = itemDetail.category, }
-			itemTypeTable[itemType].stack = itemTypeTable[itemType].stack + (itemDetail.stack or 1)
-		until true end
-		
-		itemGrid:SetData(itemTypeTable, nil, RefreshFilter, true)
-	end
-	
-	local function RefreshPostArea(itemType, itemInfo)
-		currentItemType = nil
-		currentAdjustedStack = nil
-	
-		itemTexturePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.5)
-		itemTexture:SetVisible(false)
-		itemNameLabel:SetVisible(false)
-		itemStackLabel:SetVisible(false)
-		
-		pricingModelSelector:SetValues({})
-		pricingModelSelector:SetEnabled(false)
-		priceMatchingCheck:SetEnabled(false)
-		priceMatchingCheck:SetChecked(false)
-		stackSizeSelector:SetRange(0, 0)
-		stackSizeSelector:ResetPseudoValues()
-		stackNumberSelector:SetRange(0, 0)
-		stackNumberSelector:ResetPseudoValues()
-		stackLimitCheck:SetEnabled(false)
-		stackLimitCheck:SetChecked(false)
-		bidMoneySelector:SetEnabled(false)
-		buyMoneySelector:SetEnabled(false)
-		bindPricesCheck:SetEnabled(false)
-		bindPricesCheck:SetChecked(false)
-		durationSlider:SetEnabled(false)
-
-		resetButton:SetEnabled(false)
-		postButton:SetEnabled(false)
-		
-		local function PopulatePostArea(itemType, itemInfo, itemSettings, prices)
-			itemTexturePanel:GetContent():SetBackgroundColor(GetRarityColor(itemInfo.rarity))
-			itemTexture:SetVisible(true)
-			itemTexture:SetTextureAsync("Rift", itemInfo.icon)
-			itemNameLabel:SetText(itemInfo.name)
-			itemNameLabel:SetFontColor(GetRarityColor(itemInfo.rarity))
-			itemNameLabel:SetVisible(true)
-			itemStackLabel:SetText(SFormat(L["PostFrame/LabelItemStack"], itemInfo.adjustedStack))
-			itemStackLabel:SetVisible(true)
-			
-			local priceModels = GetPriceModels()
-			for priceID, priceData in pairs(prices) do
-				local priceModelName = priceModels[priceID]
-				if priceModelName then
-					prices[priceID].displayName = priceModelName
-				else
-					prices[priceID] = nil
-				end
-			end
-			prices[FIXED_MODEL_ID] = { displayName = FIXED_MODEL_NAME, bid = itemSettings.lastBid or 0, buy = itemSettings.lastBuy or 0 }
-
-			local preferredPrice = itemSettings.referencePrice
-			if not preferredPrice or not prices[preferredPrice] then
-				if InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then
-					Write(L["PostFrame/ErrorAutoPostModelMissing"])
-					InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = nil
-					RefreshFilter()
-				end
-				preferredPrice = prices[itemSettings.fallbackPrice] and itemSettings.fallbackPrice or nil
-			end
-			
-			pricingModelSelector:SetValues(prices)
-			pricingModelSelector:SetEnabled(true)
-			if preferredPrice then
-				pricingModelSelector:SetSelectedKey(preferredPrice)
-			end
-			
-			priceMatchingCheck:SetEnabled(true)
-			priceMatchingCheck:SetChecked(itemSettings.matchPrices)
-			
-			local preferredStackSize = itemSettings.stackSize
-			stackSizeSelector:SetRange(1, itemInfo.stackMax)
-			stackSizeSelector:AddPostValue(L["Misc/StackSizeMaxKeyShortcut"], "+", L["Misc/StackSizeMax"])
-			if type(preferredStackSize) == "number" then
-				preferredStackSize = MMin(preferredStackSize, itemInfo.stackMax)
-			end
-			stackSizeSelector:SetPosition(preferredStackSize)
-			
-			local preferredStackNumber = itemSettings.stackNumber
-			if type(preferredStackNumber) == "number" then
-				local _, maxRange = stackNumberSelector:GetRange()
-				preferredStackNumber = MMin(preferredStackNumber, maxRange)
-			end
-			stackNumberSelector:SetPosition(preferredStackNumber)
-			
-			stackLimitCheck:SetEnabled(true)
-			stackLimitCheck:SetChecked(itemSettings.stackLimit)
-
-			bidMoneySelector:SetEnabled(true)
-			buyMoneySelector:SetEnabled(true)
-			
-			bindPricesCheck:SetEnabled(true)
-			bindPricesCheck:SetChecked(itemSettings.bindPrices)
-			
-			durationSlider:SetEnabled(true)
-			durationSlider:SetPosition(itemSettings.duration)
-			
-			resetButton:SetEnabled(true)
-			postButton:SetEnabled(true)
-			autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-			
-			currentItemType = itemType
-			currentAdjustedStack = itemInfo.adjustedStack
-		end
-		
-		if itemType and itemInfo then
-			local category = itemInfo.category
-			local itemSettings = GetPostingSettings(itemType, category)
-		
-			local models = GetCategoryModels(category)
-			local blackList = itemSettings.blackList or {}
-			for modelID in pairs(blackList) do
-				models[modelID] = nil
-			end
-			
-			GetPrices(function(prices) PopulatePostArea(itemType, itemInfo, itemSettings, prices) end, itemType, itemSettings.bidPercentage, models, false)
-		else
-			autoPostButton:SetTextureAsync(addonID, "Textures/AutoOff.png")
-		end
 	end
 	
 	local function ApplyPricingModel()
 		local priceID, priceData = pricingModelSelector:GetSelectedValue()
 		local match = priceMatchingCheck:GetChecked()
 		
-		pricesSetByModel = true
+		noPropagatePrices = true
 		if priceID and priceData then
 			local bid = match and priceData.adjustedBid or priceData.bid
 			local buy = match and priceData.adjustedBuy or priceData.buy
@@ -414,15 +237,45 @@ function InternalInterface.UI.PostFrame(name, parent)
 			bidMoneySelector:SetValue(0)
 			buyMoneySelector:SetValue(0)
 		end
-		pricesSetByModel = false
+		noPropagatePrices = false
 	end
 	
-	local function ResetItemGridFunction(itemType)
-		RefreshFilter()
-		if InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] then
-			RefreshPostArea(itemGrid:GetSelectedData())
+	local function ResetAuctionLabel()
+		local itemType, itemInfo = GetSelectedItemType()
+		local auctions = auctionsGrid:GetAuctions()
+		if auctions and itemInfo then
+			local stack = itemInfo.adjustedStack
+			local stackSize = stackSizeSelector:GetPosition()
+			stackSize = stackSize == "+" and itemInfo.stackMax or stackSize
+			local Round = incompleteStackCheck:GetChecked() and MCeil or MFloor
+			local numAuctions = Round(stack / stackSize)
+			
+			local ownAuctions = 0
+			for _, auctionData in pairs(auctions) do
+				if auctionData.own then
+					ownAuctions = ownAuctions + 1
+				end
+			end
+			
+			local queuedAuctions = 0
+			for _, postData in pairs(GetPostingQueue()) do
+				if postData.itemType == itemType then
+					queuedAuctions = queuedAuctions + MCeil(postData.amount / postData.stackSize)
+				end
+			end
+			
+			local postAuctions = numAuctions
+			local limit = auctionLimitSelector:GetPosition()
+			if type(limit) == "number" then
+				postAuctions = MMax(MMin(limit - ownAuctions - queuedAuctions, numAuctions), 0)
+			end
+			
+			auctionsLabel:SetText(L["PostFrame/LabelAuctions"]:format(postAuctions, postAuctions == 1 and L["PostFrame/LabelAuctionsSingular"] or L["PostFrame/LabelAuctionsPlural"], ownAuctions, queuedAuctions))
+			auctionsLabel:SetVisible(true)
+			
+			postButton:SetEnabled(postAuctions > 0)
 		else
-			autoPostButton:SetTextureAsync(addonID, "Textures/AutoOff.png")
+			auctionsLabel:SetVisible(false)
 		end
 	end
 	
@@ -435,35 +288,69 @@ function InternalInterface.UI.PostFrame(name, parent)
 			lastBuy = buyMoneySelector:GetValue(),
 			bindPrices = bindPricesCheck:GetChecked(),
 			stackSize = stackSizeSelector:GetPosition(),
-			stackNumber = stackNumberSelector:GetPosition(),
-			limitActive = stackLimitCheck:GetChecked(),
+			auctionLimit = auctionLimitSelector:GetPosition(),
+			postIncomplete = incompleteStackCheck:GetChecked(),
 			duration = durationSlider:GetPosition(),
 		}
 		return settings
 	end
 
 	local function ColorSelector(value)
-		local _, selectedInfo = itemGrid:GetSelectedData()
-		if selectedInfo and selectedInfo.sell and value > 0 and value < MCeil(selectedInfo.sell / AH_FEE_MULTIPLIER) then
+		local _, itemInfo = GetSelectedItemType()
+		if itemInfo and itemInfo.sell and value > 0 and value < MCeil(itemInfo.sell / AH_FEE_MULTIPLIER) then
 			return { 1, 0, 0, }
 		else
 			return { 0, 0, 0, }
 		end
 	end
 	
-	do -- LAYOUT --
+	local function BuildCategoryFilter()
+		local categories = {}
+
+		local baseCategory = CDetail(BASE_CATEGORY)
+		categories[BASE_CATEGORY] = { name = baseCategory.name, order = 0, filter = {}, }
+		for order, subCategoryID in ipairs(baseCategory.children) do
+			categories[subCategoryID] = { name = CDetail(subCategoryID).name, order = order, filter = {}, }
+		end
+
+		for categoryID, categoryData in pairs(categories) do
+			local pending = { categoryID }
+			while #pending > 0 do
+				local current = TRemove(pending)
+				
+				categoryData.filter[current] = true
+				
+				local children = CDetail(current).children
+				if children then
+					for _, child in pairs(children) do
+						TInsert(pending, child)
+					end
+				end
+			end
+		end
+
+		return categories
+	end
+	
+	
 	itemGrid:SetPoint("TOPLEFT", postFrame, "TOPLEFT", 5, 5)
 	itemGrid:SetPoint("BOTTOMRIGHT", postFrame, "BOTTOMLEFT", 295, -5)
-	itemGrid:SetPadding(1, 1, 1, 38)
+	itemGrid:SetPadding(1, 38, 1, 38)
 	itemGrid:SetHeadersVisible(false)
 	itemGrid:SetRowHeight(62)
 	itemGrid:SetRowMargin(2)
 	itemGrid:SetUnselectedRowBackgroundColor({0.2, 0.15, 0.2, 1})
 	itemGrid:SetSelectedRowBackgroundColor({0.6, 0.45, 0.6, 1})
-	itemGrid:AddColumn("item", nil, ItemCellType, 248, 0, nil, "name", { ResetGridFunction = ResetItemGridFunction })
+	itemGrid:AddColumn("item", nil, ItemCellType, 248, 0, nil, "name")
 	itemGrid:SetFilter(ItemGridFilter)
 	itemGrid:GetInternalContent():SetBackgroundColor(0, 0.05, 0, 0.5)	
 
+	categoryFilter:SetPoint("TOPLEFT", itemGrid:GetContent(), "TOPLEFT", 3, 3)
+	categoryFilter:SetPoint("BOTTOMRIGHT", itemGrid:GetContent(), "TOPRIGHT", -3, 35)
+	categoryFilter:SetTextSelector("name")
+	categoryFilter:SetOrderSelector("order")
+	categoryFilter:SetValues(BuildCategoryFilter())
+	
 	filterFrame:SetPoint("TOPLEFT", itemGrid:GetContent(), "BOTTOMLEFT", 3, -36)
 	filterFrame:SetPoint("BOTTOMRIGHT", itemGrid:GetContent(), "BOTTOMRIGHT", -3, -2)
 	
@@ -490,9 +377,11 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	itemNameLabel:SetPoint("BOTTOMLEFT", itemTexturePanel, "CENTERRIGHT", 5, 5)
 	itemNameLabel:SetFontSize(20)
+	itemNameLabel:SetVisible(false)
 
 	itemStackLabel:SetPoint("BOTTOMLEFT", itemTexturePanel, "BOTTOMRIGHT", 5, -1)
 	itemStackLabel:SetFontSize(15)
+	itemStackLabel:SetVisible(false)	
 	
 	stackSizeLabel:SetPoint("TOPLEFT", postFrame, "TOPLEFT", 315, 105)
 	stackSizeLabel:SetText(L["PostFrame/LabelStackSize"])
@@ -500,17 +389,51 @@ function InternalInterface.UI.PostFrame(name, parent)
 	stackSizeLabel:SetFontColor(1, 1, 0.75, 1)
 	stackSizeLabel:SetShadowOffset(2, 2)
 	
-	stackNumberLabel:SetPoint("TOPLEFT", postFrame, "TOPLEFT", 315, 145)
-	stackNumberLabel:SetText(L["PostFrame/LabelStackNumber"])
-	stackNumberLabel:SetFontSize(14)
-	stackNumberLabel:SetFontColor(1, 1, 0.75, 1)
-	stackNumberLabel:SetShadowOffset(2, 2)
+	auctionLimitLabel:SetPoint("TOPLEFT", postFrame, "TOPLEFT", 315, 145)
+	auctionLimitLabel:SetText(L["PostFrame/LabelAuctionLimit"])
+	auctionLimitLabel:SetFontSize(14)
+	auctionLimitLabel:SetFontColor(1, 1, 0.75, 1)
+	auctionLimitLabel:SetShadowOffset(2, 2)
 
+	auctionsLabel:SetPoint("TOPLEFT", auctionLimitLabel, "BOTTOMLEFT", 0, 10)
+	auctionsLabel:SetFontColor(1, 0.5, 0, 1)
+	auctionsLabel:SetFontSize(13)
+	
 	durationLabel:SetPoint("TOPLEFT", postFrame, "TOPLEFT", 315, 225)
 	durationLabel:SetText(L["PostFrame/LabelDuration"])
 	durationLabel:SetFontSize(14)
 	durationLabel:SetFontColor(1, 1, 0.75, 1)
 	durationLabel:SetShadowOffset(2, 2)
+
+	local maxLeftLabelWidth = 100
+	maxLeftLabelWidth = MMax(maxLeftLabelWidth, stackSizeLabel:GetWidth())
+	maxLeftLabelWidth = MMax(maxLeftLabelWidth, auctionLimitLabel:GetWidth())
+	maxLeftLabelWidth = MMax(maxLeftLabelWidth, durationLabel:GetWidth())
+	maxLeftLabelWidth = maxLeftLabelWidth + 20
+
+	stackSizeSelector:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 106)
+	stackSizeSelector:SetPoint("CENTERLEFT", stackSizeLabel, "CENTERLEFT", maxLeftLabelWidth, 4)
+	
+	auctionLimitSelector:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 146)
+	auctionLimitSelector:SetPoint("CENTERLEFT", auctionLimitLabel, "CENTERLEFT", maxLeftLabelWidth, 4)
+
+	incompleteStackLabel:SetPoint("RIGHT", auctionLimitSelector, "RIGHT")
+	incompleteStackLabel:SetPoint("CENTERY", auctionsLabel, "CENTERY")
+	incompleteStackLabel:SetFontSize(13)
+	incompleteStackLabel:SetText(L["PostFrame/LabelIncompleteStack"])	
+	
+	incompleteStackCheck:SetPoint("CENTERRIGHT", incompleteStackLabel, "CENTERLEFT", -5, 0)
+	incompleteStackCheck:SetChecked(false)
+	incompleteStackCheck:SetEnabled(false)
+
+	durationTimeLabel:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 225)
+	durationTimeLabel:SetText(L["Misc/DurationFormat"]:format(48))
+
+	durationSlider:SetPoint("CENTERLEFT", durationLabel, "CENTERLEFT", maxLeftLabelWidth + 10, 5)
+	durationSlider:SetPoint("CENTERRIGHT", durationTimeLabel, "CENTERLEFT", -15, 5)
+	durationSlider:SetRange(1, 3)
+	durationSlider:SetPosition(3)
+	durationSlider:SetEnabled(false)
 	
 	pricingModelLabel:SetPoint("TOPLEFT", postFrame, "TOPRIGHT", -450, 20)
 	pricingModelLabel:SetText(L["PostFrame/LabelPricingModel"])
@@ -530,39 +453,10 @@ function InternalInterface.UI.PostFrame(name, parent)
 	buyLabel:SetFontColor(1, 1, 0.75, 1)
 	buyLabel:SetShadowOffset(2, 2)
 
-	local maxLeftLabelWidth = 100
-	maxLeftLabelWidth = MMax(maxLeftLabelWidth, stackSizeLabel:GetWidth())
-	maxLeftLabelWidth = MMax(maxLeftLabelWidth, bidLabel:GetWidth())
-	maxLeftLabelWidth = MMax(maxLeftLabelWidth, buyLabel:GetWidth())
-	maxLeftLabelWidth = maxLeftLabelWidth + 20
-	
-	stackSizeSelector:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 106)
-	stackSizeSelector:SetPoint("CENTERLEFT", stackSizeLabel, "CENTERLEFT", maxLeftLabelWidth, 4)
-	
-	stackNumberSelector:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 146)
-	stackNumberSelector:SetPoint("CENTERLEFT", stackNumberLabel, "CENTERLEFT", maxLeftLabelWidth, 4)
-		
-	stackLimitCheck:SetPoint("TOPRIGHT", stackNumberSelector, "BOTTOMRIGHT", 0, 5)
-	stackLimitCheck:SetChecked(false)
-	stackLimitCheck:SetEnabled(false)
-	
-	stackLimitLabel:SetPoint("CENTERRIGHT", stackLimitCheck, "CENTERLEFT", -5, 0)	
-	stackLimitLabel:SetFontSize(13)
-	stackLimitLabel:SetText(L["PostFrame/CheckStackLimit"])
-
-	durationTimeLabel:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 225)
-	durationTimeLabel:SetText(SFormat(L["Misc/DurationFormat"], 48))
-
-	durationSlider:SetPoint("CENTERRIGHT", durationTimeLabel, "CENTERLEFT", -15, 5)
-	durationSlider:SetPoint("CENTERLEFT", durationLabel, "CENTERLEFT", maxLeftLabelWidth + 10, 5)
-	durationSlider:SetRange(1, 3)
-	durationSlider:SetPosition(3)
-	durationSlider:SetEnabled(false)
-
 	local maxRightLabelWidth = 100
 	maxRightLabelWidth = MMax(maxRightLabelWidth, pricingModelLabel:GetWidth())
-	maxRightLabelWidth = MMax(maxRightLabelWidth, stackNumberLabel:GetWidth())
-	maxRightLabelWidth = MMax(maxRightLabelWidth, durationLabel:GetWidth())
+	maxRightLabelWidth = MMax(maxRightLabelWidth, bidLabel:GetWidth())
+	maxRightLabelWidth = MMax(maxRightLabelWidth, buyLabel:GetWidth())
 	maxRightLabelWidth = maxRightLabelWidth + 20
 
 	pricingModelSelector:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -5, 15)
@@ -609,15 +503,15 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	auctionsGrid:SetPoint("TOPLEFT", postFrame, "TOPLEFT", 300, 260)
 	auctionsGrid:SetPoint("BOTTOMRIGHT", postFrame, "BOTTOMRIGHT", -5, -5)
+
+
+	
+	function itemGrid.Event:SelectionChanged(itemType)
+		SetSelectedItemType(itemType)
 	end
 	
-	function itemGrid.Event:SelectionChanged(itemType, itemData)
-		if itemType ~= currentItemType then
-			auctionsGrid:SetItemType(itemType)
-		end
-		if itemType ~= currentItemType or (itemData and itemData.adjustedStack or nil) ~= currentAdjustedStack then
-			RefreshPostArea(itemType, itemData)
-		end
+	function categoryFilter.Event:SelectionChanged()
+		RefreshFilter()
 	end
 	
 	function filterTextPanel.Event:LeftClick()
@@ -625,7 +519,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	end
 
 	function filterTextField.Event:KeyFocusGain()
-		local length = SLen(self:GetText())
+		local length = (self:GetText()):len()
 		if length > 0 then
 			self:SetSelection(0, length)
 		end
@@ -636,13 +530,11 @@ function InternalInterface.UI.PostFrame(name, parent)
 	end	
 	
 	function visibilityIcon.Event:LeftClick()
-		visibilityMode = not visibilityMode
-		visibilityIcon:SetTextureAsync(addonID, visibilityMode and "Textures/ShowIcon.png" or "Textures/HideIcon.png")
-		RefreshFilter()
+		SetHiddenVisibility(not GetHiddenVisibility())
 	end
 	
 	function itemTexture.Event:MouseIn()
-		pcall(CTooltip, currentItemType)
+		pcall(CTooltip, (GetSelectedItemType()))
 	end
 	
 	function itemTexture.Event:MouseOut()
@@ -651,80 +543,42 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	function pricingModelSelector.Event:SelectionChanged()
 		ApplyPricingModel()
-		if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-			InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-			autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-			RefreshFilter()
+		local itemType, itemInfo = GetSelectedItemType()
+		if not noPropagateAuto and itemInfo.auto then
+			ClearItemAuto(itemType)
 		end
 	end
 
 	function priceMatchingCheck.Event:CheckboxChange()
 		ApplyPricingModel()
-		if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-			InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-			autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-			RefreshFilter()
+		local itemType, itemInfo = GetSelectedItemType()
+		if not noPropagateAuto and itemInfo.auto then
+			ClearItemAuto(itemType)
 		end
 	end
 
 	function stackSizeSelector.Event:PositionChanged(position)
-		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-		
-		if selectedItem then
-			local _, maxValue = self:GetRange()
-			local stackSize = position == "+" and maxValue or position
-			if type(stackSize) ~= "number" then stackSize = 0 end
-
-			local stackNumber = stackNumberSelector:GetPosition()
-			local amount = self.lastStackSize and type(stackNumber) == "number" and self.lastStackSize * stackNumber or stackNumber
-			
-			if stackSize > 0 then
-				self.lastStackSize = stackSize
-
-				local stacks = selectedInfo.adjustedStack
-				local fullStacks = MFloor(stacks / stackSize)
-				local allStacks = MCeil(stacks / stackSize)
-				if amount == "F" and fullStacks <= 0 then amount = 1 end
-				
-				stackNumberSelector:SetRange(1, MMax(fullStacks, 1))
-				stackNumberSelector:ResetPseudoValues()
-				
-				if fullStacks > 0 then
-					stackNumberSelector:AddPostValue(L["Misc/StacksFullKeyShortcut"], "F", L["Misc/StacksFull"])
-				end
-				stackNumberSelector:AddPostValue(L["Misc/StacksAllKeyShortcut"], "A", L["Misc/StacksAll"])
-				
-				if type(amount) == "number" then
-					amount = MMin(MFloor(amount / stackSize), MMax(fullStacks, 1))
-				end
-				stackNumberSelector:SetPosition(amount)
-			else
-				stackNumberSelector:SetRange(0, 0)
-				stackNumberSelector:ResetPseudoValues()			
-			end
-			
-			if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-				InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-				autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-				RefreshFilter()
-			end			
+		local itemType, itemInfo = GetSelectedItemType()
+		if not noPropagateAuto and itemInfo.auto then
+			ClearItemAuto(itemType)
 		end
+		ResetAuctionLabel()
 	end
 	
-	function stackNumberSelector.Event:PositionChanged(stackNumber)
-		if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-			InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-			autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-			RefreshFilter()
-		end	
+	function auctionLimitSelector.Event:PositionChanged()
+		local itemType, itemInfo = GetSelectedItemType()
+		if not noPropagateAuto and itemInfo.auto then
+			ClearItemAuto(itemType)
+		end
+		ResetAuctionLabel()
 	end
 	
-	function stackLimitCheck.Event:CheckboxChange()
-		if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-			InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-			autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-			RefreshFilter()
+	function incompleteStackCheck.Event:CheckboxChange()
+		local itemType, itemInfo = GetSelectedItemType()
+		if not noPropagateAuto and itemInfo.auto then
+			ClearItemAuto(itemType)
 		end
+		ResetAuctionLabel()
 	end
 	
 	function bidMoneySelector.Event:ValueChanged(newValue)
@@ -737,15 +591,14 @@ function InternalInterface.UI.PostFrame(name, parent)
 			buy = bid
 		end
 
-		if not pricesSetByModel then
+		if not noPropagatePrices then
 			local prices = pricingModelSelector:GetValues()
 			prices[FIXED_MODEL_ID].bid = bid
 			prices[FIXED_MODEL_ID].buy = buy
 			pricingModelSelector:SetSelectedKey(FIXED_MODEL_ID)
-			if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-				InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-				autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-				RefreshFilter()
+			local itemType, itemInfo = GetSelectedItemType()
+			if not noPropagateAuto and itemInfo.auto then
+				ClearItemAuto(itemType)
 			end
 		end
 	end
@@ -760,34 +613,32 @@ function InternalInterface.UI.PostFrame(name, parent)
 			bid = buy
 		end
 		
-		if not pricesSetByModel then
+		if not noPropagatePrices then
 			local prices = pricingModelSelector:GetValues()
 			prices[FIXED_MODEL_ID].bid = bid
 			prices[FIXED_MODEL_ID].buy = buy
 			pricingModelSelector:SetSelectedKey(FIXED_MODEL_ID)
-			if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-				InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-				autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-				RefreshFilter()
+			local itemType, itemInfo = GetSelectedItemType()
+			if not noPropagateAuto and itemInfo.auto then
+				ClearItemAuto(itemType)
 			end
 		end
 	end	
 
 	function bindPricesCheck.Event:CheckboxChange()
 		if self:GetChecked() then
-			pricesSetByModel = true
+			noPropagatePrices = true
 			local maxPrice = MMax(bidMoneySelector:GetValue(), buyMoneySelector:GetValue())
 			bidMoneySelector:SetValue(maxPrice)
 			buyMoneySelector:SetValue(maxPrice)
-			pricesSetByModel = false
+			noPropagatePrices = false
 		else
 			ApplyPricingModel()
 		end
-		if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-			InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-			autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-			RefreshFilter()
-		end	
+		local itemType, itemInfo = GetSelectedItemType()
+		if not noPropagateAuto and itemInfo.auto then
+			ClearItemAuto(itemType)
+		end
 	end	
 
 	function durationSlider.Event:WheelForward()
@@ -804,116 +655,45 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	function durationSlider.Event:SliderChange()
 		local position = self:GetPosition()
-		durationTimeLabel:SetText(SFormat(L["Misc/DurationFormat"], 6 * 2 ^ position))
-		if currentItemType and InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] then
-			InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-			autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
-			RefreshFilter()
-		end	
+		durationTimeLabel:SetText(L["Misc/DurationFormat"]:format(6 * 2 ^ position))
+		local itemType, itemInfo = GetSelectedItemType()
+		if not noPropagateAuto and itemInfo.auto then
+			ClearItemAuto(itemType)
+		end
 	end
 	
 	function resetButton.Event:LeftPress()
-		InternalInterface.CharacterSettings.Posting.AutoConfig[currentItemType] = nil
-		InternalInterface.CharacterSettings.Posting.ItemConfig[currentItemType] = nil
+		ResetPostingSettings()
 		RefreshFilter()
-		RefreshPostArea(itemGrid:GetSelectedData())
 	end
 	
 	function postButton.Event:LeftPress()
-		if self.waitUntil and ITReal() < self.waitUntil then return end
+		if ITReal() < waitUntil then return end
 		
-		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-		if not selectedItem or not selectedInfo then return end
+		local itemType, itemInfo = GetSelectedItemType()
+		if not itemType or not itemInfo then return end
 
-		local settings = CollectPostingSettings()
-		
-		local stackSize = settings.stackSize
-		local stackNumber = settings.stackNumber
-		local bidUnitPrice = settings.lastBid
-		local buyUnitPrice = settings.lastBuy
-		local duration = 6 * 2 ^ settings.duration
-
-		stackSize = stackSize == "+" and selectedInfo.stackMax or stackSize
-		if type(stackSize) ~= "number" then stackSize = 0 end
-		
-		if stackSize > 0 and selectedInfo.adjustedStack then
-			local stacks = selectedInfo.adjustedStack
-			local fullStacks = MFloor(stacks / stackSize)
-			local allStacks = MCeil(stacks / stackSize)
-			
-			if stackNumber == "F" then
-				stackNumber = fullStacks
-			elseif stackNumber == "A" then
-				stackNumber = allStacks
-			elseif type(stackNumber) ~= "number" then
-				stackNumber = 0
-			elseif settings.limitActive then
-				local auctions = auctionsGrid:GetData() or {}
-				for auctionID, auctionData in pairs(auctions) do
-					if auctionData.own then
-						stackNumber = stackNumber - 1
-					end
-				end
-				
-				local queue = GetPostingQueue()
-				for _, queueInfo in ipairs(queue) do
-					if queueInfo.itemType == selectedItem then
-						stackNumber = stackNumber - MCeil(queueInfo.amount / queueInfo.stackSize)
-					end
-				end
-			end
-			
-			stackNumber = MMax(MMin(stackNumber, allStacks), 0)
-		else
-			stackNumber = 0
-		end
-
-		buyUnitPrice = buyUnitPrice > 0 and buyUnitPrice or nil
-		local amount = MMin(stackSize * stackNumber, selectedInfo.adjustedStack)
-		
-		if stackSize <= 0 then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackSize"]))
-			return
-		elseif stackNumber <= 0 or amount <= 0 then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackNumber"]))
-			return
-		elseif bidUnitPrice <= 0 then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBidPrice"]))
-			return
-		elseif buyUnitPrice and buyUnitPrice < bidUnitPrice then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBuyPrice"]))
-			return
-		end
-		
-		if PostItem(selectedItem, stackSize, amount, bidUnitPrice, buyUnitPrice, duration) then
-			InternalInterface.CharacterSettings.Posting.ItemConfig[selectedItem] = settings
-			self.waitUntil = ITReal() + 0.5
+		local result = PostItem(CollectPostingSettings())
+		if type(result) == "string" then
+			Write(L["PostFrame/ErrorPostBase"]:format(result))
+		elseif result then
+			waitUntil = ITReal() + 0.5
 		end
 	end
 	
 	function autoPostButton.Event.LeftClick()
-		local itemType = itemGrid:GetSelectedData()
-		if not itemType then return end
-		local settings = CollectPostingSettings()
+		local itemType, itemInfo = GetSelectedItemType()
+		if not itemType or not itemInfo then return end
 		
-		if type(settings.stackSize) == "number" and settings.stackSize <= 0 then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackSize"]))
-			return
-		elseif type(settings.stackNumber) == "number" and settings.stackNumber <= 0 then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostStackNumber"]))
-			return
-		elseif settings.lastBid <= 0 then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBidPrice"]))
-			return
-		elseif settings.lastBuy and settings.lastBuy ~= 0 and settings.lastBuy < settings.lastBid then
-			Write(SFormat(L["PostFrame/ErrorPostBase"], L["PostFrame/ErrorPostBuyPrice"]))
-			return
+		if itemInfo.auto then
+			ClearItemAuto(itemType)
+		else
+			if not auctionsLabel:GetVisible() then return end
+			local result = SetItemAuto(itemType, CollectPostingSettings())
+			if type(result) == "string" then
+				Write(L["PostFrame/ErrorPostBase"]:format(result))
+			end
 		end
-		
-		InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] = settings
-		InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] = not InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] or nil
-		RefreshFilter()
-		autoPostButton:SetTextureAsync(addonID, InternalInterface.CharacterSettings.Posting.AutoConfig[itemType] and "Textures/AutoOn.png" or "Textures/AutoOff.png")
 	end
 	
 	function auctionsGrid.Event:RowRightClick(auctionID, auctionData)
@@ -936,14 +716,11 @@ function InternalInterface.UI.PostFrame(name, parent)
 	end
 	
 	function postFrame:Show()
-		frameActive = true
-		auctionsGrid:SetEnabled(true)
-		resetNeeded = true
+		SetControllerActive(true)
 	end
 	
 	function postFrame:Hide()
-		frameActive = false
-		auctionsGrid:SetEnabled(false)
+		SetControllerActive(false)
 	end
 	
 	function postFrame:ItemRightClick(params)
@@ -953,35 +730,169 @@ function InternalInterface.UI.PostFrame(name, parent)
 			local filteredData = itemGrid:GetFilteredData()
 			if filteredData[itemDetail.type] then
 				itemGrid:SetSelectedKey(itemDetail.type)
-				return true
 			end
+			return true
 		end
 		return false
-	end	
+	end
 	
-	TInsert(Event.Item.Slot, { function() resetNeeded = true end, addonID, addonID .. ".PostFrame.OnItemSlot" })
-	TInsert(Event.Item.Update, { function() resetNeeded = true end, addonID, addonID .. ".PostFrame.OnItemUpdate" })
-
-	local function OnPostingQueueChanged()
+	TInsert(InternalInterface.Control.PostController.ItemListChanged, function(itemList) itemGrid:SetData(itemList, nil, nil, true) end)
+	
+	local function OnHiddenVisibilityChanged(visible)
+		visibilityIcon:SetTextureAsync(addonID, visible and "Textures/ShowIcon.png" or "Textures/HideIcon.png")
 		RefreshFilter()
-		local selectedItem, selectedInfo = itemGrid:GetSelectedData()
-		if selectedItem and selectedInfo then
-			if currentItemType ~= selectedItem or currentAdjustedStack ~= selectedInfo.adjustedStack then
-				RefreshPostArea(selectedItem, selectedInfo)
+	end
+	TInsert(InternalInterface.Control.PostController.HiddenVisibilityChanged, OnHiddenVisibilityChanged)
+	TInsert(InternalInterface.Control.PostController.ItemVisibilityChanged, RefreshFilter)
+	local function OnItemAutoChanged(changedItemType)
+		local itemType, itemInfo = GetSelectedItemType()
+		if itemType == changedItemType and itemInfo then
+			autoPostButton:SetTexture(addonID, itemInfo.auto and "Textures/AutoOn.png" or "Textures/AutoOff.png")
+		end
+		RefreshFilter()
+	end
+	TInsert(InternalInterface.Control.PostController.ItemAutoChanged, OnItemAutoChanged)
+
+	local function OnSelectedItemTypeChanged(itemType, itemInfo)
+		noPropagateAuto = true
+		
+		stackSizeSelector:ResetPseudoValues()
+		auctionLimitSelector:ResetPseudoValues()
+
+		if itemType and itemInfo then
+			local itemSettings = GetPostingSettings(itemType, itemInfo.category)
+		
+			itemTexturePanel:GetContent():SetBackgroundColor(GetRarityColor(itemInfo.rarity))
+			itemTexture:SetTextureAsync("Rift", itemInfo.icon)
+			itemTexture:SetVisible(true)
+			itemNameLabel:SetText(itemInfo.name)
+			itemNameLabel:SetFontColor(GetRarityColor(itemInfo.rarity))
+			itemNameLabel:SetVisible(true)
+			itemStackLabel:SetText(L["PostFrame/LabelItemStack"]:format(itemInfo.adjustedStack))
+			itemStackLabel:SetVisible(true)
+			
+			stackSizeSelector:SetRange(1, itemInfo.stackMax)
+			stackSizeSelector:AddPostValue(L["Misc/StackSizeMaxKeyShortcut"], "+", L["Misc/StackSizeMax"])
+			local preferredStackSize = itemSettings.stackSize
+			if type(preferredStackSize) == "number" then
+				preferredStackSize = MMin(preferredStackSize, itemInfo.stackMax)
 			end
+			stackSizeSelector:SetPosition(preferredStackSize)
+
+			auctionLimitSelector:SetRange(1, 999)
+			auctionLimitSelector:AddPostValue(L["Misc/AuctionLimitMaxKeyShortcut"], "+", L["Misc/AuctionLimitMax"])
+			auctionLimitSelector:SetPosition(itemSettings.auctionLimit)
+
+			incompleteStackCheck:SetEnabled(true)
+			incompleteStackCheck:SetChecked(itemSettings.postIncomplete)
+
+			durationSlider:SetEnabled(true)
+			durationSlider:SetPosition(itemSettings.duration)
+
+			priceMatchingCheck:SetEnabled(true)
+			priceMatchingCheck:SetChecked(itemSettings.matchPrices)
+			
+			bindPricesCheck:SetEnabled(true)
+			bindPricesCheck:SetChecked(itemSettings.bindPrices)
+			
+			autoPostButton:SetTexture(addonID, itemInfo.auto and "Textures/AutoOn.png" or "Textures/AutoOff.png")
 		else
-			RefreshPostArea(nil, nil)
+			itemTexturePanel:GetContent():SetBackgroundColor(0, 0, 0, 0.5)
+			itemTexture:SetVisible(false)
+			itemNameLabel:SetVisible(false)
+			itemStackLabel:SetVisible(false)
+			stackSizeSelector:SetRange(0, 0)
+			auctionLimitSelector:SetRange(0, 0)
+			incompleteStackCheck:SetEnabled(false)
+			incompleteStackCheck:SetChecked(false)
+			durationSlider:SetEnabled(false)
+			priceMatchingCheck:SetEnabled(false)
+			priceMatchingCheck:SetChecked(false)
+			bindPricesCheck:SetEnabled(false)
+			bindPricesCheck:SetChecked(false)
+			autoPostButton:SetTexture(addonID, "Textures/AutoOff.png")
+		end
+		
+		bidMoneySelector:SetEnabled(false)
+		bidMoneySelector:SetValue(0)
+		buyMoneySelector:SetEnabled(false)
+		buyMoneySelector:SetValue(0)
+		pricingModelSelector:SetValues({})
+		pricingModelSelector:SetEnabled(false)
+		resetButton:SetEnabled(false)
+		postButton:SetEnabled(false)
+
+		auctionsGrid:SetItemAuctions()
+		
+		ResetAuctionLabel()
+		
+		noPropagateAuto = false
+	end
+	TInsert(InternalInterface.Control.PostController.SelectedItemTypeChanged, OnSelectedItemTypeChanged)
+
+	local function OnPricesChanged(prices)
+		noPropagateAuto = true
+	
+		local itemType, itemInfo = GetSelectedItemType()
+		
+		if not prices or not itemType or not itemInfo then
+			bidMoneySelector:SetEnabled(false)
+			bidMoneySelector:SetValue(0)
+			buyMoneySelector:SetEnabled(false)
+			buyMoneySelector:SetValue(0)
+			pricingModelSelector:SetValues({})
+			pricingModelSelector:SetEnabled(false)
+			resetButton:SetEnabled(false)			
+		else
+			bidMoneySelector:SetEnabled(true)
+			buyMoneySelector:SetEnabled(true)
+
+			local itemSettings = GetPostingSettings(itemType, itemInfo.category)
+			local preferredPrice = pricingModelSelector:GetSelectedValue()
+			if not preferredPrice or not prices[preferredPrice] then
+				preferredPrice = itemSettings.referencePrice
+				if not preferredPrice or not prices[preferredPrice] then
+					preferredPrice = prices[itemSettings.fallbackPrice] and itemSettings.fallbackPrice or nil
+				end
+			elseif preferredPrice == FIXED_MODEL_ID then
+				prices[preferredPrice].bid = bidMoneySelector:GetValue()
+				prices[preferredPrice].buy = buyMoneySelector:GetValue()
+			end
+			pricingModelSelector:SetValues(prices)
+			pricingModelSelector:SetEnabled(true)
+			if preferredPrice then
+				pricingModelSelector:SetSelectedKey(preferredPrice)
+			end
+			
+			if itemInfo.auto and not prices[itemSettings.referencePrice] then
+				Write(L["PostFrame/ErrorAutoPostModelMissing"])
+				ClearItemAuto(itemType)
+			end
+			
+			resetButton:SetEnabled(true)
+		end
+		
+		noPropagateAuto = false
+	end
+	TInsert(InternalInterface.Control.PostController.PricesChanged, OnPricesChanged)
+	
+	local function OnAuctionsChanged(auctions)
+		local itemType = GetSelectedItemType()
+		if not auctions or not itemType then
+			auctionsGrid:SetItemAuctions()
+			postButton:SetEnabled(false)
+		else
+			auctionsGrid:SetItemAuctions(itemType, auctions)
+			ResetAuctionLabel()
 		end
 	end
-	TInsert(Event.LibPGC.PostingQueueChanged, { OnPostingQueueChanged, addonID, addonID .. ".PostFrame.OnPostingQueueChanged" })	
+	TInsert(InternalInterface.Control.PostController.AuctionsChanged, OnAuctionsChanged)
 	
-	local function OnFrame()
-		if resetNeeded then
-			ResetItems()
-			resetNeeded = false
-		end
+	local function OnStackChanged(stack)
+		itemStackLabel:SetText(L["PostFrame/LabelItemStack"]:format(stack))
+		ResetAuctionLabel()
 	end
-	TInsert(Event.System.Update.Begin, { OnFrame, addonID, addonID .. ".PostFrame.OnFrame" })
-	
+	TInsert(InternalInterface.Control.PostController.ItemAdjustedStackChanged, OnStackChanged)
+
 	return postFrame
 end

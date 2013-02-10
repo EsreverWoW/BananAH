@@ -231,7 +231,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 		filterScoreTexts[index + 1] = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore" .. tostring(index) .. "Text", filterScorePanel:GetContent())
 	end
 	
-	local auctionsGrid = InternalInterface.UI.ItemAuctionsGrid(name .. ".ItemAuctionsGrid", filterFrame)
+	local auctionsGrid = InternalInterface.UI.OldItemAuctionsGrid(name .. ".ItemAuctionsGrid", filterFrame)
 	
 	local collapsed = false
 

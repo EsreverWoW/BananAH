@@ -1,18 +1,23 @@
 -- ***************************************************************************************************************************************************
--- * ItemAuctionsGrid.lua                                                                                                                            *
+-- * OldItemAuctionsGrid.lua                                                                                                                         *
 -- ***************************************************************************************************************************************************
 -- * Shows auctions corresponding to a given item and allows purchasing them                                                                         *
 -- ***************************************************************************************************************************************************
--- * 0.4.4 / 2013.02.09 / Baanano: Reworked                                                                                                          *
+-- * 0.4.4 / 2013.02.09 / Baanano: Deprecated                                                                                                        *
 -- * 0.4.1 / 2012.07.31 / Baanano: First version                                                                                                     *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
+local PublicInterface = _G[addonID]
 
+local DataGrid = Yague.DataGrid
+local MoneySelector = Yague.MoneySelector
+local Panel = Yague.Panel
+local ShadowedText = Yague.ShadowedText
 local CABid = Command.Auction.Bid
 local CAScan = Command.Auction.Scan
-local DataGrid = Yague.DataGrid
+local GetActiveAuctionsScored = InternalInterface.PGCExtensions.GetActiveAuctionsScored
 local GetAuctionBidCallback = LibPGC.GetAuctionBidCallback
 local GetAuctionBuyCallback = LibPGC.GetAuctionBuyCallback
 local GetAuctionCached = LibPGC.GetAuctionCached
@@ -23,18 +28,15 @@ local IIDetail = Inspect.Item.Detail
 local L = InternalInterface.Localization.L
 local MFloor = math.floor
 local MMin = math.min
-local MoneySelector = Yague.MoneySelector
-local Panel = Yague.Panel
 local RemainingTimeFormatter = InternalInterface.Utility.RemainingTimeFormatter
+local SFormat = string.format
 local ScoreColorByScore = InternalInterface.UI.ScoreColorByScore
-local ShadowedText = Yague.ShadowedText
 local TInsert = table.insert
 local UICreateFrame = UI.CreateFrame
 local Write = InternalInterface.Output.Write
 local pcall = pcall
-local unpack = unpack
 
-function InternalInterface.UI.ItemAuctionsGrid(name, parent)
+function InternalInterface.UI.OldItemAuctionsGrid(name, parent)
 	local itemAuctionsGrid = DataGrid(name, parent)
 	
 	local controlFrame = UICreateFrame("Frame", name .. ".ControlFrame", itemAuctionsGrid:GetContent())
@@ -47,7 +49,7 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	local refreshText = UICreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())	
 	
 	local itemType = nil
-	local auctions = nil
+	local controlEnabled = false
 	local refreshEnabled = false
 	
 	local function RefreshAuctionButtons()
@@ -65,16 +67,16 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 			auctionSelected = true
 			selectedAuctionCached = GetAuctionCached(selectedAuctionID) or false
 			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
-			selectedAuctionBuy = selectedAuctionData.buyoutPrice and true or false
+			selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
 			highestBidder = (selectedAuctionData.ownBidded or 0) == selectedAuctionData.bidPrice
 			seller = selectedAuctionData.own
 			bidPrice = selectedAuctionData.bidPrice
 		end
 		
-		refreshEnabled = auctionInteraction and itemType and true or false
+		refreshEnabled = auctionInteraction
 		refreshButton:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshMiniOff.png" or "Textures/RefreshMiniDisabled.png")
 		bidButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBid and not highestBidder and not seller)
-		buyButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBuy and not seller)
+		buyButton:SetEnabled(auctionSelected and auctionInteraction and selectedAuctionCached and selectedAuctionBuyout and not seller)
 
 		if not auctionSelected then
 			noBidLabel:SetText(L["ItemAuctionsGrid/ErrorNoAuction"])
@@ -108,20 +110,22 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	end
 	
 	local function ResetAuctions(firstKey)
-		itemAuctionsGrid:SetData(nil, nil, nil, true)
+		itemAuctionsGrid:SetData({})
 		RefreshAuctionButtons()
-		
 		if itemType then
 			local lastTimeSeen = GetLastTimeSeen(itemType)
 			if lastTimeSeen then
-				refreshText:SetText(L["ItemAuctionsGrid/LastUpdateMessage"]:format(GetLocalizedDateString(L["ItemAuctionsGrid/LastUpdateDateFormat"], lastTimeSeen)))
+				refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], GetLocalizedDateString(L["ItemAuctionsGrid/LastUpdateDateFormat"], lastTimeSeen)))
 			else
-				refreshText:SetText(L["ItemAuctionsGrid/LastUpdateMessage"]:format(L["ItemAuctionsGrid/LastUpdateDateFallback"]))
+				refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], L["ItemAuctionsGrid/LastUpdateDateFallback"]))
 			end				
-			
-			itemAuctionsGrid:SetData(auctions, firstKey, RefreshAuctionButtons)
+			local function GetAuctionsCallback(auctions)
+				itemAuctionsGrid:SetData(auctions, firstKey)
+				RefreshAuctionButtons()
+			end
+			GetActiveAuctionsScored(GetAuctionsCallback, itemType)
 		else
-			refreshText:SetText(L["ItemAuctionsGrid/LastUpdateMessage"]:format(L["ItemAuctionsGrid/LastUpdateDateFallback"]))
+			refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], L["ItemAuctionsGrid/LastUpdateDateFallback"]))
 		end
 	end
 	
@@ -186,7 +190,9 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	refreshButton:SetPoint("BOTTOMRIGHT", refreshPanel:GetContent(), "BOTTOMLEFT", 22, -1)
 
 	refreshText:SetPoint("CENTERLEFT", refreshPanel:GetContent(), "CENTERLEFT", 28, 0)	
-	refreshText:SetText(L["ItemAuctionsGrid/LastUpdateMessage"]:format(L["ItemAuctionsGrid/LastUpdateDateFallback"]))
+	refreshText:SetText(SFormat(L["ItemAuctionsGrid/LastUpdateMessage"], L["ItemAuctionsGrid/LastUpdateDateFallback"]))
+
+	
 	
 	function itemAuctionsGrid.Event:SelectionChanged(auctionID, auctionData)
 		RefreshAuctionButtons()
@@ -227,26 +233,38 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 			Write(L["ItemAuctionsGrid/ItemScanStarted"])
 		end				
 	end
+
+	local function OnAuctionData(scanType, totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions, totalItemTypes, newItemTypes, updatedItemTypes, removedItemTypes, modifiedItemTypes)
+		if totalItemTypes[itemType] then
+			ResetAuctions()
+		end
+	end
+	TInsert(Event.LibPGC.AuctionData, { OnAuctionData, addonID, addonID .. ".ItemAuctionsGrid.OnAuctionData" })
 	
 	local function OnInteraction(interaction)
-		if interaction == "auction" then
+		if controlEnabled and interaction == "auction" then
 			RefreshAuctionButtons()
 		end
 	end
 	TInsert(Event.Interaction, { OnInteraction, addonID, addonID .. ".ItemAuctionsGrid.OnInteraction" })
 	
-	function itemAuctionsGrid:GetItemType()
-		return itemType
+	
+	
+	function itemAuctionsGrid:SetEnabled(enabled)
+		local mustReset = not controlEnabled and enabled and true or false
+		controlEnabled = enabled
+		if mustReset then
+			ResetAuctions()
+		end
 	end
 	
-	function itemAuctionsGrid:GetAuctions()
-		return auctions
-	end
-	
-	function itemAuctionsGrid:SetItemAuctions(newItemType, newAuctions, firstKey)
-		itemType = newItemType
-		auctions = newAuctions
-		ResetAuctions(firstKey)
+	function itemAuctionsGrid:SetItemType(newItemType, firstKey)
+		if itemType ~= newItemType then
+			itemType = newItemType
+			if controlEnabled then
+				ResetAuctions(firstKey)
+			end
+		end
 	end
 	
 	return itemAuctionsGrid
