@@ -1,3 +1,11 @@
+	Beta 0.4.4 RC5
+- LibPGC: Faster saving/loading, now remembers 30 days of data again
+- LibPGCEx / Searchers: Added Category filter to the Resell Searcher
+- LibPGCEx / Filters: Added Min. Sample Size option to the Time Filter - It'll use older auctions if not enough recent data is available
+- Post Tab: Whole tab rewritten to fix some annoying minor bugs that plagued it, hope no new bugs have been introduced.
+- Post Tab: Added Category filter to the item list
+- Post Tab: Changed the way the number of auctions to post is set to allow more expressiveness when Autoposting
+
 	Beta 0.4.4 RC4
 - Updated to RIFT 2.1
 - Searchers default order is "Unit buyout price" instead of "Min. expire time"

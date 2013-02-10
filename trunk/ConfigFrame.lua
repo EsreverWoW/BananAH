@@ -1981,19 +1981,19 @@ local function PriceSettings(parent)
 				maxValue = 100,
 				defaultValue = 100,
 			},
-			stackNumber =
+			maxAuctions =
 			{
-				name = L["ConfigPrice/DefaultStackNumber"],
+				name = L["ConfigPrice/DefaultMaxAuctions"],
 				nameFontSize = 14,
 				value = "integer",
 				minValue = 1,
-				maxValue = 100,
-				defaultValue = 100,
+				maxValue = 999,
+				defaultValue = 999,
 			},
 			Layout =
 			{
 				{ "stackSize" },
-				{ "stackNumber" },
+				{ "maxAuctions" },
 				columns = 1,
 			},
 		})
@@ -2014,6 +2014,8 @@ local function PriceSettings(parent)
 				columns = 1,
 			},
 		})
+	local incompleteStackLabel = ShadowedText(postFrame:GetName() .. ".IncompleteStackLabel", postFrame)
+	local incompleteStackCheck = UICreateFrame("RiftCheckbox", postFrame:GetName() .. ".IncompleteStackCheck", postFrame)
 	local priceGrid = DataGrid(postFrame:GetName() .. ".PriceModelGrid", postFrame)
 	local controlFrame = UICreateFrame("Frame", postFrame:GetName() .. ".ControlFrame", priceGrid:GetContent())
 	local deleteButton = UICreateFrame("RiftButton", postFrame:GetName() .. ".DeleteButton", controlFrame)
@@ -2089,8 +2091,8 @@ local function PriceSettings(parent)
 			FallbackReferencePrice = currentFallbackModel,
 			ApplyMatching = matchCheck:GetChecked(),
 			StackSize = stackControls.stackSize:GetPosition(),
-			StackNumber = stackControls.stackNumber:GetPosition(),
-			StackLimit = false,
+			AuctionLimit = stackControls.maxAuctions:GetPosition(),
+			PostIncomplete = incompleteStackCheck:GetChecked(),
 			Duration = MMin(postControls.duration:GetPosition() / 12, 3),
 			BlackList = blackList,
 		}
@@ -2104,8 +2106,8 @@ local function PriceSettings(parent)
 		
 		matchCheck:SetChecked(settings.ApplyMatching)
 		stackControls.stackSize:SetPosition(settings.StackSize)
-		stackControls.stackNumber:SetPosition(settings.StackNumber)
-		-- StackLimit
+		stackControls.maxAuctions:SetPosition(settings.AuctionLimit)
+		incompleteStackCheck:SetChecked(settings.PostIncomplete)
 		postControls.duration:SetPosition(45 + settings.Duration) -- HACK
 
 		local models = GetCategoryModels(currentCategory)
@@ -2127,8 +2129,8 @@ local function PriceSettings(parent)
 	       settings1.FallbackReferencePrice ~= settings2.FallbackReferencePrice or
 	       settings1.ApplyMatching ~= settings2.ApplyMatching or
 	       settings1.StackSize ~= settings2.StackSize or
-	       settings1.StackNumber ~= settings2.StackNumber or
-	       settings1.StackLimit ~= settings2.StackLimit or
+	       settings1.AuctionLimit ~= settings2.AuctionLimit or
+	       settings1.PostIncomplete ~= settings2.PostIncomplete or
 	       settings1.Duration ~= settings2.Duration then
 			return false
 		end
@@ -2246,8 +2248,7 @@ local function PriceSettings(parent)
 	
 	stackControls.stackSize:AddPostValue(L["Misc/StackSizeMaxKeyShortcut"], "+", L["Misc/StackSizeMax"])
 	
-	stackControls.stackNumber:AddPostValue(L["Misc/StacksFullKeyShortcut"], "F", L["Misc/StacksFull"])
-	stackControls.stackNumber:AddPostValue(L["Misc/StacksAllKeyShortcut"], "A", L["Misc/StacksAll"])
+	stackControls.maxAuctions:AddPostValue(L["Misc/AuctionLimitMaxKeyShortcut"], "+", L["Misc/AuctionLimitMax"])
 	
 	postSelector:SetPoint("BOTTOMLEFT", postFrame, "BOTTOMLEFT")
 	postSelector:SetPoint("BOTTOMRIGHT", postFrame, "BOTTOMRIGHT")
@@ -2255,13 +2256,19 @@ local function PriceSettings(parent)
 	postControls.duration:AddPreValue("1", 12, "12")
 	postControls.duration:AddPreValue("2", 24, "24")
 	
+	incompleteStackLabel:SetPoint("TOPRIGHT", stackSelector, "BOTTOMRIGHT", -5, 2)
+	incompleteStackLabel:SetFontSize(13)
+	incompleteStackLabel:SetText(L["PostFrame/LabelIncompleteStack"])	
+	
+	incompleteStackCheck:SetPoint("CENTERRIGHT", incompleteStackLabel, "CENTERLEFT", -5, 0)
+	
 	priceGrid:SetPadding(1, 1, 1, 38)
 	priceGrid:SetHeadersVisible(true)
 	priceGrid:SetRowHeight(20)
 	priceGrid:SetRowMargin(0)
 	priceGrid:SetUnselectedRowBackgroundColor({0.2, 0.2, 0.2, 0.25})
 	priceGrid:SetSelectedRowBackgroundColor({0.6, 0.6, 0.6, 0.25})	
-	priceGrid:SetPoint("TOPLEFT", stackSelector, "BOTTOMLEFT", 0, 10)
+	priceGrid:SetPoint("TOPLEFT", stackSelector, "BOTTOMLEFT", 0, 30)
 	priceGrid:SetPoint("BOTTOMRIGHT", postSelector, "TOPRIGHT", 0, -10)
 	priceGrid:AddColumn("own", "", BooleanDotCellType, 20, 0, nil, false, { Eval = IsOriginal, })
 	priceGrid:AddColumn("name", L["ConfigPrice/ColumnReferencePrice"], "Text", 140, 2, "name", true, { Alignment = "left", Formatter = "none", })
