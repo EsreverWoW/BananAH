@@ -41,7 +41,7 @@ Website: http://www.bananah.net
  
 }
 Author = "Baanano"
-Version = "0.4.4 RC5"
+Version = "0.4.5"
 Email = "baanano.rift@gmail.com"
 Website = "http://www.bananah.net/"
 Environment = "2.1"
