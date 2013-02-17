@@ -1,90 +1,34 @@
-	Beta 0.4.4 RC5
-- LibPGC: Faster saving/loading, now remembers 30 days of data again
-- LibPGCEx / Searchers: Added Category filter to the Resell Searcher
-- LibPGCEx / Filters: Added Min. Sample Size option to the Time Filter - It'll use older auctions if not enough recent data is available
-- Post Tab: Whole tab rewritten to fix some annoying minor bugs that plagued it, hope no new bugs have been introduced.
-- Post Tab: Added Category filter to the item list
-- Post Tab: Changed the way the number of auctions to post is set to allow more expressiveness when Autoposting
-
-	Beta 0.4.4 RC4
-- Updated to RIFT 2.1
-- Searchers default order is "Unit buyout price" instead of "Min. expire time"
-- Added loading bar to the Search tab when a large number of auctions match the criteria
-- Fixed some validation checks that allowed to activate Autoposting mode on items with a null price
-- Fixed a bug in Autoposting that caused the prices to be resetted when using User Defined prices
-- Fixed individual item scanning message (showed the error message instead of the right one)
-- Reduced CPU usage
-- LibPGC only stores 5 days of data now. This is a temporary fix to avoid crashing the game client when reloading/logging out
-
-	Beta 0.4.4 RC3
-- Raised level cap to 60
-- Added SL new item categories (capes and dimension stuff)
-- Fixed a bug that emptied saved variables when the auction DB had over 65k auctions stored
-- Fixed a bug that crashed the addon when scanning more than 50k auctions in a full scan
-
-	Beta 0.4.4 RC2
-- Updated to RIFT 2.0	
-- Fixed some bugs	
-
-	Beta 0.4.4 RC1
-- If the posting queue gets jammed, the number will turn red and it'll start shuffling items to try to unblock itself
-- Changes in the Post Tab 
- + Posting parameters will only save on demand (either by clicking on Post or the lightning icon in the right side). This reverts the "seen" behavior from now on, but old items could need a Reset.
- + Reset now also clears the auto posting flag
- + Bid & Buyout price selectors in the Post tab will turn red when the price is below vendor price
- + Reduced flickering
-- Reworked Auto Posting:
- + Auto posting will be deactivated upon item selection if the reference price isn't available
- + Auto posting will be deactivated if any parameter is changed in the Post Tab
- + Activating auto posting through the lightning icon in the right side of the Post Tab will use the item parameters
- + Activating auto posting through the lightning icon in the item list will use the default parameters (as if clicking Reset before the lightning icon)
- + Right click on the lightning icon no longer starts autoposting. Use the new lightning icon in the Queue Manager (bottom right corner) instead
-- New config options: 
- + Added option to pause the posting queue when autoposting
- + Added option to set the amount to undercut on right click
+	Release 0.4.5
+- New Search Tab:
+ + Search auctions matching your search criteria both online and offline.
+ + Provides several searchers in addition to the Basic one, which emulates the native AH behavior. Check LibPGCEx for more info on adding custom searchers.
+ + Allows saving search parameters to reuse later.
+- Post Tab:
+ + Added Category filter to the item list.
+ + Reorganized layout.
+ + The "Number of auctions" slider behavior has been changed to allow more expressiveness when setting up Autoposting.
+ + Added "Reset" button that resets posting parameters to those configured for the item's category.
+- Posting Queue:
+ + Moved out of the Post tab, to the bottom right corner of the addon window, available from any tab.
+- Autoposting:
+ + Now shares the same posting parameters than "normal" posting.
+ + Items with Auto posting enabled will show their new lightning icon in full color, those with Auto posting disabled show the lightning icon grayed out.
+ + The lightning icon on the Post tab allows to toggle Autoposting on/off with the currently introduced posting parameters.
+ + The lightning icon on the Item List allows to toggle Autoposting on/off with the default posting parameters for the item's category (as if you had pressed the Reset button before enabling autoposting).
+ + Autoposting will be deactivated upon item selection if the reference price isn't available.
+ + Autoposting will be deactivated if any parameter is changed in the Post Tab, or when pressing the Reset button.
+- Config tab:
+ + Many changes and additions for the new features.
+ + Added Prices section which allows tuning pricings for each item category independently.
+ + Added poweful Price model editor in the Prices section. 
 - Integration with other AddOns:
  + ImhoBags: Right clicking on items can now interact with the Search, Post and Selling tabs. Care: if you're on other tab or the BananAH window is closed, the item will be used as usual.
  + Docker: If Docker is installed, the MiniMap button will be added to it.
-
-	r69
-- Added Price model editor
-- Fixed bug that prevented the "Min profit" matcher to be applied
-
-	r68
-- Updated to RIFT 1.11
-- Added "Settings per item category feature": Check Prices config. Relevant settings of the Post config moved there.	
-
-	r67
-- Repackaged due to a bugfix in LibPGCEx	
-
-	r66
-- Updated to RIFT 1.10
-
-	r65
-- Reenabled Config Tab
-- Modified Auction cancel process
-- Slightly modified textures and colors to get a higher contrast
-
-	r64
-- Enabled Saved Searchs
-- When Auto posting fails because the addon can't calculate a reference price, it'll be deactivated instead of using Vendor price as reference.
-- Fixed bug that made the "Bid & Buyout prices are equal" to be shown when there were other messages with higher precedence
-- Fixed bug that made the Competition column in the Selling tab to order incorrectly items in the same competition range
-
-	r63
-- Added back the Queue Manager.
-- Fixed bug that made the addon monopolize the keyboard.	
-
-	r62
-- Changed the Auto posting feature to work through the "lightning icons":
- + Auto posting now shares the same posting parameters than "normal" posting
- + Items with Auto posting enabled will show the lightning icon in full color, those with Auto posting disabled show the lightning icon grayed out
- + You can toggle Auto posting for any item by left clicking on its lightning icon, either the one in the item list or the one next to the Post button
- + To Auto post all items with Auto posting enabled, right click on the lightning icon next to the Post button
- + Only items currently shown in the item list will be auto posted. That is, if an item has Auto posting enabled, but has been filtered out of the item list, it won't be auto posted.
-	
-	r61
-- Rewritten, splitted in different libraries and many changes...
+- Updated to RIFT 2.1
+- Externalized Auction DB to LibPGC.
+- Externalized item price calculations to LibPGCEx.
+- Externalized GUI library to Yague.
+- Fixed all known bugs and performance bottlenecks.
 
 	Release 0.3.1
 - Updated to Rift 1.9
