@@ -1,0 +1,93 @@
+Identifier = "BananAH"
+Name =
+{
+	English = "BananAH",
+	French = "BananAH",
+	German = "BananAH",
+}
+NameShort = "BananAH"
+Description =
+{
+	English = [[
+Auction house addon for RIFT.
+
+* Work in progress *
+
+Searching features:
+ - Extended search options: Find the best bargains
+ - Offline search: Search auctions everywhere
+
+Posting features:
+ - Batch posting: Configure your auctions once and post them with a single click
+ - Auto stack splitting: Don't lose time doing it yourself
+ 
+Own auctions tracking features:
+ - Tracks all your characters' auctions
+ - Shows competition for your auctions
+
+Other features:
+ - Powerful price calculation & matching features: Will suggest you the most profitable prices
+ - Extendable: Create your own auction searchers & price models
+ 
+Integration with other AddOns:
+ - ImhoBags
+ - Docker
+ - Shares auction data with any PGC-based addon
+ 
+**Use /bah or /bananah to show the window.**
+
+Website: http://www.bananah.net
+]],
+ 
+}
+Author = "Baanano"
+Version = "0.4.5"
+Email = "baanano.rift@gmail.com"
+Website = "http://www.bananah.net/"
+Environment = "2.1"
+Embed =
+{
+	Yague = true,
+	LibPGCEx = true,
+}
+Dependencies =
+{
+	Yague = {"required", "before"},
+	LibPGCEx = {"required", "before"},
+	ImhoBags = { "optional", "before" },
+	Docker = {"optional", "before"},
+}
+SavedVariables =
+{
+	BananAHAccountSettings = "account",
+	BananAHShardSettings = "shard",
+	BananAHCharacterSettings = "character",	
+}
+RunOnStartup =
+{
+	"Settings.lua",
+	"Misc/Localization.lua",
+	"Locale/English.lua",
+	"Locale/French.lua",
+	"Locale/German.lua",
+	"Locale/Korean.lua",
+	"Locale/Russian.lua",
+	"Misc/Utility.lua",
+	"Misc/Score.lua",
+	"Misc/Output.lua",
+	"Misc/Categories.lua",
+	"PGCConfig.lua",
+	"PGCExtensions.lua",
+	"Helper.lua",
+	"CustomCellTypes.lua",
+	"ConfigFactory.lua",
+	"OldItemAuctionsGrid.lua",
+	"ItemAuctionsGrid.lua",
+	"QueueManager.lua",
+	"PostController.lua",
+	"PostFrame.lua",
+	"SearchFrame.lua",
+	"SellingFrame.lua",
+	"ConfigFrame.lua",
+	"Main.lua",
+}
