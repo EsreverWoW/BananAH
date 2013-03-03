@@ -97,16 +97,17 @@ local CATEGORIES =
 	      ["crafting recipe runecrafting"] =   { name = "Runecrafting",         parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe fishing"] =        { name = "Fishing",              parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe survival"] =       { name = "Survival",             parent = "crafting recipe",       children = nil, }, -- LOCALIZE
-	    ["crafting material"] =                { name = "Materials",            parent = "crafting",              children = { "crafting material metal", "crafting material gem", "crafting material wood", "crafting material plant", "crafting material hide", "crafting material meat", "crafting material cloth", "crafting material component", "crafting material fish", }, }, -- LOCALIZE
+	    ["crafting material"] =                { name = "Materials",            parent = "crafting",              children = { "crafting material metal", "crafting material gem", "crafting material wood", "crafting material plant", "crafting material meat", "crafting material cloth", "crafting material component", "crafting material fish", "crafting material butcher", }, }, -- LOCALIZE
 	      ["crafting material metal"] =        { name = "Metal",                parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material gem"] =          { name = "Gems",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material wood"] =         { name = "Wood",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material plant"] =        { name = "Plants",               parent = "crafting material",     children = nil, }, -- LOCALIZE
-	      ["crafting material hide"] =         { name = "Hide",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
+--	      ["crafting material hide"] =         { name = "Hide",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material meat"] =         { name = "Meat",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material cloth"] =        { name = "Cloth",                parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material component"] =    { name = "Rune Components",      parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material fish"] =         { name = "Fish",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
+	      ["crafting material butcher"] =      { name = "Butchering",           parent = "crafting material",     children = nil, }, -- LOCALIZE
 	    ["crafting ingredient"] =              { name = "Ingredients",          parent = "crafting",              children = { "crafting ingredient reagent", "crafting ingredient drop", "crafting ingredient rift", }, }, -- LOCALIZE
 	      ["crafting ingredient reagent"] =    { name = "Reagents",             parent = "crafting ingredient",   children = nil, }, -- LOCALIZE
 	      ["crafting ingredient drop"] =       { name = "Drops",                parent = "crafting ingredient",   children = nil, }, -- LOCALIZE

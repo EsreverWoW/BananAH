@@ -209,8 +209,8 @@ function InternalInterface.UI.PostFrame(name, parent)
 		local minRarity = InternalInterface.AccountSettings.Posting.RarityFilter or 1
 		if rarity < minRarity then return false end
 		
-		local _, filterCategory = categoryFilter:GetSelectedValue()
-		if not filterCategory.filter[itemInfo.category or ""] then return false end
+		local categoryID, filterCategory = categoryFilter:GetSelectedValue()
+		if categoryID ~= BASE_CATEGORY and not filterCategory.filter[itemInfo.category or BASE_CATEGORY] then return false end
 
 		local filterText = (filterTextField:GetText()):upper()
 		local upperName = itemInfo.name:upper()
@@ -308,7 +308,6 @@ function InternalInterface.UI.PostFrame(name, parent)
 		local categories = {}
 
 		local baseCategory = CDetail(BASE_CATEGORY)
-		categories[BASE_CATEGORY] = { name = baseCategory.name, order = 0, filter = {}, }
 		for order, subCategoryID in ipairs(baseCategory.children) do
 			categories[subCategoryID] = { name = CDetail(subCategoryID).name, order = order, filter = {}, }
 		end
@@ -329,6 +328,8 @@ function InternalInterface.UI.PostFrame(name, parent)
 			end
 		end
 
+		categories[BASE_CATEGORY] = { name = baseCategory.name, order = 0, filter = {}, }
+		
 		return categories
 	end
 	
