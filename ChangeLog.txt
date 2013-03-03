@@ -1,3 +1,6 @@
+	Release 0.4.7
+- Updated to RIFT 2.2
+
 	Release 0.4.5
 - New Search Tab:
  + Search auctions matching your search criteria both online and offline.
