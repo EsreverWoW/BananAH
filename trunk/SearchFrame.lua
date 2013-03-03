@@ -144,7 +144,7 @@ local function SaveSearchPopup(parent)
 	end
 	
 	function nameField.Event:KeyUp(key)
-		if key == "\13" and saveButton:GetEnabled() and saveButton.Event.LeftPress then
+		if key == "Return" and saveButton:GetEnabled() and saveButton.Event.LeftPress then
 			saveButton.Event.LeftPress(saveButton)
 		end
 	end
