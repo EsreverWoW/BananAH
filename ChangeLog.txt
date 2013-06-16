@@ -1,5 +1,5 @@
-	r78
-- Updated to RIFT 2.2
+	Release 0.4.9
+- Updated to RIFT 2.3
 - Fixed item categories (Crafting > Materials > Hide renamed to Crafting > Materials > Butchering)
 
 	Release 0.4.5

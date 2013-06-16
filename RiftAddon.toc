@@ -35,16 +35,13 @@ Integration with other AddOns:
  - Shares auction data with any PGC-based addon
  
 **Use /bah or /bananah to show the window.**
-
-Website: http://www.bananah.net
 ]],
  
 }
 Author = "Baanano"
-Version = "0.4.6 r78"
+Version = "0.4.9"
 Email = "baanano.rift@gmail.com"
-Website = "http://www.bananah.net/"
-Environment = "2.2"
+Environment = "2.3"
 Embed =
 {
 	Yague = true,
