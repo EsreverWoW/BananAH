@@ -121,23 +121,23 @@ local CATEGORIES =
 	    ["misc other"] =                       { name = "Other",                parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc survival"] =                    { name = "Survival",             parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc fishing"] =                     { name = "Fishing",              parent = "misc",                  children = nil, }, -- LOCALIZE
-	  ["dimension"] =                          { name = "Dimension Item",       parent = "",                      children = { "dimension lighting", "dimension key", "dimension building", "dimension world", "dimension decoration", "dimension furniture", "dimension interactive", "dimension planar", "dimension landscaping", }, }, -- LOCALIZE
+	  ["dimension"] =                          { name = "Dimension Item",       parent = "",                      children = { "dimension lighting", "dimension key", "dimension building", "dimension world", "dimension decoration", "dimension block", "dimension furniture", "dimension module", "dimension interactive", "dimension planar", "dimension landscaping", }, }, -- LOCALIZE
 	    ["dimension lighting"] =               { name = "Lighting",             parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension key"] =                    { name = "Dimension Key",        parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension building"] =               { name = "Building",             parent = "dimension",             children = { "dimension building fence", "dimension building wall", "dimension building block", }, }, -- LOCALIZE
-	      ["dimension building fence"] =       { name = "Fence",                parent = "dimension building",    children = nil, }, -- LOCALIZE
-	      ["dimension building wall"] =        { name = "Wall",                 parent = "dimension building",    children = nil, }, -- LOCALIZE
-	      ["dimension building block"] =       { name = "Building Block",       parent = "dimension building",    children = nil, }, -- LOCALIZE
+	    ["dimension building"] =               { name = "Building",             parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension world"] =                  { name = "World Event",          parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension decoration"] =             { name = "Decoration",           parent = "dimension",             children = { "dimension decoration large", "dimension decoration small", "dimension decoration container", "dimension decoration household", }, }, -- LOCALIZE
 	      ["dimension decoration large"] =     { name = "Large Decoration",     parent = "dimension decoration",  children = nil, }, -- LOCALIZE
 	      ["dimension decoration small"] =     { name = "Small Decoration",     parent = "dimension decoration",  children = nil, }, -- LOCALIZE
 	      ["dimension decoration container"] = { name = "Decorative Container", parent = "dimension decoration",  children = nil, }, -- LOCALIZE
 	      ["dimension decoration household"] = { name = "Household Item",       parent = "dimension decoration",  children = nil, }, -- LOCALIZE
+	    ["dimension block"] =                  { name = "Building Block",       parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension furniture"] =              { name = "Furniture",            parent = "dimension",             children = nil, }, -- LOCALIZE
+	    ["dimension module"] =                 { name = "Building Module",      parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension interactive"] =            { name = "Interactive",          parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension planar"] =                 { name = "Planar",               parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension landscaping"] =            { name = "Landscaping",          parent = "dimension",             children = { "dimension landscaping rock", "dimension landscaping tree", "dimension landscaping plant", }, }, -- LOCALIZE
+	    ["dimension landscaping"] =            { name = "Landscaping",          parent = "dimension",             children = { "dimension landscaping barrier", "dimension landscaping rock", "dimension landscaping tree", "dimension landscaping plant", }, }, -- LOCALIZE
+	      ["dimension landscaping barrier"] =  { name = "Barrier",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping rock"] =     { name = "Rock",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping tree"] =     { name = "Tree",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping plant"] =    { name = "Plant",                parent = "dimension landscaping", children = nil, }, -- LOCALIZE

@@ -39,7 +39,7 @@ Integration with other AddOns:
  
 }
 Author = "Baanano"
-Version = "0.4.9"
+Version = "0.4.10"
 Email = "baanano.rift@gmail.com"
 Environment = "2.3"
 Embed =
