@@ -9,6 +9,7 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
 local GetActiveAuctionsScored = InternalInterface.PGCExtensions.GetActiveAuctionsScored
 local GetCategoryModels = InternalInterface.PGCConfig.GetCategoryModels
 local GetPostingQueue = LibPGC.GetPostingQueue
@@ -74,7 +75,7 @@ local function RefreshItemList()
 			adjustedStack = 0,
 			stackMax = itemDetail.stackMax or 1,
 			sell = itemDetail.sell,
-			category = itemDetail.category,
+			category = itemDetail.category or BASE_CATEGORY,
 			visibility = (InternalInterface.AccountSettings.Posting.HiddenItems[itemType] and "HideAll") or
 			             (InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] and "HideChar") or
 						 "Show",
