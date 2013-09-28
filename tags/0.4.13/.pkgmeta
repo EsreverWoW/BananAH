@@ -1,0 +1,12 @@
+package-as: BananAH
+manual-changelog: ChangeLog.txt
+enable-nolib-creation: no
+externals:
+	LibPGCEx:
+		url: svn://svn.curseforge.net/rift/libpgcex/mainline/trunk
+	LibPGCEx/LibPGC:
+		url: svn://svn.curseforge.net/rift/libpgc/mainline/trunk
+	Yague:
+		url: svn://svn.curseforge.net/rift/yague/mainline/trunk
+	Yague/LibAsyncTextures:
+		git://git.curseforge.net/rift/lib-async-textures/mainline.git

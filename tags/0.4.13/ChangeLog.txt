@@ -1,0 +1,121 @@
+	Release 0.4.13
+- Updated to RIFT 2.4
+- Partially updated to the new event model
+	
+	Release 0.4.10
+- Fixed some dimension item categories
+- Fixed bug for items without category
+- Added rarity filter to the Resell searcher
+
+	Release 0.4.9
+- Updated to RIFT 2.3
+- Fixed item categories (Crafting > Materials > Hide renamed to Crafting > Materials > Butchering)
+
+	Release 0.4.5
+- New Search Tab:
+ + Search auctions matching your search criteria both online and offline.
+ + Provides several searchers in addition to the Basic one, which emulates the native AH behavior. Check LibPGCEx for more info on adding custom searchers.
+ + Allows saving search parameters to reuse later.
+- Post Tab:
+ + Added Category filter to the item list.
+ + Reorganized layout.
+ + The "Number of auctions" slider behavior has been changed to allow more expressiveness when setting up Autoposting.
+ + Added "Reset" button that resets posting parameters to those configured for the item's category.
+- Posting Queue:
+ + Moved out of the Post tab, to the bottom right corner of the addon window, available from any tab.
+- Autoposting:
+ + Now shares the same posting parameters than "normal" posting.
+ + Items with Auto posting enabled will show their new lightning icon in full color, those with Auto posting disabled show the lightning icon grayed out.
+ + The lightning icon on the Post tab allows to toggle Autoposting on/off with the currently introduced posting parameters.
+ + The lightning icon on the Item List allows to toggle Autoposting on/off with the default posting parameters for the item's category (as if you had pressed the Reset button before enabling autoposting).
+ + Autoposting will be deactivated upon item selection if the reference price isn't available.
+ + Autoposting will be deactivated if any parameter is changed in the Post Tab, or when pressing the Reset button.
+- Config tab:
+ + Many changes and additions for the new features.
+ + Added Prices section which allows tuning pricings for each item category independently.
+ + Added poweful Price model editor in the Prices section. 
+- Integration with other AddOns:
+ + ImhoBags: Right clicking on items can now interact with the Search, Post and Selling tabs. Care: if you're on other tab or the BananAH window is closed, the item will be used as usual.
+ + Docker: If Docker is installed, the MiniMap button will be added to it.
+- Updated to RIFT 2.1
+- Externalized Auction DB to LibPGC.
+- Externalized item price calculations to LibPGCEx.
+- Externalized GUI library to Yague.
+- Fixed all known bugs and performance bottlenecks.
+
+	Release 0.3.1
+- Updated to Rift 1.9
+
+	Release 0.3
+- Updated to Rift 1.8
+
+- Background scanner changes:
+ + Scanning speed improved
+ + The background scanner can be temporarily disabled now
+ + Expiration times are estimated more accurately
+
+- Post Tab changes:
+ + Added extra info on the auction being posted
+ + Added new pricing models & price matchers
+ + Added score column that compares auction prices with the reference prices
+ + Auctions are color coded by score
+ 
+- New Auctions Tab:
+ + Keeps track of all your characters' auctions
+ + Shows competition for your posted auctions
+ + The auction list is filterable to help you locate your auctions without having to scroll hundreds of pages
+ + Faster auction cancelling functionality than the native AH window
+ 
+- Other minor changes & features:
+ + Added option to close the addon window when the native auction window is closed
+ + Added status bar: Scan results & error messages are shown in the status bar now, instead of being dumped to the chat
+ + The 'Hide item' filter has been improved: Now you can also hide items only for some characters
+ + Items shown in the Post tab can be filtered by rarity now
+ + The 'Post' button now has a 0.5 cooldown to prevent accidental posting
+ + Posting & Autoposting configs are saved per character now
+ + The "Buy < Vendor" warning now takes into account the 5% auction house fee
+ + The Posting queue now displays the number of tasks queued
+ + Expiration times are shown as time remaining now
+ + New option to select the order in which the price matchers are applied
+ + Undercutting and other features consider auctions posted by your other characters as own
+ 
+- Fixed a lot of bugs
+
+- Documentation is no longer included in the addon package. Check our website instead: http://www.bananah.net
+
+	Beta 0.2.2
+- Reduced the auction database size so it doesn't get truncated
+- Speeded up the background auction scanner
+
+	Beta 0.2.1
+- Added addon documentation by LunaEclipse
+
+	Beta 0.2.0
+- Added item filtering functionality to the items panel.
+- Improved the posting fields and added an option to bind bid & buyout prices.
+- Added basic and statistical pricing models (User defined, Vendor, Average, Standard deviation, Median and Trimmed mean).
+- Added price matchers (Self matcher and Competition undercut matcher)
+- Added auto posting (aka. batch posting)
+- Added "undercut on right click" to the auction panel.
+- Added posting queue management functionality.
+- Added (optional) map icon and configuration tab.
+- Fixed some bugs.
+
+	Beta 0.1.4
+- Fixed some critical bugs
+
+	Beta 0.1.3
+- Added German translation by chii
+- Fixed error with some crafting materials
+- Fixed error when the bags were empty
+
+	Beta 0.1.2
+- Added Russian translation by Aybolitus
+
+	Beta 0.1.1
+- Added localization support
+- The addon window will be displayed above the native AH window if opened after it
+- Bid & Buyout prices are no longer linked by default
+	
+	Beta 0.1.0
+- First release	
