@@ -108,12 +108,10 @@ local function ItemCellType(name, parent)
 	
 	function visibilityIcon.Event:LeftClick()
 		ToggleItemVisibility(itemType, "HideAll")
-		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
 	end
 	
 	function visibilityIcon.Event:RightClick()
 		ToggleItemVisibility(itemType, "HideChar")
-		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
 	end
 	
 	function autoPostingIcon.Event:LeftClick()
@@ -137,7 +135,6 @@ local function ItemCellType(name, parent)
 				})
 			end
 		end
-		itemCell:GetParent().Event.LeftClick(itemCell:GetParent())
 	end
 	
 	function itemTexture.Event:MouseIn()

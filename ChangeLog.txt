@@ -1,3 +1,7 @@
+	Release 0.4.13
+- Updated to RIFT 2.4
+- Partially updated to the new event model
+	
 	Release 0.4.10
 - Fixed some dimension item categories
 - Fixed bug for items without category

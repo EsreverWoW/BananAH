@@ -41,6 +41,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["Main/MenuPost"] = "POST",
 	["Main/MenuAuctions"] = "SELLING",
 	["Main/MenuBids"] = "TRACKING",
+	["Main/MenuMap"] = "MAP", -- NEW
 	["Main/MenuHistory"] = "HISTORY",
 	["Main/MenuConfig"] = "CONFIG",
 	["Main/MenuFullScan"] = "FULL SCAN",
@@ -199,6 +200,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["ConfigFrame/CategoryPost"] = "POST",
 	["ConfigFrame/CategorySelling"] = "SELLING",
 	["ConfigFrame/CategoryTracking"] = "TRACKING",
+	["ConfigFrame/CategoryMap"] = "MAP", -- NEW
 	["ConfigFrame/CategoryHistory"] = "HISTORY",
 	["ConfigFrame/CategoryPricing"] = "PRICES",
 	["ConfigFrame/CategoryScoring"] = "SCORE",

@@ -39,9 +39,9 @@ Integration with other AddOns:
  
 }
 Author = "Baanano"
-Version = "0.4.10"
+Version = "0.4.13"
 Email = "baanano.rift@gmail.com"
-Environment = "2.3"
+Environment = "2.4"
 Embed =
 {
 	Yague = true,
@@ -85,6 +85,7 @@ RunOnStartup =
 	"PostFrame.lua",
 	"SearchFrame.lua",
 	"SellingFrame.lua",
+	"MapFrame.lua",
 	"ConfigFrame.lua",
 	"Main.lua",
 }
