@@ -145,7 +145,7 @@ local function SaveSearchPopup(parent)
 	
 	function nameField.Event:KeyUp(key)
 		if key == "Return" and saveButton:GetEnabled() and saveButton.Event.LeftPress then
-			saveButton.Event.LeftPress(saveButton)
+			saveButton.Event.LeftPress(saveButton) -- FIXME Event model
 		end
 	end
 	
@@ -458,6 +458,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 	trackButton:SetPoint("CENTERLEFT", controlFrame, "CENTERLEFT", 0, 0)
 	trackButton:SetText(L["SearchFrame/ButtonTrack"])
 	trackButton:SetEnabled(false)
+	trackButton:SetVisible(false)
 	
 	navigationFrame:SetPoint("CENTERLEFT", trackButton, "CENTERRIGHT")
 	navigationFrame:SetPoint("CENTERRIGHT", auctionMoneySelector, "CENTERLEFT")

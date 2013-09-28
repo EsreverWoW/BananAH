@@ -198,7 +198,6 @@ local function CancellableCellType(name, parent)
 				callback()
 			end
 		end
-		cell:GetParent().Event.LeftClick(cell:GetParent())
 	end
 	
 	return cell
@@ -415,7 +414,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	TInsert(Event.Interaction, { function(interaction) if sellingFrame:GetVisible() and interaction == "auction" then UpdateFilter() end end, addonID, addonID .. ".SellingFrame.OnInteraction" })
 	TInsert(Event.LibPGC.AuctionData, { function() if sellingFrame:GetVisible() then ResetAuctions() end end, addonID, addonID .. ".SellingFrame.OnAuctionData" })
 	
-	collapseButton.Event.LeftClick(collapseButton)
+	collapseButton.Event.LeftClick(collapseButton) -- FIXME Event model
 	
 	return sellingFrame
 end
