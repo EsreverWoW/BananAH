@@ -12,6 +12,7 @@ local PublicInterface = _G[addonID]
 
 local CAScan = Command.Auction.Scan
 local CSRegister = Command.Slash.Register
+local GetPlayerName = InternalInterface.Utility.GetPlayerName
 local L = InternalInterface.Localization.L
 local Panel = Yague.Panel
 local PopupManager = Yague.PopupManager
@@ -47,6 +48,14 @@ local function InitializeLayout()
 
 	local queueManager = InternalInterface.UI.QueueManager(mainWindow:GetName() .. ".QueueManager", mainWindow:GetContent())
 	
+	local auctionsPanel = Panel(mainWindow:GetName() .. ".AuctionsPanel", mainWindow:GetContent())
+	local auctionsIcon = UICreateFrame("Texture", auctionsPanel:GetName() .. ".AuctionsIcon", auctionsPanel:GetContent())
+	local auctionsText = UICreateFrame("Text", auctionsPanel:GetName() .. ".AuctionsText", auctionsPanel:GetContent())
+	
+	local sellersPanel = Panel(mainWindow:GetName() .. ".SellersPanel", mainWindow:GetContent())
+	local sellersAnchor = UICreateFrame("Frame", mainWindow:GetName() .. ".SellersAnchor", sellersPanel:GetContent())
+	local sellerRows = {}
+	
 	local statusPanel = Panel(addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
 	local statusText = UICreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
 
@@ -54,6 +63,7 @@ local function InitializeLayout()
 	local refreshText = Yague.ShadowedText(mainWindow:GetName() .. ".RefreshText", refreshPanel:GetContent())
 	
 	local refreshEnabled = false
+	local auctionNumbers = {}
 
 	local function ShowSelectedFrame(frame)
 		if frame and frame.Show then
@@ -66,6 +76,64 @@ local function InitializeLayout()
 			frame:Hide()
 		end
 	end
+
+	local function UpdateSellerRows()
+		local names = {}
+		for seller, number in pairs(auctionNumbers) do
+			names[#names + 1] = seller
+		end
+		table.sort(names, function(a,b) return b < a end)
+		
+		for i = 1, #names do
+			if not sellerRows[i] then
+				local sellerRow = UICreateFrame("Frame", sellersPanel:GetName() .. ".Row." .. i, sellersPanel:GetContent())
+				local sellerRowName = UICreateFrame("Text", sellerRow:GetName() .. ".Name", sellerRow)
+				local sellerRowNumber = UICreateFrame("Text", sellerRow:GetName() .. ".Number", sellerRow)
+				
+				sellerRow:SetPoint("BOTTOMLEFT", sellersPanel:GetContent(), "BOTTOMLEFT", 2, 20 - 20 * i)
+				sellerRow:SetPoint("TOPRIGHT", sellersPanel:GetContent(), "BOTTOMRIGHT", -2, 0 - 20 * i)
+				
+				sellerRowName:SetPoint("CENTERLEFT", sellerRow, "CENTERLEFT", 2, 0)
+
+				sellerRowNumber:SetPoint("CENTERRIGHT", sellerRow, "CENTERRIGHT", -2, 0)
+				
+				sellerRows[i] = { sellerRow, sellerRowName, sellerRowNumber }
+			end
+			
+			sellerRows[i][1]:SetVisible(true)
+			sellerRows[i][2]:SetText(names[i])
+			sellerRows[i][3]:SetText(tostring(auctionNumbers[names[i]]))
+		end
+		
+		if #names > 0 then
+			sellersAnchor:SetPoint("BOTTOMCENTER", sellerRows[#names][1], "TOPCENTER", 0, -6)
+		end
+		
+		for i = #names + 1, #sellerRows do
+			sellerRows[i][1]:SetVisible(false)
+		end
+	end
+	
+	local function UpdateAuctions()
+		if mainWindow:GetVisible() then
+			local playerName = GetPlayerName() or true
+			
+			auctionNumbers = {}
+			
+			auctionsText:SetText("")
+			sellersPanel:SetVisible(false)
+			
+			LibPGC.GetOwnAuctionData(
+				function(auctions)
+					for auctionID, auctionData in pairs(auctions) do
+						auctionNumbers[auctionData.sellerName] = (auctionNumbers[auctionData.sellerName] or 0) + 1
+					end
+					
+					auctionsText:SetText(tostring(auctionNumbers[playerName] or 0))
+					UpdateSellerRows()
+				end)
+		end
+	end
 	
 	local function ShowBananAH()
 		mainContext:SetLayer(UI.Native.Auction:GetLayer() + 1)
@@ -76,8 +144,9 @@ local function InitializeLayout()
 			mainWindow:SetWidth(DEFAULT_WIDTH)
 			mainWindow:SetHeight(DEFAULT_HEIGHT)
 		end
+		UpdateAuctions()
 		ShowSelectedFrame(mainTab:GetSelectedFrame())
-	end	
+	end
 	
 	mapContext:SetStrata("hud")
 
@@ -117,7 +186,28 @@ local function InitializeLayout()
 	queueManager:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
 	queueManager:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -155, -35)
 
-	statusPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMLEFT", 5, -35)
+	auctionsPanel:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMLEFT", 5, -35)
+	auctionsPanel:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMLEFT", 80, -5)
+	auctionsPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	
+	auctionsIcon:SetPoint("CENTERLEFT", auctionsPanel:GetContent(), "CENTERLEFT", 2, 0)
+	auctionsIcon:SetTextureAsync("Rift", "indicator_auctioneer.png.dds")
+	auctionsIcon:SetWidth(24)
+	auctionsIcon:SetHeight(24)
+	
+	auctionsText:SetPoint("CENTERRIGHT", auctionsPanel:GetContent(), "CENTERRIGHT", -2, 0)
+	
+	sellersPanel:SetLayer(mainTab:GetLayer() + 10)
+	sellersPanel:SetPoint("BOTTOMLEFT", auctionsPanel, "TOPLEFT")
+	sellersPanel:SetPoint("BOTTOMRIGHT", auctionsPanel, "TOPLEFT", 220, 0)
+	sellersPanel:SetPoint("TOP", sellersAnchor, "BOTTOM")
+	sellersPanel:GetContent():SetBackgroundColor(0, 0, 0, 0.75)
+	sellersPanel:SetVisible(false)
+	
+	sellersAnchor:SetVisible(false)
+	sellersAnchor:SetPoint("BOTTOMCENTER", auctionsPanel, "TOPCENTER", 0, -100)
+	
+	statusPanel:SetPoint("TOPLEFT", auctionsPanel, "TOPRIGHT", 5, 0)
 	statusPanel:SetPoint("BOTTOMRIGHT", queueManager, "BOTTOMLEFT", -5, 0)
 	statusPanel:GetContent():SetBackgroundColor(0.2, 0.2, 0.2, 0.5)
 	
@@ -185,6 +275,18 @@ local function InitializeLayout()
 		end	
 	end
 	
+	auctionsPanel:EventAttach(Event.UI.Input.Mouse.Cursor.In,
+		function()
+			if next(auctionNumbers) then
+				sellersPanel:SetVisible(true)
+			end
+		end, auctionsPanel:GetName() .. ".OnCursorIn")
+	
+	auctionsPanel:EventAttach(Event.UI.Input.Mouse.Cursor.Out,
+		function()
+			sellersPanel:SetVisible(false)
+		end, auctionsPanel:GetName() .. ".OnCursorOut")
+	
 	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
 			refreshEnabled = state
@@ -194,6 +296,7 @@ local function InitializeLayout()
 	TInsert(Event.Interaction, { OnInteractionChanged, addonID, addonID .. ".OnInteractionChanged" })
 	
 	local function ReportAuctionData(scanType, total, new, updated, removed, before)
+		UpdateAuctions()
 		if scanType ~= "search" then return end
 		local newMessage = (#new > 0) and SFormat(L["Main/ScanNewCount"], #new) or ""
 		local updatedMessage = (#updated > 0) and SFormat(L["Main/ScanUpdatedCount"], #updated) or ""
