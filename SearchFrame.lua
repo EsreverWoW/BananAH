@@ -340,8 +340,8 @@ function InternalInterface.UI.SearchFrame(name, parent)
 		if selectedAuctionID and selectedAuctionData then
 			auctionSelected = true
 			selectedAuctionCached = GetAuctionCached(selectedAuctionID) or false
-			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
-			selectedAuctionBuyout = selectedAuctionData.buyoutPrice and true or false
+			selectedAuctionBid = selectedAuctionData.buyoutPrice == 0 or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
+			selectedAuctionBuyout = selectedAuctionData.buyoutPrice > 0 and true or false
 			highestBidder = (selectedAuctionData.ownBidded or 0) == selectedAuctionData.bidPrice
 			seller = selectedAuctionData.own
 			bidPrice = selectedAuctionData.bidPrice
@@ -674,7 +674,7 @@ function InternalInterface.UI.SearchFrame(name, parent)
 			RefreshAuctionButtons()
 		end
 	end
-	TInsert(Event.LibPGC.AuctionData, { OnAuctionData, addonID, addonID .. ".SearchFrame.OnAuctionData" })
+	TInsert(Event.LibPGC.Scan.End, { OnAuctionData, addonID, addonID .. ".SearchFrame.OnAuctionData" })
 
 	local function OnInteraction(interaction)
 		if searchFrame:GetVisible() and interaction == "auction" then

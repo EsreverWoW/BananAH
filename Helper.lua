@@ -9,17 +9,14 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
-local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
-local CDetail = InternalInterface.Category.Detail
-
 InternalInterface.Helper = InternalInterface.Helper or {}
 
 function InternalInterface.Helper.GetCategoryConfig(category)
-	category = category or BASE_CATEGORY
+	category = category or InternalInterface.Category.BASE_CATEGORY
 	local defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[category]
 	while not defaultConfig do
-		local detail = CDetail(category)
-		category = detail and detail.parent or BASE_CATEGORY
+		local detail = InternalInterface.Category.Detail(category)
+		category = detail and detail.parent or InternalInterface.Category.BASE_CATEGORY
 		defaultConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[category]
 	end
 	return defaultConfig

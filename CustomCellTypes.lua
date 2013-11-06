@@ -1,25 +1,21 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
-local MoneyDisplay = Yague.MoneyDisplay
-local RegisterCellType = Yague.RegisterCellType
-local UICreateFrame = UI.CreateFrame
-
 local function AuctionCachedCellType(name, parent)
-	local cachedCell = UICreateFrame("Texture", name, parent)
+	local cachedCell = UI.CreateFrame("Texture", name, parent)
 	
 	cachedCell:SetTextureAsync(addonID, "Textures/AuctionUnavailable.png")
 	cachedCell:SetVisible(false)
 	
 	function cachedCell:SetValue(key, value, width, extra)
-		self:SetVisible(not LibPGC.GetAuctionCached(key))
+		self:SetVisible(not value.cached)
 	end
 	
 	return cachedCell
 end
 
 local function ItemAuctionBackgroundCellType(name, parent)
-	local backgroundCell = UICreateFrame("Frame", name, parent)
+	local backgroundCell = UI.CreateFrame("Frame", name, parent)
 	
 	function backgroundCell:SetValue(key, value, width, extra)
 		self:ClearAll()
@@ -32,8 +28,8 @@ local function ItemAuctionBackgroundCellType(name, parent)
 end
 
 local function MoneyCellType(name, parent)
-	local enclosingCell = UICreateFrame("Frame", name, parent)
-	local moneyCell = MoneyDisplay(name .. ".MoneyDisplay", enclosingCell)
+	local enclosingCell = UI.CreateFrame("Frame", name, parent)
+	local moneyCell = Yague.MoneyDisplay(name .. ".MoneyDisplay", enclosingCell)
 
 	moneyCell:SetPoint("CENTERLEFT", enclosingCell, "CENTERLEFT")
 	moneyCell:SetPoint("CENTERRIGHT", enclosingCell, "CENTERRIGHT")
@@ -46,7 +42,7 @@ local function MoneyCellType(name, parent)
 end
 
 local function WideBackgroundCellType(name, parent)
-	local backgroundCell = UICreateFrame("Texture", name, parent)
+	local backgroundCell = UI.CreateFrame("Texture", name, parent)
 	
 	backgroundCell:SetTextureAsync(addonID, "Textures/AuctionRowBackground.png")
 	
@@ -59,7 +55,7 @@ local function WideBackgroundCellType(name, parent)
 	return backgroundCell
 end
 
-RegisterCellType("AuctionCachedCellType", AuctionCachedCellType)
-RegisterCellType("ItemAuctionBackgroundCellType", ItemAuctionBackgroundCellType)
-RegisterCellType("MoneyCellType", MoneyCellType)
-RegisterCellType("WideBackgroundCellType", WideBackgroundCellType)
+Yague.RegisterCellType("AuctionCachedCellType", AuctionCachedCellType)
+Yague.RegisterCellType("ItemAuctionBackgroundCellType", ItemAuctionBackgroundCellType)
+Yague.RegisterCellType("MoneyCellType", MoneyCellType)
+Yague.RegisterCellType("WideBackgroundCellType", WideBackgroundCellType)

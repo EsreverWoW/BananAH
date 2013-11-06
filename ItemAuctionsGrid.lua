@@ -1,8 +1,6 @@
 -- ***************************************************************************************************************************************************
 -- * ItemAuctionsGrid.lua                                                                                                                            *
 -- ***************************************************************************************************************************************************
--- * Shows auctions corresponding to a given item and allows purchasing them                                                                         *
--- ***************************************************************************************************************************************************
 -- * 0.4.4 / 2013.02.09 / Baanano: Reworked                                                                                                          *
 -- * 0.4.1 / 2012.07.31 / Baanano: First version                                                                                                     *
 -- ***************************************************************************************************************************************************
@@ -10,41 +8,19 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
-local CABid = Command.Auction.Bid
-local CAScan = Command.Auction.Scan
-local DataGrid = Yague.DataGrid
-local GetAuctionBidCallback = LibPGC.GetAuctionBidCallback
-local GetAuctionBuyCallback = LibPGC.GetAuctionBuyCallback
-local GetAuctionCached = LibPGC.GetAuctionCached
-local GetLastTimeSeen = LibPGC.GetLastTimeSeen
-local GetLocalizedDateString = InternalInterface.Utility.GetLocalizedDateString
-local IInteraction = Inspect.Interaction
-local IIDetail = Inspect.Item.Detail
 local L = InternalInterface.Localization.L
-local MFloor = math.floor
-local MMin = math.min
-local MoneySelector = Yague.MoneySelector
-local Panel = Yague.Panel
-local RemainingTimeFormatter = InternalInterface.Utility.RemainingTimeFormatter
-local ScoreColorByScore = InternalInterface.UI.ScoreColorByScore
-local ShadowedText = Yague.ShadowedText
-local TInsert = table.insert
-local UICreateFrame = UI.CreateFrame
-local Write = InternalInterface.Output.Write
-local pcall = pcall
-local unpack = unpack
 
 function InternalInterface.UI.ItemAuctionsGrid(name, parent)
-	local itemAuctionsGrid = DataGrid(name, parent)
+	local itemAuctionsGrid = Yague.DataGrid(name, parent)
 	
-	local controlFrame = UICreateFrame("Frame", name .. ".ControlFrame", itemAuctionsGrid:GetContent())
-	local buyButton = UICreateFrame("RiftButton", name .. ".BuyButton", controlFrame)
-	local bidButton = UICreateFrame("RiftButton", name .. ".BidButton", controlFrame)
-	local auctionMoneySelector = MoneySelector(name .. ".AuctionMoneySelector", controlFrame)
-	local noBidLabel = ShadowedText(name .. ".NoBidLabel", controlFrame)
-	local refreshPanel = Panel(name .. ".RefreshPanel", controlFrame)
-	local refreshButton = UICreateFrame("Texture", name .. ".RefreshButton", refreshPanel:GetContent())
-	local refreshText = UICreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())	
+	local controlFrame = UI.CreateFrame("Frame", name .. ".ControlFrame", itemAuctionsGrid:GetContent())
+	local buyButton = UI.CreateFrame("RiftButton", name .. ".BuyButton", controlFrame)
+	local bidButton = UI.CreateFrame("RiftButton", name .. ".BidButton", controlFrame)
+	local auctionMoneySelector = Yague.MoneySelector(name .. ".AuctionMoneySelector", controlFrame)
+	local noBidLabel = Yague.ShadowedText(name .. ".NoBidLabel", controlFrame)
+	local refreshPanel = Yague.Panel(name .. ".RefreshPanel", controlFrame)
+	local refreshButton = UI.CreateFrame("Texture", name .. ".RefreshButton", refreshPanel:GetContent())
+	local refreshText = UI.CreateFrame("Text", name .. ".RefreshLabel", refreshPanel:GetContent())
 	
 	local itemType = nil
 	local auctions = nil
@@ -52,7 +28,7 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	
 	local function RefreshAuctionButtons()
 		local auctionSelected = false
-		local auctionInteraction = IInteraction("auction")
+		local auctionInteraction = Inspect.Interaction("auction")
 		local selectedAuctionCached = false
 		local selectedAuctionBid = false
 		local selectedAuctionBuy = false
@@ -63,9 +39,9 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 		local selectedAuctionID, selectedAuctionData = itemAuctionsGrid:GetSelectedData()
 		if selectedAuctionID and selectedAuctionData then
 			auctionSelected = true
-			selectedAuctionCached = GetAuctionCached(selectedAuctionID) or false
-			selectedAuctionBid = not selectedAuctionData.buyoutPrice or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
-			selectedAuctionBuy = selectedAuctionData.buyoutPrice and true or false
+			selectedAuctionCached = selectedAuctionData.cached
+			selectedAuctionBid = selectedAuctionData.buyoutPrice == 0 or selectedAuctionData.bidPrice < selectedAuctionData.buyoutPrice
+			selectedAuctionBuy = selectedAuctionData.buyoutPrice > 0 and true or false
 			highestBidder = (selectedAuctionData.ownBidded or 0) == selectedAuctionData.bidPrice
 			seller = selectedAuctionData.own
 			bidPrice = selectedAuctionData.bidPrice
@@ -112,9 +88,9 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 		RefreshAuctionButtons()
 		
 		if itemType then
-			local lastTimeSeen = GetLastTimeSeen(itemType)
+			local lastTimeSeen = LibPGC.Item.LastTimeSeen(itemType)
 			if lastTimeSeen then
-				refreshText:SetText(L["ItemAuctionsGrid/LastUpdateMessage"]:format(GetLocalizedDateString(L["ItemAuctionsGrid/LastUpdateDateFormat"], lastTimeSeen)))
+				refreshText:SetText(L["ItemAuctionsGrid/LastUpdateMessage"]:format(InternalInterface.Utility.GetLocalizedDateString(L["ItemAuctionsGrid/LastUpdateDateFormat"], lastTimeSeen)))
 			else
 				refreshText:SetText(L["ItemAuctionsGrid/LastUpdateMessage"]:format(L["ItemAuctionsGrid/LastUpdateDateFallback"]))
 			end				
@@ -127,11 +103,11 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	
 	local function ScoreValue(value)
 		if not value then return "" end
-		return MFloor(MMin(value, 999)) .. " %"
+		return math.floor(math.min(value, 999)) .. " %"
 	end
 
 	local function ScoreColor(value)
-		local r, g, b = unpack(ScoreColorByScore(value))
+		local r, g, b = unpack(InternalInterface.UI.ScoreColorByScore(value))
 		return { r, g, b, 0.1 }
 	end		
 	
@@ -148,8 +124,8 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 	itemAuctionsGrid:AddColumn("buy", L["ItemAuctionsGrid/ColumnBuy"], "MoneyCellType", 130, 1, "buyoutPrice", true)
 	itemAuctionsGrid:AddColumn("unitbid", L["ItemAuctionsGrid/ColumnBidPerUnit"], "MoneyCellType", 130, 1, "bidUnitPrice", true)
 	itemAuctionsGrid:AddColumn("unitbuy", L["ItemAuctionsGrid/ColumnBuyPerUnit"], "MoneyCellType", 130, 1, "buyoutUnitPrice", true)
-	itemAuctionsGrid:AddColumn("minexpire", L["ItemAuctionsGrid/ColumnMinExpire"], "Text", 90, 1, "minExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter })
-	itemAuctionsGrid:AddColumn("maxexpire", L["ItemAuctionsGrid/ColumnMaxExpire"], "Text", 90, 1, "maxExpireTime", true, { Alignment = "right", Formatter = RemainingTimeFormatter })
+	itemAuctionsGrid:AddColumn("minexpire", L["ItemAuctionsGrid/ColumnMinExpire"], "Text", 90, 1, "minExpireTime", true, { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
+	itemAuctionsGrid:AddColumn("maxexpire", L["ItemAuctionsGrid/ColumnMaxExpire"], "Text", 90, 1, "maxExpireTime", true, { Alignment = "right", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	itemAuctionsGrid:AddColumn("score", L["ItemAuctionsGrid/ColumnScore"], "Text", 60, 0, "score", true, { Alignment = "right", Formatter = ScoreValue, Color = ScoreColor })
 	itemAuctionsGrid:AddColumn("background", nil, "ItemAuctionBackgroundCellType", 0, 0, "score", false, { Color = ScoreColor })
 	itemAuctionsGrid:SetOrder("unitbuy", false)
@@ -192,48 +168,53 @@ function InternalInterface.UI.ItemAuctionsGrid(name, parent)
 		RefreshAuctionButtons()
 	end	
 	
-	function buyButton.Event:LeftPress()
-		local auctionID, auctionData = itemAuctionsGrid:GetSelectedData()
-		if auctionID then
-			CABid(auctionID, auctionData.buyoutPrice, GetAuctionBuyCallback(auctionID))
-		end
-	end
+	buyButton:EventAttach(Event.UI.Button.Left.Press,
+		function()
+			local auctionID, auctionData = itemAuctionsGrid:GetSelectedData()
+			if auctionID then
+				Command.Auction.Bid(auctionID, auctionData.buyoutPrice, LibPGC.Callback.Buy(auctionID))
+			end
+		end, buyButton:GetName() .. ".OnLeftPress")
 	
-	function bidButton.Event:LeftPress()
-		local auctionID = itemAuctionsGrid:GetSelectedData()
-		if auctionID then
-			local bidAmount = auctionMoneySelector:GetValue()
-			CABid(auctionID, bidAmount, GetAuctionBidCallback(auctionID, bidAmount))
-		end
-	end
+	bidButton:EventAttach(Event.UI.Button.Left.Press,
+		function()
+			local auctionID = itemAuctionsGrid:GetSelectedData()
+			if auctionID then
+				local bidAmount = auctionMoneySelector:GetValue()
+				Command.Auction.Bid(auctionID, bidAmount, LibPGC.Callback.Bid(auctionID, bidAmount))
+			end
+		end, bidButton:GetName() .. ".OnLeftPress")
 	
-	function refreshButton.Event:MouseIn()
-		self:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshMiniOn.png" or "Textures/RefreshMiniDisabled.png")
-	end
+	refreshButton:EventAttach(Event.UI.Input.Mouse.Cursor.In,
+		function()
+			refreshButton:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshMiniOn.png" or "Textures/RefreshMiniDisabled.png")
+		end, refreshButton:GetName() .. ".OnCursorIn")
 	
-	function refreshButton.Event:MouseOut()
-		self:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshMiniOff.png" or "Textures/RefreshMiniDisabled.png")
-	end
+	refreshButton:EventAttach(Event.UI.Input.Mouse.Cursor.Out,
+		function()
+			refreshButton:SetTextureAsync(addonID, refreshEnabled and "Textures/RefreshMiniOff.png" or "Textures/RefreshMiniDisabled.png")
+		end, refreshButton:GetName() .. ".OnCursorOut")
 
-	function refreshButton.Event:LeftClick()
-		if not refreshEnabled or not itemType then return end
-		
-		local ok, itemInfo = pcall(IIDetail, itemType)
-		if not ok or not itemInfo then return end
-		
-		if not pcall(CAScan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common", category = itemInfo.category, sort = "time", sortOrder = "descending" }) then
-			Write(L["ItemAuctionsGrid/ItemScanError"])
-		else
-			Write(L["ItemAuctionsGrid/ItemScanStarted"])
-		end				
-	end
+	refreshButton:EventAttach(Event.UI.Input.Mouse.Left.Click,
+		function()
+			if not refreshEnabled or not itemType then return end
+			
+			local ok, itemInfo = pcall(Inspect.Item.Detail, itemType)
+			if not ok or not itemInfo then return end
+			
+			if not pcall(Command.Auction.Scan, { type = "search", index = 0, text = itemInfo.name, rarity = itemInfo.rarity or "common", category = itemInfo.category, sort = "time", sortOrder = "descending" }) then
+				InternalInterface.Output.Write(L["ItemAuctionsGrid/ItemScanError"])
+			else
+				InternalInterface.Output.Write(L["ItemAuctionsGrid/ItemScanStarted"])
+			end				
+		end, refreshButton:GetName() .. ".OnLeftClick")
 	
-	local function OnInteraction(interaction)
+	local function OnInteraction(h, interaction)
 		if interaction == "auction" then
 			RefreshAuctionButtons()
 		end
 	end
-	TInsert(Event.Interaction, { OnInteraction, addonID, addonID .. ".ItemAuctionsGrid.OnInteraction" })
+	Command.Event.Attach(Event.Interaction, OnInteraction, addonID .. ".ItemAuctionsGrid.OnInteraction")
 	
 	function itemAuctionsGrid:GetItemType()
 		return itemType
