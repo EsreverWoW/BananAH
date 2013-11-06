@@ -1,3 +1,7 @@
+	Alpha 0.5.0 r87
+- Integrated LibPGC(Ex) 0.5.x changes
+- Temporarily disabled Search frame
+	
 	Release 0.4.14
 - Added auction count per character indicator at the bottom left corner
 	

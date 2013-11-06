@@ -12,13 +12,7 @@ local addonID = addonInfo.identifier
 
 local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
 local CDetail = InternalInterface.Category.Detail
-local GetPriceModelMatchers = LibPGCEx.GetPriceModelMatchers
-local GetPriceModelType = LibPGCEx.GetPriceModelType
-local GetPriceModelUsage = LibPGCEx.GetPriceModelUsage
-local GetPriceModels = LibPGCEx.GetPriceModels
 local L = InternalInterface.Localization.L
-local RegisterPriceModel = LibPGCEx.RegisterPriceModel
-local UnregisterPriceModel = LibPGCEx.UnregisterPriceModel
 local pairs = pairs
 
 local categoryModels = {}
@@ -304,8 +298,8 @@ function InternalInterface.PGCConfig.LoadBuiltInModels()
 	for category, models in pairs(builtInModels) do
 		categoryModels[category] = categoryModels[category] or {}
 		for modelID, modelInfo in pairs(models) do
-			UnregisterPriceModel(modelID)
-			RegisterPriceModel(modelID, modelInfo.name, modelInfo.modelType, modelInfo.usage, modelInfo.matchers)
+			LibPGCEx.Price.Unregister(modelID)
+			LibPGCEx.Price.Register(modelID, modelInfo)
 			categoryModels[category][modelID] = true
 		end
 	end
@@ -315,8 +309,8 @@ function InternalInterface.PGCConfig.LoadSavedPrices()
 	for category, models in pairs(InternalInterface.AccountSettings.Prices) do
 		categoryModels[category] = categoryModels[category] or {}
 		for modelID, modelInfo in pairs(models) do
-			UnregisterPriceModel(modelID)
-			RegisterPriceModel(modelID, modelInfo.name, modelInfo.modelType, modelInfo.usage, modelInfo.matchers)
+			LibPGCEx.Price.Unregister(modelID)
+			LibPGCEx.Price.Register(modelID, modelInfo)
 			categoryModels[category][modelID] = true
 		end
 	end
@@ -328,23 +322,23 @@ function InternalInterface.PGCConfig.SaveCategoryModels(category, preserveModels
 	
 	for modelID in pairs(categoryModels[category]) do
 		if not preserveModels[modelID] then
-			UnregisterPriceModel(modelID)
+			LibPGCEx.Price.Unregister(modelID)
 			categoryModels[category][modelID] = nil
 			InternalInterface.AccountSettings.Prices[category][modelID] = nil
 		end
 	end
 	
 	for modelID, modelInfo in pairs(addModels) do
-		RegisterPriceModel(modelID, modelInfo.name, modelInfo.modelType, modelInfo.usage, modelInfo.matchers)
+		LibPGCEx.Price.Register(modelID, modelInfo)
 		categoryModels[category][modelID] = true
-		InternalInterface.AccountSettings.Prices[category][modelID] = { name = modelInfo.name, modelType = modelInfo.modelType, usage = modelInfo.usage, matchers = modelInfo.matchers, }
+		InternalInterface.AccountSettings.Prices[category][modelID] = modelInfo
 	end
 end
 
 function InternalInterface.PGCConfig.ClearCategoryModels(category)
 	if categoryModels[category] then
 		for modelID in pairs(categoryModels[category]) do
-			UnregisterPriceModel(modelID)
+			LibPGCEx.Price.Unregister(modelID)
 		end
 		categoryModels[category] = nil
 		InternalInterface.AccountSettings.Prices[category] = nil
@@ -352,7 +346,7 @@ function InternalInterface.PGCConfig.ClearCategoryModels(category)
 end
 
 function InternalInterface.PGCConfig.GetCategoryModels(category)
-	local allModels = GetPriceModels()
+	local allModels = LibPGCEx.Price.List()
 	local models = {}
 	
 	local own = true
@@ -362,13 +356,14 @@ function InternalInterface.PGCConfig.GetCategoryModels(category)
 			if categoryModels[category] then
 				for model in pairs(categoryModels[category]) do
 					if allModels[model] then
+						local modelDefinition = LibPGCEx.Price.Get(model) or {}
 						models[model] = models[model] or 
 						{
-							name = allModels[model],
 							own = own,
-							modelType = GetPriceModelType(model),
-							usage = GetPriceModelUsage(model),
-							matchers = GetPriceModelMatchers(model),
+							name = modelDefinition.name,
+							modelType = modelDefinition.modelType,
+							usage = modelDefinition.usage,
+							matchers = modelDefinition.matchers,
 						}
 					end
 				end

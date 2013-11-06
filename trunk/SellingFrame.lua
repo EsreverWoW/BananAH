@@ -1,8 +1,6 @@
 -- ***************************************************************************************************************************************************
 -- * SellingFrame.lua                                                                                                                                *
 -- ***************************************************************************************************************************************************
--- * Selling tab frame                                                                                                                               *
--- ***************************************************************************************************************************************************
 -- * 0.4.1 / 2012.08.07 / Baanano: Rewritten for 0.4.1                                                                                               *
 -- ***************************************************************************************************************************************************
 
@@ -10,46 +8,19 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 local PublicInterface = _G[addonID]
 
-local DataGrid = Yague.DataGrid
-local Dropdown = Yague.Dropdown
-local Panel = Yague.Panel
-local ShadowedText = Yague.ShadowedText
-local Slider = Yague.Slider
-local CACancel = Command.Auction.Cancel
-local CTooltip = Command.Tooltip
-local GetAuctionCached = LibPGC.GetAuctionCached
-local GetAuctionCancelCallback = LibPGC.GetAuctionCancelCallback
-local GetOwnAuctionsScoredCompetition = InternalInterface.PGCExtensions.GetOwnAuctionsScoredCompetition
-local GetPlayerName = InternalInterface.Utility.GetPlayerName
-local GetPopupManager = InternalInterface.Output.GetPopupManager
-local GetRarityColor = InternalInterface.Utility.GetRarityColor
-local IIDetail = Inspect.Item.Detail
-local IInteraction = Inspect.Interaction
 local L = InternalInterface.Localization.L
-local MFloor = math.floor
-local MMin = math.min
-local RegisterPopupConstructor = Yague.RegisterPopupConstructor
-local RemainingTimeFormatter = InternalInterface.Utility.RemainingTimeFormatter
-local SFind = string.find
-local SFormat = string.format
-local SLen = string.len
-local SUpper = string.upper
-local ScoreColorByScore = InternalInterface.UI.ScoreColorByScore
-local TInsert = table.insert
-local UICreateFrame = UI.CreateFrame
-local Write = InternalInterface.Output.Write
-local pcall = pcall
-local unpack = unpack
 
 local function CancelAuctionPopup(parent)
 	local frame = Yague.Popup(parent:GetName() .. ".SaveSearchPopup", parent)
 	
-	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
-	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
-	local ignoreCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".IgnoreCheck", frame:GetContent())
-	local ignoreText = UICreateFrame("Text", frame:GetName() .. ".IgnoreText", frame:GetContent())
-	local yesButton = UICreateFrame("RiftButton", frame:GetName() .. ".YesButton", frame:GetContent())
-	local noButton = UICreateFrame("RiftButton", frame:GetName() .. ".NoButton", frame:GetContent())	
+	local titleText = Yague.ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
+	local contentText = UI.CreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
+	local ignoreCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".IgnoreCheck", frame:GetContent())
+	local ignoreText = UI.CreateFrame("Text", frame:GetName() .. ".IgnoreText", frame:GetContent())
+	local yesButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".YesButton", frame:GetContent())
+	local noButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".NoButton", frame:GetContent())
+	
+	local Callback = nil
 	
 	frame:SetWidth(420)
 	frame:SetHeight(160)
@@ -75,32 +46,37 @@ local function CancelAuctionPopup(parent)
 	ignoreText:SetPoint("CENTERLEFT", ignoreCheck, "CENTERRIGHT", 5, 0)
 	ignoreText:SetText(L["CancelAuctionPopup/IgnoreText"])	
 	
-	function noButton.Event:LeftPress()
-		parent:HidePopup(addonID .. ".CancelAuction", frame)
-	end
+	yesButton:EventAttach(Event.UI.Button.Left.Press,
+		function()
+			InternalInterface.AccountSettings.Auctions.BypassCancelPopup = ignoreCheck:GetChecked()
+			if type(Callback) == "function" then
+				Callback() 
+			end
+			parent:HidePopup(addonID .. ".CancelAuction", frame)
+		end, yesButton:GetName() .. ".OnLeftPress")
+		
+	noButton:EventAttach(Event.UI.Button.Left.Press,
+		function()
+			parent:HidePopup(addonID .. ".CancelAuction", frame)
+		end, noButton:GetName() .. ".OnLeftPress")
 	
 	function frame:SetData(callback)
-		function yesButton.Event:LeftPress()
-			InternalInterface.AccountSettings.Auctions.BypassCancelPopup = ignoreCheck:GetChecked()
-			callback() 
-			parent:HidePopup(addonID .. ".CancelAuction", frame)
-		end
+		Callback = callback
 	end
 	
 	return frame
 end
-RegisterPopupConstructor(addonID .. ".CancelAuction", CancelAuctionPopup)
-
+Yague.RegisterPopupConstructor(addonID .. ".CancelAuction", CancelAuctionPopup)
 
 local function SellingAuctionCellType(name, parent)
-	local sellingCell = UICreateFrame("Mask", name, parent)
-	local itemTextureBackground = UICreateFrame("Frame", name .. ".ItemTextureBackground", sellingCell)
-	local itemTexture = UICreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
-	local itemNameLabel = ShadowedText(name .. ".ItemNameLabel", sellingCell)
-	local alterTexture = UICreateFrame("Texture", name .. ".AlterTexture", sellingCell)
-	local alterNameLabel = ShadowedText(name .. ".AlterNameLabel", sellingCell)
-	local biddedTexture = UICreateFrame("Texture", name .. ".BiddedTexture", sellingCell)
-	local itemStackLabel = ShadowedText(name .. ".ItemStackLabel", sellingCell)	
+	local sellingCell = UI.CreateFrame("Mask", name, parent)
+	local itemTextureBackground = UI.CreateFrame("Frame", name .. ".ItemTextureBackground", sellingCell)
+	local itemTexture = UI.CreateFrame("Texture", name .. ".ItemTexture", itemTextureBackground)
+	local itemNameLabel = Yague.ShadowedText(name .. ".ItemNameLabel", sellingCell)
+	local alterTexture = UI.CreateFrame("Texture", name .. ".AlterTexture", sellingCell)
+	local alterNameLabel = Yague.ShadowedText(name .. ".AlterNameLabel", sellingCell)
+	local biddedTexture = UI.CreateFrame("Texture", name .. ".BiddedTexture", sellingCell)
+	local itemStackLabel = Yague.ShadowedText(name .. ".ItemStackLabel", sellingCell)	
 	
 	local itemType = nil
 	
@@ -128,12 +104,12 @@ local function SellingAuctionCellType(name, parent)
 	function sellingCell:SetValue(key, value, width, extra)
 		self:SetWidth(width)
 		
-		itemTextureBackground:SetBackgroundColor(GetRarityColor(value.itemRarity))
+		itemTextureBackground:SetBackgroundColor(InternalInterface.Utility.GetRarityColor(value.itemRarity))
 		
 		itemTexture:SetTextureAsync("Rift", value.itemIcon)
 		
 		itemNameLabel:SetText(value.itemName)
-		itemNameLabel:SetFontColor(GetRarityColor(value.itemRarity))
+		itemNameLabel:SetFontColor(InternalInterface.Utility.GetRarityColor(value.itemRarity))
 		
 		itemStackLabel:SetText("x" .. (value.stack or 0))
 		
@@ -146,35 +122,39 @@ local function SellingAuctionCellType(name, parent)
 		end
 		
 		local seller = value.sellerName
-		alterTexture:SetVisible(seller and seller ~= GetPlayerName() and true or false)
+		alterTexture:SetVisible(seller and seller ~= blUtil.Player.Name() and true or false)
 
 		alterNameLabel:SetText(seller or "")
 		
 		itemType = value.itemType
 	end
 	
-	function itemTexture.Event:MouseIn()
-		pcall(CTooltip, itemType)
-	end
+	itemTexture:EventAttach(Event.UI.Input.Mouse.Cursor.In,
+		function()
+			pcall(Command.Tooltip, itemType)
+		end, itemTexture:GetName() .. ".OnCursorIn")
 	
-	function itemTexture.Event:MouseOut()
-		CTooltip(nil)
-	end	
+	itemTexture:EventAttach(Event.UI.Input.Mouse.Cursor.Out,
+		function()
+			Command.Tooltip(nil)
+		end, itemTexture:GetName() .. ".OnCursorOut")
 	
-	function alterTexture.Event:MouseIn()
-		alterNameLabel:SetVisible(self:GetVisible())
-	end
+	alterTexture:EventAttach(Event.UI.Input.Mouse.Cursor.In,
+		function()
+			alterNameLabel:SetVisible(alterTexture:GetVisible())
+		end, alterTexture:GetName() .. ".OnCursorIn")
 	
-	function alterTexture.Event:MouseOut()
-		alterNameLabel:SetVisible(false)
-	end
+	alterTexture:EventAttach(Event.UI.Input.Mouse.Cursor.Out,
+		function()
+			alterNameLabel:SetVisible(false)
+		end, alterTexture:GetName() .. ".OnCursorOut")
 	
 	return sellingCell
 end
 
 local function CancellableCellType(name, parent)
-	local cell = UICreateFrame("Frame", name, parent)
-	local cancellableCell = UICreateFrame("Texture", name .. ".Texture", cell)
+	local cell = UI.CreateFrame("Frame", name, parent)
+	local cancellableCell = UI.CreateFrame("Texture", name .. ".Texture", cell)
 	
 	local auctionID = nil
 
@@ -182,60 +162,70 @@ local function CancellableCellType(name, parent)
 	cancellableCell:SetTextureAsync(addonID, "Textures/DeleteDisabled.png")
 	
 	function cell:SetValue(key, value, width, extra)
-		auctionID = key and not value.bidded and GetAuctionCached(key) and value.sellerName == GetPlayerName() and IInteraction("auction") and key or nil
+		auctionID = key and not value.bidded and value.cached and value.sellerName == blUtil.Player.Name() and Inspect.Interaction("auction") and key or nil
 		cancellableCell:SetTextureAsync(addonID, auctionID and "Textures/DeleteEnabled.png" or "Textures/DeleteDisabled.png")
 	end
 	
-	function cancellableCell.Event:LeftClick()
-		if auctionID then
-			local callback = function() if IInteraction("auction") then CACancel(auctionID, GetAuctionCancelCallback(auctionID)) end end
-			if not InternalInterface.AccountSettings.Auctions.BypassCancelPopup then
-				local manager = GetPopupManager()
-				if manager then
-					manager:ShowPopup(addonID .. ".CancelAuction", callback)
-				end				
-			else
-				callback()
+	cancellableCell:EventAttach(Event.UI.Input.Mouse.Left.Click,
+		function()
+			if auctionID then
+				local callback = function() if Inspect.Interaction("auction") then Command.Auction.Cancel(auctionID, LibPGC.Callback.Cancel(auctionID)) end end
+				if not InternalInterface.AccountSettings.Auctions.BypassCancelPopup then
+					local manager = InternalInterface.Output.GetPopupManager()
+					if manager then
+						manager:ShowPopup(addonID .. ".CancelAuction", callback)
+					end				
+				else
+					callback()
+				end
 			end
-		end
-	end
+		end, cancellableCell:GetName() .. ".OnLeftClick")
 	
 	return cell
 end
 
 function InternalInterface.UI.SellingFrame(name, parent)
-	local sellingFrame = UICreateFrame("Frame", name, parent)
+	local sellingFrame = UI.CreateFrame("Frame", name, parent)
 	
-	local anchor = UICreateFrame("Frame", name .. ".Anchor", sellingFrame)
+	local anchor = UI.CreateFrame("Frame", name .. ".Anchor", sellingFrame)
 	
-	local sellingGrid = DataGrid(name .. ".SellingGrid", sellingFrame)
+	local sellingGrid = Yague.DataGrid(name .. ".SellingGrid", sellingFrame)
 	
-	local collapseButton = UICreateFrame("Texture", name .. ".CollapseButton", sellingFrame)
-	local filterTextPanel = Panel(name .. ".FilterTextPanel", sellingFrame)
-	local filterTextField = UICreateFrame("RiftTextfield", name .. ".FilterTextField", filterTextPanel:GetContent())
+	local collapseButton = UI.CreateFrame("Texture", name .. ".CollapseButton", sellingFrame)
+	local filterTextPanel = Yague.Panel(name .. ".FilterTextPanel", sellingFrame)
+	local filterTextField = UI.CreateFrame("RiftTextfield", name .. ".FilterTextField", filterTextPanel:GetContent())
 	
-	local filterFrame = UICreateFrame("Frame", name .. ".FilterFrame", sellingFrame)
-	local filterCharacterCheck = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterCharacterCheck", filterFrame)
-	local filterCharacterText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterCharacterText", filterFrame)
-	local filterCompetitionText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterCompetitionText", filterFrame)
-	local filterCompetitionSelector = Dropdown(filterFrame:GetName() .. ".FilterCompetitionSelector", filterFrame)
-	local filterBelowText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterBelowText", filterFrame)
-	local filterBelowSlider = Slider(filterFrame:GetName() .. ".FilterBelowSlider", filterFrame)
-	local filterScorePanel = Panel(filterFrame:GetName() .. ".FilterScorePanel", filterFrame)
-	local filterScoreTitle = ShadowedText(filterFrame:GetName() .. ".FilterScoreTitle", filterScorePanel:GetContent())
+	local filterFrame = UI.CreateFrame("Frame", name .. ".FilterFrame", sellingFrame)
+	local filterCharacterCheck = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterCharacterCheck", filterFrame)
+	local filterCharacterText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterCharacterText", filterFrame)
+	local filterCompetitionText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterCompetitionText", filterFrame)
+	local filterCompetitionSelector = Yague.Dropdown(filterFrame:GetName() .. ".FilterCompetitionSelector", filterFrame)
+	local filterBelowText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterBelowText", filterFrame)
+	local filterBelowSlider = Yague.Slider(filterFrame:GetName() .. ".FilterBelowSlider", filterFrame)
+	local filterScorePanel = Yague.Panel(filterFrame:GetName() .. ".FilterScorePanel", filterFrame)
+	local filterScoreTitle = Yague.ShadowedText(filterFrame:GetName() .. ".FilterScoreTitle", filterScorePanel:GetContent())
 	local filterScoreChecks = {}
 	local filterScoreTexts = {}
 	for index = 0, 5 do
-		filterScoreChecks[index + 1] = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore" .. tostring(index) .. "Check", filterScorePanel:GetContent())
-		filterScoreTexts[index + 1] = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore" .. tostring(index) .. "Text", filterScorePanel:GetContent())
+		filterScoreChecks[index + 1] = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore" .. tostring(index) .. "Check", filterScorePanel:GetContent())
+		filterScoreTexts[index + 1] = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore" .. tostring(index) .. "Text", filterScorePanel:GetContent())
 	end
 	
-	local auctionsGrid = InternalInterface.UI.OldItemAuctionsGrid(name .. ".ItemAuctionsGrid", filterFrame)
+	local auctionsGrid = InternalInterface.UI.ItemAuctionsGrid(name .. ".ItemAuctionsGrid", filterFrame)
 	
-	local collapsed = false
+	local collapsed = true
+	local refreshTask = nil
 
 	local function ResetAuctions()
-		GetOwnAuctionsScoredCompetition(function(auctions) sellingGrid:SetData(auctions) end)
+		if refreshTask and not refreshTask:Finished() then
+			refreshTask:Stop()
+		end
+		
+		refreshTask = blTasks.Task.Create(
+			function(taskHandle)
+				local ownAuctions = InternalInterface.PGCExtensions.GetOwnAuctionsScoredCompetition():Result()
+				sellingGrid:SetData(ownAuctions)
+			end):Start():Abandon()
 	end
 	
 	local function SellingGridFilter(key, value)
@@ -243,34 +233,34 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	
 		if (value.competitionQuintile or 1) < filterCompetitionSelector:GetSelectedValue() then return false end
 
-		if filterCharacterCheck:GetChecked() and value.sellerName ~= GetPlayerName() then return false end
+		if filterCharacterCheck:GetChecked() and value.sellerName ~= blUtil.Player.Name() then return false end
 
 		local scoreIndex = InternalInterface.UI.ScoreIndexByScore(value.score) or 0
 		if not filterScoreChecks[scoreIndex + 1]:GetChecked() then return false end
 
-		local filterText = SUpper(filterTextField:GetText())
-		local upperName = SUpper(value.itemName)
-		if not SFind(upperName, filterText) then return false end
+		local filterText = string.upper(filterTextField:GetText())
+		local upperName = string.upper(value.itemName)
+		if not string.find(upperName, filterText, 1, true) then return false end
 
 		return true
 	end
 	
 	local function ScoreValue(value)
 		if not value then return "" end
-		return MFloor(MMin(value, 999)) .. " %"
+		return math.floor(math.min(value, 999)) .. " %"
 	end
 
 	local function ScoreColor(value)
-		local r, g, b = unpack(ScoreColorByScore(value))
+		local r, g, b = unpack(InternalInterface.UI.ScoreColorByScore(value))
 		return { r, g, b, 0.1 }
 	end
 	
 	local function CompetitionString(value)
 		if not value.competitionBelow or not value.competitionQuintile then return "" end
-		return SFormat("%s (%d)", L["General/CompetitionName" .. value.competitionQuintile], value.competitionBelow)
+		return string.format("%s (%d)", L["General/CompetitionName" .. value.competitionQuintile], value.competitionBelow)
 	end
 	
-	anchor:SetPoint("CENTERRIGHT", sellingFrame, "BOTTOMRIGHT", 0, -300)
+	anchor:SetPoint("CENTERRIGHT", sellingFrame, "BOTTOMRIGHT", 0, -34)
 	
 	sellingGrid:SetPoint("TOPLEFT", sellingFrame, "TOPLEFT", 5, 5)
 	sellingGrid:SetPoint("BOTTOMRIGHT", anchor, "CENTERRIGHT", -5, 0)
@@ -280,8 +270,8 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	sellingGrid:SetUnselectedRowBackgroundColor({0.15, 0.1, 0.1, 1})
 	sellingGrid:SetSelectedRowBackgroundColor({0.45, 0.3, 0.3, 1})
 	sellingGrid:AddColumn("item", L["SellingFrame/ColumnItem"], SellingAuctionCellType, 300, 1, nil, "itemName")
-	sellingGrid:AddColumn("minexpire", L["SellingFrame/ColumnMinExpire"], "Text", 100, 0, "minExpireTime", true, { Alignment = "center", Formatter = RemainingTimeFormatter })
-	sellingGrid:AddColumn("maxexpire", L["SellingFrame/ColumnMaxExpire"], "Text", 100, 0, "maxExpireTime", true, { Alignment = "center", Formatter = RemainingTimeFormatter })
+	sellingGrid:AddColumn("minexpire", L["SellingFrame/ColumnMinExpire"], "Text", 100, 0, "minExpireTime", true, { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
+	sellingGrid:AddColumn("maxexpire", L["SellingFrame/ColumnMaxExpire"], "Text", 100, 0, "maxExpireTime", true, { Alignment = "center", Formatter = InternalInterface.Utility.RemainingTimeFormatter })
 	sellingGrid:AddColumn("bid", L["SellingFrame/ColumnBid"], "MoneyCellType", 130, 0, "bidPrice", true)
 	sellingGrid:AddColumn("buy", L["SellingFrame/ColumnBuy"], "MoneyCellType", 130, 0, "buyoutPrice", true)
 	sellingGrid:AddColumn("unitbid", L["SellingFrame/ColumnBidPerUnit"], "MoneyCellType", 130, 0, "bidUnitPrice", true)
@@ -295,7 +285,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	sellingGrid:GetInternalContent():SetBackgroundColor(0, 0.05, 0.05, 0.5)	
 	
 	collapseButton:SetPoint("BOTTOMLEFT", sellingFrame, "BOTTOMLEFT", 5, -5)
-	collapseButton:SetTextureAsync(addonID, "Textures/ArrowDown.png")
+	collapseButton:SetTextureAsync(addonID, "Textures/ArrowUp.png")
 
 	filterTextPanel:SetPoint("TOPLEFT", sellingFrame, "BOTTOMLEFT", 35, -33)
 	filterTextPanel:SetPoint("BOTTOMRIGHT", sellingFrame, "BOTTOMRIGHT", -5, -3)
@@ -308,6 +298,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	
 	filterFrame:SetPoint("BOTTOMLEFT", sellingFrame, "BOTTOMLEFT", 5, -34)
 	filterFrame:SetPoint("TOPRIGHT", anchor, "CENTERRIGHT", -5, 0)
+	filterFrame:SetVisible(false)
 
 	filterCharacterCheck:SetPoint("TOPLEFT", filterFrame, "TOPLEFT", 5, 15)
 	filterCharacterCheck:SetChecked(InternalInterface.AccountSettings.Auctions.RestrictCharacterFilter)
@@ -349,7 +340,7 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	filterScoreTitle:SetShadowOffset(2, 2)	
 	
 	for index = 0, 5 do
-		filterScoreChecks[index + 1]:SetPoint("CENTERLEFT", filterScorePanel:GetContent(), (index % 2) / 2, (3 + 2 * MFloor(index / 2)) / 8, 5, 0)
+		filterScoreChecks[index + 1]:SetPoint("CENTERLEFT", filterScorePanel:GetContent(), (index % 2) / 2, (3 + 2 * math.floor(index / 2)) / 8, 5, 0)
 		filterScoreChecks[index + 1]:SetChecked(InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[index + 1] or false)
 		filterScoreTexts[index + 1]:SetPoint("CENTERLEFT", filterScoreChecks[index + 1], "CENTERRIGHT", 5, 0)
 		filterScoreTexts[index + 1]:SetText(L["General/ScoreName" .. tostring(index)])
@@ -359,50 +350,53 @@ function InternalInterface.UI.SellingFrame(name, parent)
 	auctionsGrid:SetPoint("BOTTOMRIGHT", filterFrame, "BOTTOMRIGHT", 0, -5)	
 
 	function sellingGrid.Event:SelectionChanged(key, value)
-		auctionsGrid:SetItemType(value and value.itemType or nil, key)
-		auctionsGrid:SetSelectedKey(key)
+		auctionsGrid:SetItemAuctions(value and value.itemType or nil, value and value.competition or nil, key)
 	end
 	
-	function collapseButton.Event:LeftClick()
-		filterFrame:SetVisible(collapsed)
-		collapsed = not collapsed
-		anchor:SetPoint("CENTERRIGHT", sellingFrame, "BOTTOMRIGHT", 0, collapsed and -34 or -300)
-		self:SetTextureAsync(addonID, collapsed and "Textures/ArrowUp.png" or "Textures/ArrowDown.png")
-	end
+	collapseButton:EventAttach(Event.UI.Input.Mouse.Left.Click,
+		function()
+			filterFrame:SetVisible(collapsed)
+			collapsed = not collapsed
+			anchor:SetPoint("CENTERRIGHT", sellingFrame, "BOTTOMRIGHT", 0, collapsed and -34 or -300)
+			collapseButton:SetTextureAsync(addonID, collapsed and "Textures/ArrowUp.png" or "Textures/ArrowDown.png")
+		end, collapseButton:GetName() .. ".OnLeftClick")
 	
-	function filterTextPanel.Event:LeftClick()
-		filterTextField:SetKeyFocus(true)
-	end
+	filterTextPanel:EventAttach(Event.UI.Input.Mouse.Left.Click,
+		function()
+			filterTextField:SetKeyFocus(true)
+		end, filterTextPanel:GetName() .. ".OnLeftClick")
 
-	function filterTextField.Event:KeyFocusGain()
-		local length = SLen(self:GetText())
-		if length > 0 then
-			self:SetSelection(0, length)
-		end
-	end
+	filterTextField:EventAttach(Event.UI.Input.Key.Focus.Gain,
+		function()
+			local length = string.len(filterTextField:GetText())
+			if length > 0 then
+				filterTextField:SetSelection(0, length)
+			end
+		end, filterTextField:GetName() .. ".OnKeyFocusGain")
 
 	local function UpdateFilter() sellingGrid:RefreshFilter() end
 	
-	filterTextField.Event.TextfieldChange = UpdateFilter
-	filterCharacterCheck.Event.CheckboxChange = UpdateFilter
+	filterTextField:EventAttach(Event.UI.Textfield.Change, UpdateFilter, filterTextField:GetName() .. ".OnTextfieldChange")
+	filterCharacterCheck:EventAttach(Event.UI.Checkbox.Change , UpdateFilter, filterTextField:GetName() .. ".OnCheckboxChange")
 	filterCompetitionSelector.Event.SelectionChanged = UpdateFilter
 	filterBelowSlider.Event.PositionChanged = UpdateFilter
 	for index = 0, 5 do
-		filterScoreChecks[index + 1].Event.CheckboxChange = UpdateFilter
+		filterScoreChecks[index + 1]:EventAttach(Event.UI.Checkbox.Change , UpdateFilter, filterScoreChecks[index + 1]:GetName() .. ".OnCheckboxChange")
 	end
 
 	function sellingFrame:Show()
-		auctionsGrid:SetEnabled(true)
 		ResetAuctions()
 	end
 	
 	function sellingFrame:Hide()
-		auctionsGrid:SetEnabled(false)
-	end	
+		if refreshTask and not refreshTask:Finished() then
+			refreshTask:Stop()
+		end
+	end
 	
 	function sellingFrame:ItemRightClick(params)
 		if params and params.id then
-			local ok, itemDetail = pcall(IIDetail, params.id)
+			local ok, itemDetail = pcall(Inspect.Item.Detail, params.id)
 			if not ok or not itemDetail or not itemDetail.name then return false end
 			filterTextField:SetText(itemDetail.name)
 			UpdateFilter()
@@ -411,10 +405,8 @@ function InternalInterface.UI.SellingFrame(name, parent)
 		return false
 	end
 	
-	TInsert(Event.Interaction, { function(interaction) if sellingFrame:GetVisible() and interaction == "auction" then UpdateFilter() end end, addonID, addonID .. ".SellingFrame.OnInteraction" })
-	TInsert(Event.LibPGC.AuctionData, { function() if sellingFrame:GetVisible() then ResetAuctions() end end, addonID, addonID .. ".SellingFrame.OnAuctionData" })
-	
-	collapseButton.Event.LeftClick(collapseButton) -- FIXME Event model
+	Command.Event.Attach(Event.Interaction, function(h, interaction) if sellingFrame:GetVisible() and interaction == "auction" then UpdateFilter() end end, addonID .. ".SellingFrame.OnInteraction")
+	Command.Event.Attach(Event.LibPGC.Scan.End, function() if sellingFrame:GetVisible() then ResetAuctions() end end, addonID .. ".SellingFrame.OnAuctionData")
 	
 	return sellingFrame
 end

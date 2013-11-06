@@ -9,8 +9,6 @@
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
-local CopyTableRecursive = InternalInterface.Utility.CopyTableRecursive
-
 local BASE_CATEGORY = ""
 local CATEGORIES =
 {
@@ -157,5 +155,5 @@ end
 
 function InternalInterface.Category.Detail(category)
 	category = category or BASE_CATEGORY
-	return CATEGORIES[category] and CopyTableRecursive(CATEGORIES[category]) or nil
+	return CATEGORIES[category] and blUtil.Copy.Deep(CATEGORIES[category]) or nil
 end	

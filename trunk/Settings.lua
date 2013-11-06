@@ -1,18 +1,12 @@
 -- ***************************************************************************************************************************************************
 -- * Settings.lua                                                                                                                                    *
 -- ***************************************************************************************************************************************************
--- * Initializes default addon settings                                                                                                              *
--- * Loads / Saves player settings                                                                                                                   *
--- ***************************************************************************************************************************************************
 -- * 0.4.1 / 2012.08.28 / Baanano: Added new settings                                                                                                *
 -- * 0.4.0 / 2012.05.30 / Baanano: First version, splitted out of the old Init.lua                                                                   *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
-
-local TInsert = table.insert
-local pairs = pairs
 
 InternalInterface = InternalInterface or {}
 InternalInterface.AccountSettings = InternalInterface.AccountSettings or {}
@@ -74,7 +68,7 @@ local function DefaultSettings()
 	InternalInterface.CharacterSettings.Posting.AutoConfig = InternalInterface.CharacterSettings.Posting.AutoConfig or {}
 end
 
-local function LoadSettings(addonId)
+local function LoadSettings(h, addonId)
 	if addonId == addonID then
 		InternalInterface.AccountSettings = _G[addonID .. "AccountSettings"] or {}
 		InternalInterface.ShardSettings = _G[addonID .. "ShardSettings"] or {}
@@ -82,13 +76,13 @@ local function LoadSettings(addonId)
 		DefaultSettings()
 	end
 end
-TInsert(Event.Addon.SavedVariables.Load.End, {LoadSettings, addonID, addonID .. ".Settings.Load"})
+Command.Event.Attach(Event.Addon.SavedVariables.Load.End, LoadSettings, addonID .. ".Settings.Load")
 
-local function SaveSettings(addonId)
+local function SaveSettings(h, addonId)
 	if addonId == addonID then
 		_G[addonID .. "AccountSettings"] = InternalInterface.AccountSettings
 		_G[addonID .. "ShardSettings"] = InternalInterface.ShardSettings
 		_G[addonID .. "CharacterSettings"] = InternalInterface.CharacterSettings
 	end
 end
-TInsert(Event.Addon.SavedVariables.Save.Begin, {SaveSettings, addonID, addonID .. ".Settings.Save"})
+Command.Event.Attach(Event.Addon.SavedVariables.Save.Begin, SaveSettings, addonID .. ".Settings.Save")

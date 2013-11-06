@@ -39,7 +39,7 @@ Integration with other AddOns:
  
 }
 Author = "Baanano"
-Version = "0.4.14"
+Version = "0.5.0 r87"
 Email = "baanano.rift@gmail.com"
 Environment = "2.4"
 Embed =
@@ -51,6 +51,9 @@ Dependencies =
 {
 	Yague = {"required", "before"},
 	LibPGCEx = {"required", "before"},
+	LibPGC = {"required", "before"},
+	blTasks = {"required", "before"},
+	blUtil = {"required", "before"},
 	ImhoBags = { "optional", "before" },
 	Docker = {"optional", "before"},
 }
@@ -78,14 +81,12 @@ RunOnStartup =
 	"Helper.lua",
 	"CustomCellTypes.lua",
 	"ConfigFactory.lua",
-	"OldItemAuctionsGrid.lua",
 	"ItemAuctionsGrid.lua",
 	"QueueManager.lua",
 	"PostController.lua",
 	"PostFrame.lua",
-	"SearchFrame.lua",
+--	"SearchFrame.lua",
 	"SellingFrame.lua",
-	"MapFrame.lua",
 	"ConfigFrame.lua",
 	"Main.lua",
 }
