@@ -39,7 +39,7 @@ Integration with other AddOns:
  
 }
 Author = "Baanano"
-Version = "0.5.0 r87"
+Version = "0.5.0 r88"
 Email = "baanano.rift@gmail.com"
 Environment = "2.4"
 Embed =
@@ -85,7 +85,7 @@ RunOnStartup =
 	"QueueManager.lua",
 	"PostController.lua",
 	"PostFrame.lua",
---	"SearchFrame.lua",
+	"SearchFrame.lua",
 	"SellingFrame.lua",
 	"ConfigFrame.lua",
 	"Main.lua",
