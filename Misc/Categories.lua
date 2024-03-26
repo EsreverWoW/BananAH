@@ -3,6 +3,7 @@
 -- ***************************************************************************************************************************************************
 -- * Auxiliary functions to get Item Categories info                                                                                                 *
 -- ***************************************************************************************************************************************************
+-- * 0.4.15 / 2014.02.18 / Baanano: Added dream weaver category                                                                                      *
 -- * 0.4.4  / 2012.10.23 / Baanano: First version                                                                                                    *
 -- ***************************************************************************************************************************************************
 
@@ -85,8 +86,8 @@ local CATEGORIES =
 	    ["consumable consumable"] =            { name = "Rift Consumable",      parent = "consumable",            children = nil, }, -- LOCALIZE
 	  ["container"] =                          { name = "Containers",           parent = "",                      children = nil, }, -- LOCALIZE
 	  ["crafting"] =                           { name = "Crafting",             parent = "",                      children = { "crafting recipe", "crafting material", "crafting ingredient", "crafting augment", }, }, -- LOCALIZE
-	    ["crafting recipe"] =                  { name = "Recipes",              parent = "crafting",              children = { "crafting recipe alchemy", "crafting recipe armorsmith", "crafting recipe artificer", "crafting recipe butchering", "crafting recipe foraging", "crafting recipe weaponsmith", "crafting recipe outfitter", "crafting recipe mining", "crafting recipe runecrafting", "crafting recipe fishing", "crafting recipe survival", }, }, -- LOCALIZE
-	      ["crafting recipe alchemy"] =        { name = "Apothecary",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
+	    ["crafting recipe"] =                  { name = "Recipes",              parent = "crafting",              children = { "crafting recipe apothecary", "crafting recipe armorsmith", "crafting recipe artificer", "crafting recipe butchering", "crafting recipe foraging", "crafting recipe weaponsmith", "crafting recipe outfitter", "crafting recipe mining", "crafting recipe runecrafting", "crafting recipe fishing", "crafting recipe survival", "crafting recipe dream weaver", }, }, -- LOCALIZE
+	      ["crafting recipe apothecary"] =     { name = "Apothecary",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe armorsmith"] =     { name = "Armorsmith",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe artificer"] =      { name = "Artificer",            parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe butchering"] =     { name = "Butchering",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
@@ -97,6 +98,7 @@ local CATEGORIES =
 	      ["crafting recipe runecrafting"] =   { name = "Runecrafting",         parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe fishing"] =        { name = "Fishing",              parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe survival"] =       { name = "Survival",             parent = "crafting recipe",       children = nil, }, -- LOCALIZE
+	      ["crafting recipe dream weaver"] =   { name = "Dream Weaver",         parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	    ["crafting material"] =                { name = "Materials",            parent = "crafting",              children = { "crafting material metal", "crafting material gem", "crafting material wood", "crafting material plant", "crafting material meat", "crafting material cloth", "crafting material component", "crafting material fish", "crafting material butcher", }, }, -- LOCALIZE
 	      ["crafting material metal"] =        { name = "Metal",                parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material gem"] =          { name = "Gems",                 parent = "crafting material",     children = nil, }, -- LOCALIZE

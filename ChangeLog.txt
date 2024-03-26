@@ -1,3 +1,8 @@
+	Release 0.4.15
+- Fixed bug that cancelled pricing for unknown categories
+- Added "Dream weaver" category
+- Updated to RIFT 2.5
+
 	Release 0.4.14
 - Added auction count per character indicator at the bottom left corner
 	

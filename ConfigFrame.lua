@@ -2398,7 +2398,7 @@ local function LoadConfigScreens(parent)
 	screens["post"] = { title = L["ConfigFrame/CategoryPost"], frame = PostingSettings(parent), order = 200 }
 	screens["selling"] = { title = L["ConfigFrame/CategorySelling"], frame = AuctionsSettings(parent), order = 300 }
 	--screens["tracking"] = { title = L["ConfigFrame/CategoryTracking"], frame = nil, order = 400 }
-	screens["map"] = { title = L["ConfigFrame/CategoryMap"], frame = nil, order = 500 }
+	--screens["map"] = { title = L["ConfigFrame/CategoryMap"], frame = nil, order = 500 }
 	--screens["history"] = { title = L["ConfigFrame/CategoryHistory"], frame = nil, order = 600 }
 	screens["pricing"] = { title = L["ConfigFrame/CategoryPricing"], frame = PriceSettings(parent), order = 1000 }
 	screens["scoring"] = { title = L["ConfigFrame/CategoryScoring"], frame = ScoreSettings(parent), order = 2000 }

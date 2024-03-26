@@ -3,8 +3,9 @@
 -- ***************************************************************************************************************************************************
 -- * Sets up BananAH's Price Models                                                                                                                  *
 -- ***************************************************************************************************************************************************
--- * 0.4.4 / 2012.10.23 / Baanano: Per category price models                                                                                         *
--- * 0.4.1 / 2012.08.01 / Baanano: First version                                                                                                     *
+-- * 0.4.15 / 2012.10.23 / Baanano: Fallback to BASE_CATEGORY for unknown categories                                                                 *
+-- * 0.4.4  / 2012.10.23 / Baanano: Per category price models                                                                                        *
+-- * 0.4.1  / 2012.08.01 / Baanano: First version                                                                                                    *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
@@ -375,6 +376,10 @@ function InternalInterface.PGCConfig.GetCategoryModels(category)
 			end		
 			own = false
 			category = detail.parent
+		elseif own then
+			print("Unknown item category '" .. category .. "', using default item category.")
+			own = false
+			category = BASE_CATEGORY
 		else
 			category = nil
 		end
