@@ -16,7 +16,7 @@ local CopyTableRecursive = InternalInterface.Utility.CopyTableRecursive
 local BASE_CATEGORY = ""
 local CATEGORIES =
 {
-	[""] =                                     { name = "All",                  parent = nil,                     children = { "armor", "weapon", "planar", "consumable", "container", "crafting", "misc", "dimension", "artifacts", }, }, -- LOCALIZE
+	[""] =                                     { name = "All",                  parent = nil,                     children = { "armor", "weapon", "planar", "consumable", "container", "crafting", "misc", "dimension", "artifact", }, }, -- LOCALIZE
 	  ["armor"] =                              { name = "Armor",                parent = "",                      children = { "armor plate", "armor chain", "armor leather", "armor cloth", "armor accessory", "armor costume", "armor cape", }, }, -- LOCALIZE
 	    ["armor plate"] =                      { name = "Plate",                parent = "armor",                 children = { "armor plate head", "armor plate shoulders", "armor plate chest", "armor plate hands", "armor plate waist", "armor plate legs", "armor plate feet", }, }, -- LOCALIZE
 	      ["armor plate head"] =               { name = "Plate Head",           parent = "armor plate",           children = nil, }, -- LOCALIZE
@@ -144,13 +144,13 @@ local CATEGORIES =
 	      ["dimension landscaping rock"] =     { name = "Rock",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping tree"] =     { name = "Tree",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping plant"] =    { name = "Plant",                parent = "dimension landscaping", children = nil, }, -- LOCALIZE
-	  ["artifacts"] =                          { name = "Artifacts",            parent = "",                      children = { "artifacts normal", "artifacts twisted", "artifacts unstable", "artifacts bounty", "artifacts other", "artifacts fishing", }, }, -- LOCALIZE
-	    ["artifacts normal"] =                 { name = "Normal",               parent = "artifacts",             children = nil, }, -- LOCALIZE
-	    ["artifacts twisted"] =                { name = "Twisted",              parent = "artifacts",             children = nil, }, -- LOCALIZE
-	    ["artifacts unstable"] =               { name = "Unstable",             parent = "artifacts",             children = nil, }, -- LOCALIZE
-	    ["artifacts bounty"] =                 { name = "Bounty",               parent = "artifacts",             children = nil, }, -- LOCALIZE
-	    ["artifacts other"] =                  { name = "Other",                parent = "artifacts",             children = nil, }, -- LOCALIZE
-	    ["artifacts fishing"] =                { name = "Fishing",              parent = "artifacts",             children = nil, }, -- LOCALIZE
+	  ["artifact"] =                           { name = "Artifacts",            parent = "",                      children = { "artifact normal", "artifact twisted", "artifact unstable", "artifact bounty", "artifact other", "artifact fishing", }, }, -- LOCALIZE
+	    ["artifact normal"] =                  { name = "Normal",               parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact twisted"] =                 { name = "Twisted",              parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact unstable"] =                { name = "Unstable",             parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact bounty"] =                  { name = "Bounty",               parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact other"] =                   { name = "Other",                parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact fishing"] =                 { name = "Fishing",              parent = "artifact",              children = nil, }, -- LOCALIZE
 }
 
 InternalInterface.Category = InternalInterface.Category or {}

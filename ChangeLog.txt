@@ -1,3 +1,7 @@
+	Release 0.4.17
+- Updated artifact categories
+- Updated to RIFT 2.7	
+	
 	Release 0.4.16
 - Fixed typo that caused scans to fail when transcendent items were found
 - Added artifact categories
