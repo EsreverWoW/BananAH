@@ -1,3 +1,8 @@
+	Release 0.4.16
+- Fixed typo that caused scans to fail when transcendent items were found
+- Added artifact categories
+- Updated to RIFT 2.6
+
 	Release 0.4.15
 - Fixed bug that cancelled pricing for unknown categories
 - Added "Dream weaver" category

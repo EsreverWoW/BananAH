@@ -39,9 +39,9 @@ Integration with other AddOns:
  
 }
 Author = "Baanano"
-Version = "0.4.15"
+Version = "0.4.16"
 Email = "baanano.rift@gmail.com"
-Environment = "2.5"
+Environment = "2.6"
 Embed =
 {
 	Yague = true,

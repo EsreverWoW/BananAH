@@ -3,6 +3,7 @@
 -- ***************************************************************************************************************************************************
 -- * Auxiliary functions to get Item Categories info                                                                                                 *
 -- ***************************************************************************************************************************************************
+-- * 0.4.16 / 2014.03.10 / Baanano: Added artifacts category                                                                                         *
 -- * 0.4.15 / 2014.02.18 / Baanano: Added dream weaver category                                                                                      *
 -- * 0.4.4  / 2012.10.23 / Baanano: First version                                                                                                    *
 -- ***************************************************************************************************************************************************
@@ -15,7 +16,7 @@ local CopyTableRecursive = InternalInterface.Utility.CopyTableRecursive
 local BASE_CATEGORY = ""
 local CATEGORIES =
 {
-	[""] =                                     { name = "All",                  parent = nil,                     children = { "armor", "weapon", "planar", "consumable", "container", "crafting", "misc", "dimension", }, }, -- LOCALIZE
+	[""] =                                     { name = "All",                  parent = nil,                     children = { "armor", "weapon", "planar", "consumable", "container", "crafting", "misc", "dimension", "artifacts", }, }, -- LOCALIZE
 	  ["armor"] =                              { name = "Armor",                parent = "",                      children = { "armor plate", "armor chain", "armor leather", "armor cloth", "armor accessory", "armor costume", "armor cape", }, }, -- LOCALIZE
 	    ["armor plate"] =                      { name = "Plate",                parent = "armor",                 children = { "armor plate head", "armor plate shoulders", "armor plate chest", "armor plate hands", "armor plate waist", "armor plate legs", "armor plate feet", }, }, -- LOCALIZE
 	      ["armor plate head"] =               { name = "Plate Head",           parent = "armor plate",           children = nil, }, -- LOCALIZE
@@ -139,10 +140,17 @@ local CATEGORIES =
 	    ["dimension interactive"] =            { name = "Interactive",          parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension planar"] =                 { name = "Planar",               parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension landscaping"] =            { name = "Landscaping",          parent = "dimension",             children = { "dimension landscaping barrier", "dimension landscaping rock", "dimension landscaping tree", "dimension landscaping plant", }, }, -- LOCALIZE
-	      ["dimension landscaping barrier"] =  { name = "Barrier",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
+	      ["dimension landscaping barrier"] =  { name = "Barrier",              parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping rock"] =     { name = "Rock",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping tree"] =     { name = "Tree",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping plant"] =    { name = "Plant",                parent = "dimension landscaping", children = nil, }, -- LOCALIZE
+	  ["artifacts"] =                          { name = "Artifacts",            parent = "",                      children = { "artifacts normal", "artifacts twisted", "artifacts unstable", "artifacts bounty", "artifacts other", "artifacts fishing", }, }, -- LOCALIZE
+	    ["artifacts normal"] =                 { name = "Normal",               parent = "artifacts",             children = nil, }, -- LOCALIZE
+	    ["artifacts twisted"] =                { name = "Twisted",              parent = "artifacts",             children = nil, }, -- LOCALIZE
+	    ["artifacts unstable"] =               { name = "Unstable",             parent = "artifacts",             children = nil, }, -- LOCALIZE
+	    ["artifacts bounty"] =                 { name = "Bounty",               parent = "artifacts",             children = nil, }, -- LOCALIZE
+	    ["artifacts other"] =                  { name = "Other",                parent = "artifacts",             children = nil, }, -- LOCALIZE
+	    ["artifacts fishing"] =                { name = "Fishing",              parent = "artifacts",             children = nil, }, -- LOCALIZE
 }
 
 InternalInterface.Category = InternalInterface.Category or {}

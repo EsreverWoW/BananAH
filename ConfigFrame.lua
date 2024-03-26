@@ -1487,7 +1487,7 @@ local function PostingSettings(parent)
 		{ displayName = L["General/Rarity4"], order = 4, rarity = "rare", },
 		{ displayName = L["General/Rarity5"], order = 5, rarity = "epic", },
 		{ displayName = L["General/Rarity6"], order = 6, rarity = "relic", },
-		{ displayName = L["General/Rarity7"], order = 7, rarity = "transcendant", },
+		{ displayName = L["General/Rarity7"], order = 7, rarity = "transcendent", },
 		{ displayName = L["General/RarityQuest"], order = 8, rarity = "quest", },	
 	})
 	rarityFilterDropdown:SetSelectedKey(defaultRarity)
