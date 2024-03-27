@@ -35,7 +35,7 @@ function InternalInterface.Utility.GetRarityColor(rarity)
 	elseif rarity == "epic"         then return 0.676,   0.281,   0.98,    1
 	elseif rarity == "relic"        then return 1,       0.5,     0,       1
 	elseif rarity == "quest"        then return 1,       1,       0,       1
-	elseif rarity == "transcendant" then return 1,       0.7,     0.9,     1
+	elseif rarity == "transcendent" then return 1,       0,       0,     1
 	else                                 return 0.98,    0.98,    0.98,    1
 	end
 end

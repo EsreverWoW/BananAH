@@ -28,7 +28,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["General/Rarity4"] = "Rare",
 	["General/Rarity5"] = "Epic",
 	["General/Rarity6"] = "Relic",
-	["General/Rarity7"] = "Transcendant",
+	["General/Rarity7"] = "Transcendent",
 	["General/RarityQuest"] = "Quest",
 	
 	["General/ModelTypeSimple"] = "Simple",

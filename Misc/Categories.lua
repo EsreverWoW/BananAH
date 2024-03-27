@@ -3,6 +3,8 @@
 -- ***************************************************************************************************************************************************
 -- * Auxiliary functions to get Item Categories info                                                                                                 *
 -- ***************************************************************************************************************************************************
+-- * 0.4.16 / 2014.03.10 / Baanano: Added artifacts category                                                                                         *
+-- * 0.4.15 / 2014.02.18 / Baanano: Added dream weaver category                                                                                      *
 -- * 0.4.4  / 2012.10.23 / Baanano: First version                                                                                                    *
 -- ***************************************************************************************************************************************************
 
@@ -14,7 +16,7 @@ local CopyTableRecursive = InternalInterface.Utility.CopyTableRecursive
 local BASE_CATEGORY = ""
 local CATEGORIES =
 {
-	[""] =                                     { name = "All",                  parent = nil,                     children = { "armor", "weapon", "planar", "consumable", "container", "crafting", "misc", "dimension", }, }, -- LOCALIZE
+	[""] =                                     { name = "All",                  parent = nil,                     children = { "armor", "weapon", "planar", "consumable", "container", "crafting", "misc", "dimension", "artifact", }, }, -- LOCALIZE
 	  ["armor"] =                              { name = "Armor",                parent = "",                      children = { "armor plate", "armor chain", "armor leather", "armor cloth", "armor accessory", "armor costume", "armor cape", }, }, -- LOCALIZE
 	    ["armor plate"] =                      { name = "Plate",                parent = "armor",                 children = { "armor plate head", "armor plate shoulders", "armor plate chest", "armor plate hands", "armor plate waist", "armor plate legs", "armor plate feet", }, }, -- LOCALIZE
 	      ["armor plate head"] =               { name = "Plate Head",           parent = "armor plate",           children = nil, }, -- LOCALIZE
@@ -85,8 +87,8 @@ local CATEGORIES =
 	    ["consumable consumable"] =            { name = "Rift Consumable",      parent = "consumable",            children = nil, }, -- LOCALIZE
 	  ["container"] =                          { name = "Containers",           parent = "",                      children = nil, }, -- LOCALIZE
 	  ["crafting"] =                           { name = "Crafting",             parent = "",                      children = { "crafting recipe", "crafting material", "crafting ingredient", "crafting augment", }, }, -- LOCALIZE
-	    ["crafting recipe"] =                  { name = "Recipes",              parent = "crafting",              children = { "crafting recipe alchemy", "crafting recipe armorsmith", "crafting recipe artificer", "crafting recipe butchering", "crafting recipe foraging", "crafting recipe weaponsmith", "crafting recipe outfitter", "crafting recipe mining", "crafting recipe runecrafting", "crafting recipe fishing", "crafting recipe survival", }, }, -- LOCALIZE
-	      ["crafting recipe alchemy"] =        { name = "Apothecary",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
+	    ["crafting recipe"] =                  { name = "Recipes",              parent = "crafting",              children = { "crafting recipe apothecary", "crafting recipe armorsmith", "crafting recipe artificer", "crafting recipe butchering", "crafting recipe foraging", "crafting recipe weaponsmith", "crafting recipe outfitter", "crafting recipe mining", "crafting recipe runecrafting", "crafting recipe fishing", "crafting recipe survival", "crafting recipe dream weaver", }, }, -- LOCALIZE
+	      ["crafting recipe apothecary"] =     { name = "Apothecary",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe armorsmith"] =     { name = "Armorsmith",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe artificer"] =      { name = "Artificer",            parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe butchering"] =     { name = "Butchering",           parent = "crafting recipe",       children = nil, }, -- LOCALIZE
@@ -97,6 +99,7 @@ local CATEGORIES =
 	      ["crafting recipe runecrafting"] =   { name = "Runecrafting",         parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe fishing"] =        { name = "Fishing",              parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	      ["crafting recipe survival"] =       { name = "Survival",             parent = "crafting recipe",       children = nil, }, -- LOCALIZE
+	      ["crafting recipe dream weaver"] =   { name = "Dream Weaver",         parent = "crafting recipe",       children = nil, }, -- LOCALIZE
 	    ["crafting material"] =                { name = "Materials",            parent = "crafting",              children = { "crafting material metal", "crafting material gem", "crafting material wood", "crafting material plant", "crafting material meat", "crafting material cloth", "crafting material component", "crafting material fish", "crafting material butcher", }, }, -- LOCALIZE
 	      ["crafting material metal"] =        { name = "Metal",                parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material gem"] =          { name = "Gems",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
@@ -137,10 +140,17 @@ local CATEGORIES =
 	    ["dimension interactive"] =            { name = "Interactive",          parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension planar"] =                 { name = "Planar",               parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension landscaping"] =            { name = "Landscaping",          parent = "dimension",             children = { "dimension landscaping barrier", "dimension landscaping rock", "dimension landscaping tree", "dimension landscaping plant", }, }, -- LOCALIZE
-	      ["dimension landscaping barrier"] =  { name = "Barrier",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
+	      ["dimension landscaping barrier"] =  { name = "Barrier",              parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping rock"] =     { name = "Rock",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping tree"] =     { name = "Tree",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
 	      ["dimension landscaping plant"] =    { name = "Plant",                parent = "dimension landscaping", children = nil, }, -- LOCALIZE
+	  ["artifact"] =                           { name = "Artifacts",            parent = "",                      children = { "artifact normal", "artifact twisted", "artifact unstable", "artifact bounty", "artifact other", "artifact fishing", }, }, -- LOCALIZE
+	    ["artifact normal"] =                  { name = "Normal",               parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact twisted"] =                 { name = "Twisted",              parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact unstable"] =                { name = "Unstable",             parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact bounty"] =                  { name = "Bounty",               parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact other"] =                   { name = "Other",                parent = "artifact",              children = nil, }, -- LOCALIZE
+	    ["artifact fishing"] =                 { name = "Fishing",              parent = "artifact",              children = nil, }, -- LOCALIZE
 }
 
 InternalInterface.Category = InternalInterface.Category or {}
