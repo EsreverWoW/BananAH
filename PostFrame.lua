@@ -202,7 +202,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 		end
 
 		local rarity = itemInfo.rarity and itemInfo.rarity ~= "" and itemInfo.rarity or "common"
-		rarity = ({ sellable = 1, common = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, quest = 8 })[rarity] or 1
+		rarity = ({ sellable = 1, common = 2, uncommon = 3, rare = 4, epic = 5, relic = 6, trascendant = 7, ascended = 8, eternal = 9 })[rarity] or 1
 		local minRarity = InternalInterface.AccountSettings.Posting.RarityFilter or 1
 		if rarity < minRarity then return false end
 		

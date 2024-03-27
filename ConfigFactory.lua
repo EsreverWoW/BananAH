@@ -168,7 +168,8 @@ local ControlConstructors =
 				["epic"] = { displayName = L["General/Rarity5"], order = 5, },
 				["relic"] = { displayName = L["General/Rarity6"], order = 6, },
 				["transcendent"] = { displayName = L["General/Rarity7"], order = 7, },
-				["quest"] = { displayName = L["General/RarityQuest"], order = 8, },
+				["ascended"] = { displayName = L["General/Rarity8"], order = 8, },
+				["eternal"] = { displayName = L["General/Rarity9"], order = 9, },
 			})			
 			control:SetSelectedKey(extraDescription.defaultValue or "sellable")
 			
