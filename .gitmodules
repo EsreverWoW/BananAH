@@ -1,0 +1,6 @@
+[submodule "LibPGCEx"]
+	path = LibPGCEx
+	url = https://github.com/EsreverWoW/LibPGCEx
+[submodule "Yague"]
+	path = Yague
+	url = https://github.com/EsreverWoW/Yague
