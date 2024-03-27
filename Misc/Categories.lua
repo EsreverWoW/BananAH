@@ -50,10 +50,11 @@ local CATEGORIES =
 	      ["armor cloth waist"] =              { name = "Cloth Waist",          parent = "armor cloth",           children = nil, }, -- LOCALIZE
 	      ["armor cloth legs"] =               { name = "Cloth Legs",           parent = "armor cloth",           children = nil, }, -- LOCALIZE
 	      ["armor cloth feet"] =               { name = "Cloth Feet",           parent = "armor cloth",           children = nil, }, -- LOCALIZE
-	    ["armor accessory"] =                  { name = "Accessories",          parent = "armor",                 children = { "armor accessory neck", "armor accessory ring", "armor accessory trinket", "armor accessory seal", }, }, -- LOCALIZE
+	    ["armor accessory"] =                  { name = "Accessories",          parent = "armor",                 children = { "armor accessory neck", "armor accessory ring", "armor accessory trinket", "armor accessory earring", "armor accessory seal", }, }, -- LOCALIZE
 	      ["armor accessory neck"] =           { name = "Necklace",             parent = "armor accessory",       children = nil, }, -- LOCALIZE
 	      ["armor accessory ring"] =           { name = "Ring",                 parent = "armor accessory",       children = nil, }, -- LOCALIZE
 	      ["armor accessory trinket"] =        { name = "Trinket",              parent = "armor accessory",       children = nil, }, -- LOCALIZE
+		  ["armor accessory earring"] =        { name = "Earring",              parent = "armor accessory",       children = nil, }, -- LOCALIZE
 	      ["armor accessory seal"] =           { name = "Seal",                 parent = "armor accessory",       children = nil, }, -- LOCALIZE
 	    ["armor costume"] =                    { name = "Costume",              parent = "armor",                 children = nil, }, -- LOCALIZE
 	    ["armor cape"] =                       { name = "Cape",                 parent = "armor",                 children = nil, }, -- LOCALIZE
@@ -105,7 +106,6 @@ local CATEGORIES =
 	      ["crafting material gem"] =          { name = "Gems",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material wood"] =         { name = "Wood",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material plant"] =        { name = "Plants",               parent = "crafting material",     children = nil, }, -- LOCALIZE
---	      ["crafting material hide"] =         { name = "Hide",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material meat"] =         { name = "Meat",                 parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material cloth"] =        { name = "Cloth",                parent = "crafting material",     children = nil, }, -- LOCALIZE
 	      ["crafting material component"] =    { name = "Rune Components",      parent = "crafting material",     children = nil, }, -- LOCALIZE
@@ -116,41 +116,40 @@ local CATEGORIES =
 	      ["crafting ingredient drop"] =       { name = "Drops",                parent = "crafting ingredient",   children = nil, }, -- LOCALIZE
 	      ["crafting ingredient rift"] =       { name = "Rifts",                parent = "crafting ingredient",   children = nil, }, -- LOCALIZE
 	    ["crafting augment"] =                 { name = "Augments",             parent = "crafting",              children = nil, }, -- LOCALIZE
-	  ["misc"] =                               { name = "Misc",                 parent = "",                      children = { "misc quest", "misc mount", "misc pet", "misc collectible", "misc other", "misc survival", "misc fishing", }, }, -- LOCALIZE
-	    ["misc quest"] =                       { name = "Quest",                parent = "misc",                  children = nil, }, -- LOCALIZE
+	  ["misc"] =                               { name = "Misc",                 parent = "",                      children = { "misc minion", "misc quest", "misc mount", "misc pet", "misc collectible", "misc other", "misc survival", "misc fishing", }, }, -- LOCALIZE
+	    ["misc minion"] =                      { name = "Minions",              parent = "misc",                  children = nil, }, -- LOCALIZE
+		["misc quest"] =                       { name = "Quest",                parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc mount"] =                       { name = "Mounts",               parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc pet"] =                         { name = "Pets",                 parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc collectible"] =                 { name = "Collectibles",         parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc other"] =                       { name = "Other",                parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc survival"] =                    { name = "Survival",             parent = "misc",                  children = nil, }, -- LOCALIZE
 	    ["misc fishing"] =                     { name = "Fishing",              parent = "misc",                  children = nil, }, -- LOCALIZE
-	  ["dimension"] =                          { name = "Dimension Item",       parent = "",                      children = { "dimension lighting", "dimension key", "dimension building", "dimension world", "dimension decoration", "dimension block", "dimension furniture", "dimension module", "dimension interactive", "dimension planar", "dimension landscaping", }, }, -- LOCALIZE
+	  ["dimension"] =                          { name = "Dimension Item",       parent = "",                      children = { "dimension lighting", "dimension key", "dimension building", "dimension decoration", "dimension kit", "dimension rock", "dimension household", "dimension block", "dimension tree", "dimension furniture", "dimension module", "dimension interactive", "dimension plant", "dimension landscaping", }, }, -- LOCALIZE
 	    ["dimension lighting"] =               { name = "Lighting",             parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension key"] =                    { name = "Dimension Key",        parent = "dimension",             children = nil, }, -- LOCALIZE
 	    ["dimension building"] =               { name = "Building",             parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension world"] =                  { name = "World Event",          parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension decoration"] =             { name = "Decoration",           parent = "dimension",             children = { "dimension decoration large", "dimension decoration small", "dimension decoration container", "dimension decoration household", }, }, -- LOCALIZE
-	      ["dimension decoration large"] =     { name = "Large Decoration",     parent = "dimension decoration",  children = nil, }, -- LOCALIZE
-	      ["dimension decoration small"] =     { name = "Small Decoration",     parent = "dimension decoration",  children = nil, }, -- LOCALIZE
-	      ["dimension decoration container"] = { name = "Decorative Container", parent = "dimension decoration",  children = nil, }, -- LOCALIZE
-	      ["dimension decoration household"] = { name = "Household Item",       parent = "dimension decoration",  children = nil, }, -- LOCALIZE
-	    ["dimension block"] =                  { name = "Building Block",       parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension furniture"] =              { name = "Furniture",            parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension module"] =                 { name = "Building Module",      parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension interactive"] =            { name = "Interactive",          parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension planar"] =                 { name = "Planar",               parent = "dimension",             children = nil, }, -- LOCALIZE
-	    ["dimension landscaping"] =            { name = "Landscaping",          parent = "dimension",             children = { "dimension landscaping barrier", "dimension landscaping rock", "dimension landscaping tree", "dimension landscaping plant", }, }, -- LOCALIZE
-	      ["dimension landscaping barrier"] =  { name = "Barrier",              parent = "dimension landscaping", children = nil, }, -- LOCALIZE
-	      ["dimension landscaping rock"] =     { name = "Rock",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
-	      ["dimension landscaping tree"] =     { name = "Tree",                 parent = "dimension landscaping", children = nil, }, -- LOCALIZE
-	      ["dimension landscaping plant"] =    { name = "Plant",                parent = "dimension landscaping", children = nil, }, -- LOCALIZE
-	  ["artifact"] =                           { name = "Artifacts",            parent = "",                      children = { "artifact normal", "artifact twisted", "artifact unstable", "artifact bounty", "artifact other", "artifact fishing", }, }, -- LOCALIZE
+		["dimension decoration"] =             { name = "Decoration",           parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension kit"] =                    { name = "Kits and Bundles",     parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension rock"] =                   { name = "Rock",                 parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension household"] =              { name = "Household Item",       parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension block"] =                  { name = "Building Block",       parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension tree"] =                   { name = "Tree",                 parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension furniture"] =              { name = "Furniture",            parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension module"] =                 { name = "Building Module",      parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension interactive"] =            { name = "Interactive and VFX",  parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension plant"] =                  { name = "Plant",                parent = "dimension",             children = nil, }, -- LOCALIZE
+		["dimension landscaping"] =            { name = "Landscaping",          parent = "dimension",             children = nil, }, -- LOCALIZE
+	  ["artifact"] =                           { name = "Artifacts",            parent = "",                      children = { "artifact normal", "artifact twisted", "artifact unstable", "artifact bounty", "artifact other", "artifact fishing", "artifact poison", "artifact burning", "artifact nightmare", }, }, -- LOCALIZE
 	    ["artifact normal"] =                  { name = "Normal",               parent = "artifact",              children = nil, }, -- LOCALIZE
 	    ["artifact twisted"] =                 { name = "Twisted",              parent = "artifact",              children = nil, }, -- LOCALIZE
 	    ["artifact unstable"] =                { name = "Unstable",             parent = "artifact",              children = nil, }, -- LOCALIZE
 	    ["artifact bounty"] =                  { name = "Bounty",               parent = "artifact",              children = nil, }, -- LOCALIZE
 	    ["artifact other"] =                   { name = "Other",                parent = "artifact",              children = nil, }, -- LOCALIZE
 	    ["artifact fishing"] =                 { name = "Fishing",              parent = "artifact",              children = nil, }, -- LOCALIZE
+		["artifact poison"] =                  { name = "Poison",               parent = "artifact",              children = nil, }, -- LOCALIZE
+		["artifact burning"] =                 { name = "Burning",              parent = "artifact",              children = nil, }, -- LOCALIZE
+		["artifact nightmare"] =               { name = "Nightmare",            parent = "artifact",              children = nil, }, -- LOCALIZE
 }
 
 InternalInterface.Category = InternalInterface.Category or {}
