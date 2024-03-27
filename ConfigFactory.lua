@@ -111,6 +111,7 @@ local ControlConstructors =
 				["cleric"] = { displayName = L["General/CallingCleric"], order = 3, },
 				["rogue"] = { displayName = L["General/CallingRogue"], order = 4, },
 				["mage"] = { displayName = L["General/CallingMage"], order = 5, },
+				["primalist"] = { displayName = L["General/CallingPrimalist"], order = 6, },
 			})
 			control:SetSelectedKey(extraDescription.defaultValue or "nil")
 			
