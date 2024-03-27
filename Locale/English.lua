@@ -41,22 +41,15 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["Main/MenuPost"] = "POST",
 	["Main/MenuAuctions"] = "SELLING",
 	["Main/MenuBids"] = "TRACKING",
-	--["Main/MenuMap"] = "MAP", -- NEW
+	["Main/MenuMap"] = "MAP", -- NEW
 	["Main/MenuHistory"] = "HISTORY",
 	["Main/MenuConfig"] = "CONFIG",
 	["Main/MenuFullScan"] = "FULL SCAN",
 	
-	["Main/ScanInitMessage"] = "Auction data received, processing...",
-	["Main/ScanProgressMessage"] = "Processing auction data (%d%%)... Time elapsed: %d second(s)",
-	["Main/ScanFinishMessage"] = "Scan completed: %d total auctions%s%s%s%s%s%s. Time elapsed: %d second(s)",
-	["Main/ScanMessage"] = "Scan results: %d total auctions%s%s%s.", -- REMOVED
-	["Main/ScanResurrectedCount"] = " (%d resurrected)",
+	["Main/ScanMessage"] = "Scan results: %d total auctions%s%s%s.",
 	["Main/ScanNewCount"] = ", %d new",
-	["Main/ScanRepostedCount"] = " (%d reposted)",
 	["Main/ScanUpdatedCount"] = ", %d updated",
-	["Main/ScanRemovedCount"] = ", %d removed (%d before expiration)", -- REMOVED
-	["Main/ScanDeletedCount"] = ", %d removed",
-	["Main/ScanBeforeExpireCount"] = " (%d before expiration)",
+	["Main/ScanRemovedCount"] = ", %d removed (%d before expiration)",
 	
 	["Main/FullScanStarted"] = "Full scan started...",
 	["Main/FullScanError"] = "Can't issue a full scan right now, try again later.",
@@ -207,7 +200,7 @@ InternalInterface.Localization.RegisterLocale("English",--@do-not-package@
 	["ConfigFrame/CategoryPost"] = "POST",
 	["ConfigFrame/CategorySelling"] = "SELLING",
 	["ConfigFrame/CategoryTracking"] = "TRACKING",
-	--["ConfigFrame/CategoryMap"] = "MAP", -- NEW
+	["ConfigFrame/CategoryMap"] = "MAP", -- NEW
 	["ConfigFrame/CategoryHistory"] = "HISTORY",
 	["ConfigFrame/CategoryPricing"] = "PRICES",
 	["ConfigFrame/CategoryScoring"] = "SCORE",

@@ -1,6 +1,8 @@
 -- ***************************************************************************************************************************************************
 -- * Main.lua                                                                                                                                        *
 -- ***************************************************************************************************************************************************
+-- * Creates the addon windows                                                                                                                       *
+-- ***************************************************************************************************************************************************
 -- * 0.4.1 / 2012.07.29 / Baanano: Updated for 0.4.1                                                                                                 *
 -- ***************************************************************************************************************************************************
 
@@ -8,8 +10,21 @@ local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 local PublicInterface = _G[addonID]
 
+local CAScan = Command.Auction.Scan
+local CSRegister = Command.Slash.Register
+local GetPlayerName = InternalInterface.Utility.GetPlayerName
 local L = InternalInterface.Localization.L
+local Panel = Yague.Panel
+local PopupManager = Yague.PopupManager
+local SFormat = string.format
+local TInsert = table.insert
+local UICreateContext = UI.CreateContext
+local UICreateFrame = UI.CreateFrame
+local UNMapMini = UI.Native.MapMini
+local UNAuction = UI.Native.Auction
 local Write = InternalInterface.Output.Write
+local pcall = pcall
+local tostring = tostring
 
 local MIN_WIDTH = 1370
 local MIN_HEIGHT = 800
@@ -17,39 +32,38 @@ local DEFAULT_WIDTH = 1370
 local DEFAULT_HEIGHT = 800
 
 local function InitializeLayout()
-	local mapContext = UI.CreateContext(addonID .. ".UI.MapContext")
-	local mapIcon = UI.CreateFrame("Texture", addonID .. ".UI.MapIcon", mapContext)
+	local mapContext = UICreateContext(addonID .. ".UI.MapContext")
+	local mapIcon = UICreateFrame("Texture", addonID .. ".UI.MapIcon", mapContext)
 
-	local mainContext = UI.CreateContext(addonID .. ".UI.MainContext")
+	local mainContext = UICreateContext(addonID .. ".UI.MainContext")
 
 	local mainWindow = Yague.Window(addonID .. ".UI.MainWindow", mainContext)
-	local popupManager = Yague.PopupManager(mainWindow:GetName() .. ".PopupManager", mainWindow)
+	local popupManager = PopupManager(mainWindow:GetName() .. ".PopupManager", mainWindow)
 	local mainTab = Yague.TabControl(mainWindow:GetName() .. ".MainTab", mainWindow:GetContent())
---	local searchFrame = InternalInterface.UI.SearchFrame(mainTab:GetName() .. ".SearchFrame", mainTab:GetContent())
+	local searchFrame = InternalInterface.UI.SearchFrame(mainTab:GetName() .. ".SearchFrame", mainTab:GetContent())
 	local postFrame = InternalInterface.UI.PostFrame(mainTab:GetName() .. ".PostFrame", mainTab:GetContent())
 	local sellingFrame = InternalInterface.UI.SellingFrame(mainTab:GetName() .. ".SellingFrame", mainTab:GetContent())
---	local mapFrame = InternalInterface.UI.MapFrame(mainTab:GetName() .. ".MapFrame", mainTab:GetContent())
+	local mapFrame = InternalInterface.UI.MapFrame(mainTab:GetName() .. ".MapFrame", mainTab:GetContent())
 	local configFrame = InternalInterface.UI.ConfigFrame(mainTab:GetName() .. ".ConfigFrame", mainTab:GetContent())
 
 	local queueManager = InternalInterface.UI.QueueManager(mainWindow:GetName() .. ".QueueManager", mainWindow:GetContent())
 	
-	local auctionsPanel = Yague.Panel(mainWindow:GetName() .. ".AuctionsPanel", mainWindow:GetContent())
-	local auctionsIcon = UI.CreateFrame("Texture", auctionsPanel:GetName() .. ".AuctionsIcon", auctionsPanel:GetContent())
-	local auctionsText = UI.CreateFrame("Text", auctionsPanel:GetName() .. ".AuctionsText", auctionsPanel:GetContent())
+	local auctionsPanel = Panel(mainWindow:GetName() .. ".AuctionsPanel", mainWindow:GetContent())
+	local auctionsIcon = UICreateFrame("Texture", auctionsPanel:GetName() .. ".AuctionsIcon", auctionsPanel:GetContent())
+	local auctionsText = UICreateFrame("Text", auctionsPanel:GetName() .. ".AuctionsText", auctionsPanel:GetContent())
 	
-	local sellersPanel = Yague.Panel(mainWindow:GetName() .. ".SellersPanel", mainWindow:GetContent())
-	local sellersAnchor = UI.CreateFrame("Frame", mainWindow:GetName() .. ".SellersAnchor", sellersPanel:GetContent())
+	local sellersPanel = Panel(mainWindow:GetName() .. ".SellersPanel", mainWindow:GetContent())
+	local sellersAnchor = UICreateFrame("Frame", mainWindow:GetName() .. ".SellersAnchor", sellersPanel:GetContent())
 	local sellerRows = {}
 	
-	local statusPanel = Yague.Panel(addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
-	local statusText = UI.CreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
+	local statusPanel = Panel(addonID .. ".UI.MainWindow.StatusBar", mainWindow:GetContent())
+	local statusText = UICreateFrame("Text", addonID .. ".UI.MainWindow.StatusText", statusPanel:GetContent())
 
-	local refreshPanel = Yague.Panel(mainWindow:GetName() .. ".RefreshPanel", mainWindow:GetContent())
+	local refreshPanel = Panel(mainWindow:GetName() .. ".RefreshPanel", mainWindow:GetContent())
 	local refreshText = Yague.ShadowedText(mainWindow:GetName() .. ".RefreshText", refreshPanel:GetContent())
 	
 	local refreshEnabled = false
 	local auctionNumbers = {}
-	local updateTask = nil
 
 	local function ShowSelectedFrame(frame)
 		if frame and frame.Show then
@@ -72,9 +86,9 @@ local function InitializeLayout()
 		
 		for i = 1, #names do
 			if not sellerRows[i] then
-				local sellerRow = UI.CreateFrame("Frame", sellersPanel:GetName() .. ".Row." .. i, sellersPanel:GetContent())
-				local sellerRowName = UI.CreateFrame("Text", sellerRow:GetName() .. ".Name", sellerRow)
-				local sellerRowNumber = UI.CreateFrame("Text", sellerRow:GetName() .. ".Number", sellerRow)
+				local sellerRow = UICreateFrame("Frame", sellersPanel:GetName() .. ".Row." .. i, sellersPanel:GetContent())
+				local sellerRowName = UICreateFrame("Text", sellerRow:GetName() .. ".Name", sellerRow)
+				local sellerRowNumber = UICreateFrame("Text", sellerRow:GetName() .. ".Number", sellerRow)
 				
 				sellerRow:SetPoint("BOTTOMLEFT", sellersPanel:GetContent(), "BOTTOMLEFT", 2, 20 - 20 * i)
 				sellerRow:SetPoint("TOPRIGHT", sellersPanel:GetContent(), "BOTTOMRIGHT", -2, 0 - 20 * i)
@@ -102,29 +116,22 @@ local function InitializeLayout()
 	
 	local function UpdateAuctions()
 		if mainWindow:GetVisible() then
-			local playerName = blUtil.Player.Name() or ""
+			local playerName = GetPlayerName() or true
 			
 			auctionNumbers = {}
 			
 			auctionsText:SetText("")
 			sellersPanel:SetVisible(false)
 			
-			if updateTask and not updateTask:Finished() then
-				updateTask:Stop()
-			end
-			
-			updateTask = blTasks.Task.Create(
-				function(taskHandle)
-					local auctions = LibPGC.Search.Own():Result()
-					auctionNumbers = {}
-					
+			LibPGC.GetOwnAuctionData(
+				function(auctions)
 					for auctionID, auctionData in pairs(auctions) do
 						auctionNumbers[auctionData.sellerName] = (auctionNumbers[auctionData.sellerName] or 0) + 1
 					end
 					
 					auctionsText:SetText(tostring(auctionNumbers[playerName] or 0))
 					UpdateSellerRows()
-				end):Start():Abandon()
+				end)
 		end
 	end
 	
@@ -149,7 +156,7 @@ local function InitializeLayout()
 		MINIMAPDOCKER.Register(addonID, mapIcon)
 	else
 		mapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon or false)
-		mapIcon:SetPoint("CENTER", UI.Native.MapMini, "BOTTOMLEFT", 24, -25)
+		mapIcon:SetPoint("CENTER", UNMapMini, "BOTTOMLEFT", 24, -25)
 	end
 	
 	mainWindow:SetVisible(false)
@@ -175,7 +182,7 @@ local function InitializeLayout()
 	--mainTab:AddTab("map", L["Main/MenuMap"], mapFrame)
 	--mainTab:AddTab("history", L["Main/MenuHistory"], nil)
 	mainTab:AddTab("config", L["Main/MenuConfig"], configFrame)
-
+	
 	queueManager:SetPoint("BOTTOMRIGHT", mainWindow:GetContent(), "BOTTOMRIGHT", -5, -5)
 	queueManager:SetPoint("TOPLEFT", mainWindow:GetContent(), "BOTTOMRIGHT", -155, -35)
 
@@ -219,34 +226,28 @@ local function InitializeLayout()
 	
 	refreshPanel:SetWidth(refreshText:GetWidth() + 60)
 
-	UI.Native.MapMini:EventAttach(Event.UI.Layout.Layer,
-		function()
-			mapContext:SetLayer(UI.Native.MapMini:GetLayer() + 1)
-		end, addonID .. ".MapMiniLayer")
+	function UNMapMini.Event:Layer()
+		mapContext:SetLayer(UNMapMini:GetLayer() + 1)
+	end
 
-	mapIcon:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			if not mainWindow:GetVisible() then
-				ShowBananAH()
-			else
-				mainWindow:Close()
-			end
-		end, mapIcon:GetName() .. ".OnLeftClick")
+	function mapIcon.Event:LeftClick()
+		if not mainWindow:GetVisible() then
+			ShowBananAH()
+		else
+			mainWindow:Close()
+		end
+	end
 	
-	UI.Native.Auction:EventAttach(Event.UI.Native.Loaded,
-		function()
-			if UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.General.AutoOpen then
-				ShowBananAH()
-			end
-			if not UI.Native.Auction:GetLoaded() and InternalInterface.AccountSettings.General.AutoClose then
-				mainWindow:Close()
-			end
-		end, addonID .. ".AuctionLoaded")
+	function UNAuction.Event:Loaded()
+		if UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.AutoOpen then
+			ShowBananAH()
+		end
+		if not UNAuction:GetLoaded() and InternalInterface.AccountSettings.General.AutoClose then
+			mainWindow:Close()
+		end
+	end
 
 	function mainWindow.Event:Close()
-		if updateTask and not updateTask:Finished() then
-			updateTask:Stop()
-		end	
 		HideSelectedFrame(mainTab:GetSelectedFrame())
 		mainWindow:SetKeyFocus(true)
 		mainWindow:SetKeyFocus(false)
@@ -257,25 +258,22 @@ local function InitializeLayout()
 		HideSelectedFrame(oldFrame)
 	end
 	
-	refreshPanel:EventAttach(Event.UI.Input.Mouse.Cursor.In,
-		function()
-			refreshText:SetFontSize(refreshEnabled and 18 or 16)
-		end, refreshPanel:GetName() .. ".OnCursorIn")
+	function refreshPanel.Event:MouseIn()
+		refreshText:SetFontSize(refreshEnabled and 18 or 16)
+	end
 	
-	refreshPanel:EventAttach(Event.UI.Input.Mouse.Cursor.Out,
-		function()
-			refreshText:SetFontSize(16)
-		end, refreshPanel:GetName() .. ".OnCursorOut")
+	function refreshPanel.Event:MouseOut()
+		refreshText:SetFontSize(16)
+	end
 	
-	refreshPanel:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			if not refreshEnabled then return end
-			if not pcall(Command.Auction.Scan, { type = "search", sort = "time", sortOrder = "descending" }) then
-				Write(L["Main/FullScanError"])
-			else
-				Write(L["Main/FullScanStarted"])
-			end	
-		end, refreshPanel:GetName() .. ".OnLeftClick")
+	function refreshPanel.Event:LeftClick()
+		if not refreshEnabled then return end
+		if not pcall(CAScan, { type = "search", sort = "time", sortOrder = "descending" }) then
+			Write(L["Main/FullScanError"])
+		else
+			Write(L["Main/FullScanStarted"])
+		end	
+	end
 	
 	auctionsPanel:EventAttach(Event.UI.Input.Mouse.Cursor.In,
 		function()
@@ -289,50 +287,33 @@ local function InitializeLayout()
 			sellersPanel:SetVisible(false)
 		end, auctionsPanel:GetName() .. ".OnCursorOut")
 	
-	local function OnInteractionChanged(h, interaction, state)
+	local function OnInteractionChanged(interaction, state)
 		if interaction == "auction" then
 			refreshEnabled = state
 			refreshText:SetFontColor(0.5, refreshEnabled and 1 or 0.5, 0.5)
 		end
 	end
-	Command.Event.Attach(Event.Interaction, OnInteractionChanged, addonID .. ".OnInteractionChanged")
+	TInsert(Event.Interaction, { OnInteractionChanged, addonID, addonID .. ".OnInteractionChanged" })
 	
-	local function ScanStarted(h, criteria)
-		if criteria.type == "search" then
-			Write(L["Main/ScanInitMessage"])
-		end
-	end
-	Command.Event.Attach(Event.LibPGC.Scan.Begin, ScanStarted, addonID .. ".OnScanStarted")
-	
-	local function ScanProgress(h, criteria, timeElapsed, progress)
-		if criteria.type == "search" then
-			Write(string.format(L["Main/ScanProgressMessage"], progress, timeElapsed))
-		end
-	end
-	Command.Event.Attach(Event.LibPGC.Scan.Progress, ScanProgress, addonID .. ".OnScanProgress")
-	
-	local function ScanEnd(h, criteria, timeElapsed, results)
+	local function ReportAuctionData(scanType, total, new, updated, removed, before)
 		UpdateAuctions()
-		if criteria.type == "search" then
-			local resurrected = results.auctions.count.resurrected > 0 and string.format(L["Main/ScanResurrectedCount"], results.auctions.count.resurrected) or ""
-			local new = results.auctions.count.new > 0 and string.format(L["Main/ScanNewCount"], results.auctions.count.new) or ""
-			local reposted = results.auctions.count.reposted > 0 and string.format(L["Main/ScanRepostedCount"], results.auctions.count.reposted) or ""
-			local updated = results.auctions.count.updated > 0 and string.format(L["Main/ScanUpdatedCount"], results.auctions.count.updated) or ""
-			local removed = results.auctions.count.removed > 0 and string.format(L["Main/ScanDeletedCount"], results.auctions.count.removed) or ""
-			local beforeExpire = results.auctions.count.beforeExpire > 0 and string.format(L["Main/ScanBeforeExpireCount"], results.auctions.count.beforeExpire) or ""
-			Write(string.format(L["Main/ScanFinishMessage"], results.auctions.count.all, resurrected, new, reposted, updated, removed, beforeExpire, timeElapsed))
-		end
+		if scanType ~= "search" then return end
+		local newMessage = (#new > 0) and SFormat(L["Main/ScanNewCount"], #new) or ""
+		local updatedMessage = (#updated > 0) and SFormat(L["Main/ScanUpdatedCount"], #updated) or ""
+		local removedMessage = (#removed > 0) and SFormat(L["Main/ScanRemovedCount"], #removed, #before) or ""
+		local message = SFormat(L["Main/ScanMessage"], #total, newMessage, updatedMessage, removedMessage)
+		Write(message)
 	end
-	Command.Event.Attach(Event.LibPGC.Scan.End, ScanEnd, addonID .. ".OnScanEnd")
+	TInsert(Event.LibPGC.AuctionData, { ReportAuctionData, addonID, addonID .. ".ReportAuctionData" })
 
-	local slashEvent1 = Command.Slash.Register("bananah")
-	local slashEvent2 = Command.Slash.Register("bah")
+	local slashEvent1 = CSRegister("bananah")
+	local slashEvent2 = CSRegister("bah")
 	
 	if slashEvent1 then
-		Command.Event.Attach(slashEvent1, ShowBananAH, addonID .. ".SlashShow1")
+		TInsert(slashEvent1, {ShowBananAH, addonID, addonID .. ".SlashShow1"})
 	end
 	if slashEvent2 then
-		Command.Event.Attach(slashEvent2, ShowBananAH, addonID .. ".SlashShow2")
+		TInsert(slashEvent2, {ShowBananAH, addonID, addonID .. ".SlashShow2"})
 	elseif not slashEvent1 then
 		print(L["Main/SlashRegisterError"])
 	end
@@ -353,25 +334,14 @@ local function InitializeLayout()
 				end
 			end			
 		end	
-		table.insert(ImhoBags.Event.Item.Standard.Right, { OnImhoBagsRightClick, addonID, "PostingFrame.OnImhoBagsRightClick" })
+		TInsert(ImhoBags.Event.Item.Standard.Right, { OnImhoBagsRightClick, addonID, "PostingFrame.OnImhoBagsRightClick" })
 	end
 
 end
 
-local loaded = false
-
-local function OnLibPGCReady()
-	if not loaded then
+local function OnAddonLoaded(addonId)
+	if addonId == addonID then 
 		InitializeLayout()
-		loaded = true
-	end
+	end 
 end
-Command.Event.Attach(Event.LibPGC.Ready, OnLibPGCReady, addonID .. ".OnLibPGCReady")
-
-local function OnAddonLoaded(h, addon)
-	if not loaded and addon == addonID and LibPGC.Ready() then
-		InitializeLayout()
-		loaded = true
-	end
-end
-Command.Event.Attach(Event.Addon.Load.End, OnAddonLoaded, addonID .. ".OnAddonLoaded")
+TInsert(Event.Addon.Load.End, { OnAddonLoaded, addonID, addonID .. ".OnAddonLoaded" })

@@ -1,24 +1,43 @@
 -- ***************************************************************************************************************************************************
 -- * ConfigFactory.lua                                                                                                                               *
 -- ***************************************************************************************************************************************************
+-- * Config frame factory                                                                                                                            *
+-- ***************************************************************************************************************************************************
 -- * 0.4.1 / 2012.08.10 / Baanano: First version                                                                                                     *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
+_G[addonID] = _G[addonID] or {}
+local PublicInterface = _G[addonID]
 
 local ROW_HEIGHT = 40
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
+local CDetail = InternalInterface.Category.Detail
+local Dropdown = Yague.Dropdown
+local MoneySelector = Yague.MoneySelector
+local Panel = Yague.Panel
+local Slider = Yague.Slider
 local GetPriceModels = LibPGCEx.GetPriceModels
+local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local L = InternalInterface.Localization.L
+local MCeil = math.ceil
+local MLog10 = math.log10
+local MMax = math.max
+local TInsert = table.insert
+local UICreateFrame = UI.CreateFrame
+local ipairs = ipairs
+local pairs = pairs
+local type = type
 
 local maxLevel = 0
 local maxSiblingOrder = 0
 local function PrebuildCategoryTree(category, level, siblingOrder)
-	local detail = InternalInterface.Category.Detail(category)
+	local detail = CDetail(category)
 	if detail then
-		maxLevel = math.max(level, maxLevel)
-		maxSiblingOrder = math.max(siblingOrder, maxSiblingOrder)
+		maxLevel = MMax(level, maxLevel)
+		maxSiblingOrder = MMax(siblingOrder, maxSiblingOrder)
 		if detail.children then
 			for childOrder, childCategory in ipairs(detail.children) do
 				PrebuildCategoryTree(childCategory, level + 1, childOrder)
@@ -26,12 +45,12 @@ local function PrebuildCategoryTree(category, level, siblingOrder)
 		end
 	end
 end
-PrebuildCategoryTree(InternalInterface.Category.BASE_CATEGORY, 1, 1)
+PrebuildCategoryTree(BASE_CATEGORY, 1, 1)
 
 local CategoryTree = {}
-local digitsPerLevel = math.ceil(math.log10(maxSiblingOrder))
+local digitsPerLevel = MCeil(MLog10(maxSiblingOrder))
 local function BuildCategoryTree(category, level, siblingOrder)
-	local detail = InternalInterface.Category.Detail(category)
+	local detail = CDetail(category)
 	if detail then
 		CategoryTree[category] = { displayName = ("   "):rep(level - 1) .. detail.name, order = (CategoryTree[detail.parent] and CategoryTree[detail.parent].order or 0) + siblingOrder * 10 ^ ((maxLevel - level) * digitsPerLevel) }
 		if detail.children then
@@ -41,13 +60,13 @@ local function BuildCategoryTree(category, level, siblingOrder)
 		end		
 	end
 end
-BuildCategoryTree(InternalInterface.Category.BASE_CATEGORY, 1, 1)
+BuildCategoryTree(BASE_CATEGORY, 1, 1)
 
 local ControlConstructors =
 {
 	integer = 
 		function(name, parent, extraDescription)
-			local control = Yague.Slider(name, parent)
+			local control = Slider(name, parent)
 			
 			control:SetRange(extraDescription.minValue or 0, extraDescription.maxValue or 0)
 			control:SetPosition(extraDescription.defaultValue)
@@ -64,7 +83,7 @@ local ControlConstructors =
 		end,
 	money =
 		function(name, parent, extraDescription)
-			local control = Yague.MoneySelector(name, parent)
+			local control = MoneySelector(name, parent)
 			
 			control:SetHeight(30)
 			control:SetValue(extraDescription.defaultValue or 0)
@@ -81,7 +100,7 @@ local ControlConstructors =
 		end,
 	calling =
 		function(name, parent, extraDescription)
-			local control = Yague.Dropdown(name, parent)
+			local control = Dropdown(name, parent)
 			
 			control:SetHeight(35)
 			control:SetTextSelector("displayName")
@@ -108,7 +127,7 @@ local ControlConstructors =
 		end,
 	selectOne =
 		function(name, parent, extraDescription)
-			local control = Yague.Dropdown(name, parent)
+			local control = Dropdown(name, parent)
 			
 			control:SetHeight(35)
 			control:SetTextSelector(extraDescription.textSelector)
@@ -134,12 +153,12 @@ local ControlConstructors =
 		end,
 	rarity =
 		function(name, parent, extraDescription)
-			local control = Yague.Dropdown(name, parent)
+			local control = Dropdown(name, parent)
 			
 			control:SetHeight(35)
 			control:SetTextSelector("displayName")
 			control:SetOrderSelector("order")
-			control:SetColorSelector(function(key) return { InternalInterface.Utility.GetRarityColor(key) } end)
+			control:SetColorSelector(function(key) return { GetRarityColor(key) } end)
 			control:SetValues({
 				["sellable"] = { displayName = L["General/Rarity1"], order = 1, },
 				[""] = { displayName = L["General/Rarity2"], order = 2, },
@@ -164,13 +183,13 @@ local ControlConstructors =
 		end,
 	category =
 		function(name, parent, extraDescription)
-			local control = Yague.Dropdown(name, parent)
+			local control = Dropdown(name, parent)
 			
 			control:SetHeight(35)
 			control:SetTextSelector("displayName")
 			control:SetOrderSelector("order")
 			control:SetValues(CategoryTree)
-			control:SetSelectedKey(extraDescription.defaultValue or InternalInterface.Category.BASE_CATEGORY)
+			control:SetSelectedKey(extraDescription.defaultValue or BASE_CATEGORY)
 			
 			local function GetExtra()
 				return (control:GetSelectedValue())
@@ -184,7 +203,7 @@ local ControlConstructors =
 		end,
 	boolean =
 		function(name, parent, extraDescription)
-			local control = UI.CreateFrame("RiftCheckbox", name, parent)
+			local control = UICreateFrame("RiftCheckbox", name, parent)
 			
 			local checked = extraDescription.defaultValue
 			if checked == nil then checked = true end
@@ -205,8 +224,8 @@ local ControlConstructors =
 		end,
 	text =
 		function(name, parent, extraDescription)
-			local control = Yague.Panel(name, parent)
-			local field = UI.CreateFrame("RiftTextfield", name .. ".Field", control:GetContent())
+			local control = Panel(name, parent)
+			local field = UICreateFrame("RiftTextfield", name .. ".Field", control:GetContent())
 			
 			control:SetHeight(30)
 			control:SetInvertedBorder(true)
@@ -215,18 +234,16 @@ local ControlConstructors =
 			field:SetPoint("CENTERRIGHT", control:GetContent(), "CENTERRIGHT", 2, 0)
 			field:SetText(extraDescription.defaultValue or "")
 			
-			control:EventAttach(Event.UI.Input.Mouse.Left.Click,
-				function()
-					field:SetKeyFocus(true)
-				end, control:GetName() .. ".OnLeftClick")
+			function control.Event:LeftClick()
+				field:SetKeyFocus(true)
+			end
 
-			field:EventAttach(Event.UI.Input.Key.Focus.Gain,
-				function()
-					local length = field:GetText():len()
-					if length > 0 then
-						field:SetSelection(0, length)
-					end
-				end, field:GetName() .. ".OnKeyFocusGain")
+			function field.Event:KeyFocusGain()
+				local length = self:GetText():len()
+				if length > 0 then
+					self:SetSelection(0, length)
+				end
+			end			
 			
 			local function GetExtra()
 				return field:GetText()
@@ -240,7 +257,7 @@ local ControlConstructors =
 		end,
 	pricingModel =
 		function(name, parent, extraDescription)
-			local control = Yague.Dropdown(name, parent)
+			local control = Dropdown(name, parent)
 			
 			local function ReloadPriceModels()
 				local currentModel = control:GetSelectedValue()
@@ -270,8 +287,8 @@ local ControlConstructors =
 				control:SetSelectedKey(extra or InternalInterface.AccountSettings.Scoring.ReferencePrice)
 			end
 			
-			Command.Event.Attach(Event.LibPGCEx.Price.Registered, ReloadPriceModels, addonID .. ".ReloadPriceModels")
-			Command.Event.Attach(Event.LibPGCEx.Price.Unregistered, ReloadPriceModels, addonID .. ".ReloadPriceModels")
+			TInsert(Event.LibPGCEx.PriceModelRegistered, { ReloadPriceModels, addonID, addonID .. ".ReloadPriceModels" })
+			TInsert(Event.LibPGCEx.PriceModelUnregistered, { ReloadPriceModels, addonID, addonID .. ".ReloadPriceModels" })
 			
 			return control, GetExtra, SetExtra
 		end,
@@ -286,7 +303,7 @@ function InternalInterface.UI.BuildConfigFrame(name, parent, extraDescription)
 	
 	if rows <= 0 then return nil end
 
-	local frame = UI.CreateFrame("Frame", name, parent)
+	local frame = UICreateFrame("Frame", name, parent)
 	
 	local getters = {}
 	local setters = {}
@@ -305,11 +322,11 @@ function InternalInterface.UI.BuildConfigFrame(name, parent, extraDescription)
 			local dontAnchorToRight = nil
 			
 			if valueData then
-				local columnTitle = UI.CreateFrame("Text", name .. "." .. valueID .. ".Title", frame)
+				local columnTitle = UICreateFrame("Text", name .. "." .. valueID .. ".Title", frame)
 				columnTitle:SetPoint("CENTERLEFT", frame, (column - 1) / columns, (row * 2 - 1) / rows / 2, 5, 0)
 				columnTitle:SetText(valueData.name or "")
 				columnTitle:SetFontSize(valueData.nameFontSize or 12)
-				maxColumnTitleWidth = math.max(maxColumnTitleWidth, columnTitle:GetWidth())
+				maxColumnTitleWidth = MMax(maxColumnTitleWidth, columnTitle:GetWidth())
 				
 				local controlName = name .. "." .. valueID .. ".Control"
 				local valueType = valueData.value

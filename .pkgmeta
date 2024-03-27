@@ -6,8 +6,6 @@ externals:
 		url: svn://svn.curseforge.net/rift/libpgcex/mainline/trunk
 	LibPGCEx/LibPGC:
 		url: svn://svn.curseforge.net/rift/libpgc/mainline/trunk
-	LibPGCEx/LibPGC/blTasks:
-		url: svn://svn.curseforge.net/rift/bltasks/mainline/trunk
 	Yague:
 		url: svn://svn.curseforge.net/rift/yague/mainline/trunk
 	Yague/LibAsyncTextures:

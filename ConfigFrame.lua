@@ -1,18 +1,59 @@
 -- ***************************************************************************************************************************************************
 -- * ConfigFrame.lua                                                                                                                                 *
 -- ***************************************************************************************************************************************************
+-- * Config tab frame                                                                                                                                *
+-- ***************************************************************************************************************************************************
 -- * 0.4.1 / 2012.08.28 / Baanano: Rewritten for 0.4.1                                                                                               *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
+local BuildConfigFrame = InternalInterface.UI.BuildConfigFrame
+local CDetail = InternalInterface.Category.Detail
+local CList = InternalInterface.Category.List
+local ClearCategoryModels = InternalInterface.PGCConfig.ClearCategoryModels
+local DataGrid = Yague.DataGrid
+local Dropdown = Yague.Dropdown
+local GetAuctionSearchers = LibPGCEx.GetAuctionSearchers
+local GetCategoryModels = InternalInterface.PGCConfig.GetCategoryModels
+local GetPopupManager = InternalInterface.Output.GetPopupManager
+local GetPriceComplex = LibPGCEx.GetPriceComplex
+local GetPriceFallbacks = LibPGCEx.GetPriceFallbacks
+local GetPriceFallbackExtraDescription = LibPGCEx.GetPriceFallbackExtraDescription
+local GetPriceMatchers = LibPGCEx.GetPriceMatchers
+local GetPriceMatcherExtraDescription = LibPGCEx.GetPriceMatcherExtraDescription
+local GetPriceModels = LibPGCEx.GetPriceModels
+local GetPriceSamplers = LibPGCEx.GetPriceSamplers
+local GetPriceSamplerExtraDescription = LibPGCEx.GetPriceSamplerExtraDescription
+local GetPriceStats = LibPGCEx.GetPriceStats
+local GetPriceStatExtraDescription = LibPGCEx.GetPriceStatExtraDescription
+local GetRarityColor = InternalInterface.Utility.GetRarityColor
 local L = InternalInterface.Localization.L
+local MMax = math.max
+local MMin = math.min
+local MoneySelector = Yague.MoneySelector
+local OsTime = os.time
+local Panel = Yague.Panel
+local RegisterPopupConstructor = Yague.RegisterPopupConstructor
+local SFormat = string.format
+local SLen = string.len
+local SaveCategoryModels = InternalInterface.PGCConfig.SaveCategoryModels
+local ScoreColorByIndex = InternalInterface.UI.ScoreColorByIndex
+local ShadowedText = Yague.ShadowedText
+local Slider = Yague.Slider
+local TInsert = table.insert
+local UICreateFrame = UI.CreateFrame
+local ipairs = ipairs
+local pairs = pairs
+local type = type
+local unpack = unpack
 
 local function BooleanDotCellType(name, parent)
-	local baseCell = UI.CreateFrame("Frame", name, parent)
+	local baseCell = UICreateFrame("Frame", name, parent)
 	
-	local dotTexture = UI.CreateFrame("Texture", name .. ".DotTexture", baseCell)
+	local dotTexture = UICreateFrame("Texture", name .. ".DotTexture", baseCell)
 
 	local assignedKey = nil
 	local interactable = nil
@@ -37,12 +78,11 @@ local function BooleanDotCellType(name, parent)
 		end
 	end
 
-	dotTexture:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			if assignedKey and type(interactable) == "function" then
-				interactable(assignedKey)
-			end
-		end, dotTexture:GetName() .. ".OnLeftClick")
+	function dotTexture.Event:LeftClick()
+		if assignedKey and type(interactable) == "function" then
+			interactable(assignedKey)
+		end
+	end
 
 	return baseCell
 end
@@ -50,12 +90,10 @@ end
 local function UnsavedChangesPopup(parent)
 	local frame = Yague.Popup(parent:GetName() .. ".UnsavedChangesPopup", parent)
 	
-	local titleText = Yague.ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
-	local contentText = UI.CreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
-	local continueButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".ContinueButton", frame:GetContent())
-	local cancelButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
-	
-	local Continue, Cancel = nil, nil
+	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
+	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
+	local continueButton = UICreateFrame("RiftButton", frame:GetName() .. ".ContinueButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())	
 	
 	frame:SetWidth(420)
 	frame:SetHeight(130)
@@ -75,41 +113,30 @@ local function UnsavedChangesPopup(parent)
 	cancelButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
 	cancelButton:SetText(L["UnsavedChangesPopup/ButtonCancel"])
 	
-	continueButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			if type(Continue) == "function" then
-				Continue()
-			end
-			parent:HidePopup(addonID .. ".UnsavedChanges", frame)
-		end, continueButton:GetName() .. ".OnLeftPress")
-	
-	cancelButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			if type(Cancel) == "function" then
-				Cancel()
-			end
-			parent:HidePopup(addonID .. ".UnsavedChanges", frame)
-		end, cancelButton:GetName() .. ".OnLeftPress")
-	
 	function frame:SetData(onContinue, onCancel)
-		Continue = onContinue
-		Cancel = onCancel
+		function continueButton.Event:LeftPress()
+			onContinue() 
+			parent:HidePopup(addonID .. ".UnsavedChanges", frame)
+		end
+
+		function cancelButton.Event:LeftPress()
+			onCancel() 
+			parent:HidePopup(addonID .. ".UnsavedChanges", frame)
+		end
 	end
 	
 	return frame
 end
-Yague.RegisterPopupConstructor(addonID .. ".UnsavedChanges", UnsavedChangesPopup)
+RegisterPopupConstructor(addonID .. ".UnsavedChanges", UnsavedChangesPopup)
 
 local function NewModelPopup(parent)
 	local frame = Yague.Popup(parent:GetName() .. ".NewModelPopup", parent)
 	
-	local titleText = Yague.ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
-	local contentText = UI.CreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
-	local modelTypeSelector = Yague.Dropdown(frame:GetName() .. ".ModelTypeSelector", frame:GetContent())
-	local continueButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".ContinueButton", frame:GetContent())
-	local cancelButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())	
-	
-	local Continue = nil
+	local titleText = ShadowedText(frame:GetName() .. ".TitleText", frame:GetContent())
+	local contentText = UICreateFrame("Text", frame:GetName() .. ".ContentText", frame:GetContent())
+	local modelTypeSelector = Dropdown(frame:GetName() .. ".ModelTypeSelector", frame:GetContent())
+	local continueButton = UICreateFrame("RiftButton", frame:GetName() .. ".ContinueButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())	
 	
 	frame:SetWidth(420)
 	frame:SetHeight(140)
@@ -139,48 +166,33 @@ local function NewModelPopup(parent)
 	
 	cancelButton:SetPoint("BOTTOMLEFT", frame:GetContent(), "BOTTOMCENTER", 0, -10)
 	cancelButton:SetText(L["NewModelPopup/ButtonCancel"])
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".NewModel", frame)
+	end
 
-	continueButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			if type(Continue) == "function" then
-				Continue((modelTypeSelector:GetSelectedValue()))
-			end
-			parent:HidePopup(addonID .. ".NewModel", frame)
-		end, continueButton:GetName() .. ".OnLeftPress")
-	
-	cancelButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			parent:HidePopup(addonID .. ".NewModel", frame)
-		end, cancelButton:GetName() .. ".OnLeftPress")
-	
 	function frame:SetData(onContinue)
-		Continue = onContinue
+		function continueButton.Event:LeftPress()
+			onContinue((modelTypeSelector:GetSelectedValue())) 
+			parent:HidePopup(addonID .. ".NewModel", frame)
+		end
 	end
 	
 	return frame
 end
-Yague.RegisterPopupConstructor(addonID .. ".NewModel", NewModelPopup)
+RegisterPopupConstructor(addonID .. ".NewModel", NewModelPopup)
 
 local function BuildMatcherFrame(name, parent, matcherID, matcherName, matcherMove)
-	local matcherFrame = UI.CreateFrame("Frame", name, parent)
+	local matcherFrame = UICreateFrame("Frame", name, parent)
 	
-	local matcherTitle = UI.CreateFrame("Text", name .. ".MatcherTitle", matcherFrame)
-	local matcherUnfold = UI.CreateFrame("Texture", name .. ".MatcherUnfold", matcherFrame)
-	local matcherDelete = UI.CreateFrame("Texture", name .. ".MatcherDelete", matcherFrame)
-	local matcherUp = UI.CreateFrame("Texture", name .. ".MatcherUp", matcherFrame)
-	local matcherDown = UI.CreateFrame("Texture", name .. ".MatcherDown", matcherFrame)
+	local matcherTitle = UICreateFrame("Text", name .. ".MatcherTitle", matcherFrame)
+	local matcherUnfold = UICreateFrame("Texture", name .. ".MatcherUnfold", matcherFrame)
+	local matcherDelete = UICreateFrame("Texture", name .. ".MatcherDelete", matcherFrame)
+	local matcherUp = UICreateFrame("Texture", name .. ".MatcherUp", matcherFrame)
+	local matcherDown = UICreateFrame("Texture", name .. ".MatcherDown", matcherFrame)
 	
-	local detail = LibPGCEx.Price.Matcher.Get(matcherID)
-	local configFrame = InternalInterface.UI.BuildConfigFrame(name .. ".ConfigFrame", matcherFrame, detail and detail.definition)
-	
-	local function ToggleUnfold()
-		if configFrame then
-			local unfolded = configFrame:GetVisible()
-			configFrame:SetVisible(not unfolded)
-			matcherUnfold:SetTextureAsync(addonID, unfolded and "Textures/ArrowDown.png" or "Textures/ArrowUp.png")
-			matcherFrame:SetHeight(unfolded and 24 or configFrame:GetBottom() - matcherFrame:GetTop())
-		end
-	end
+	local matcherExtra = GetPriceMatcherExtraDescription(matcherID)
+	local configFrame = BuildConfigFrame(name .. ".ConfigFrame", matcherFrame, matcherExtra)
 	
 	matcherFrame:SetHeight(24)
 	
@@ -208,22 +220,26 @@ local function BuildMatcherFrame(name, parent, matcherID, matcherName, matcherMo
 		matcherUnfold:SetVisible(false)
 	end
 	
-	matcherUnfold:EventAttach(Event.UI.Input.Mouse.Left.Click, ToggleUnfold, matcherUnfold:GetName() .. ".OnLeftClick")
+	function matcherUnfold.Event:LeftClick()
+		if configFrame then
+			local unfolded = configFrame:GetVisible()
+			configFrame:SetVisible(not unfolded)
+			matcherUnfold:SetTextureAsync(addonID, unfolded and "Textures/ArrowDown.png" or "Textures/ArrowUp.png")
+			matcherFrame:SetHeight(unfolded and 24 or configFrame:GetBottom() - matcherFrame:GetTop())
+		end
+	end
 	
-	matcherDelete:EventAttach(Event.UI.Input.Mouse.Left.Click, 
-		function()
-			matcherMove(matcherID)
-		end, matcherDelete:GetName() .. ".OnLeftClick")
+	function matcherDelete.Event:LeftClick()
+		matcherMove(matcherID)
+	end
 	
-	matcherUp:EventAttach(Event.UI.Input.Mouse.Left.Click, 
-		function()
-			matcherMove(matcherID, -1)
-		end, matcherUp:GetName() .. ".OnLeftClick")
+	function matcherUp.Event:LeftClick()
+		matcherMove(matcherID, -1)
+	end
 	
-	matcherDown:EventAttach(Event.UI.Input.Mouse.Left.Click, 
-		function()
-			matcherMove(matcherID, 1)
-		end, matcherDown:GetName() .. ".OnLeftClick")
+	function matcherDown.Event:LeftClick()
+		matcherMove(matcherID, 1)
+	end
 	
 	function matcherFrame:GetExtra()
 		if configFrame then
@@ -235,7 +251,7 @@ local function BuildMatcherFrame(name, parent, matcherID, matcherName, matcherMo
 		if configFrame then
 			configFrame:SetExtra(extra)
 			if configFrame:GetVisible() then
-				ToggleUnfold()
+				matcherUnfold.Event.LeftClick(matcherUnfold) -- FIXME Event model
 			end
 		end
 	end
@@ -244,20 +260,15 @@ local function BuildMatcherFrame(name, parent, matcherID, matcherName, matcherMo
 end
 
 local function BuildMatchersFrame(name, parent)
-	local frame = UI.CreateFrame("Frame", name, parent)
+	local frame = UICreateFrame("Frame", name, parent)
 
-	local titleLabel = Yague.ShadowedText(name .. ".TitleLabel", frame)
-	local startAnchor = UI.CreateFrame("Frame", name .. ".StartAnchor", frame)
-	local endAnchor = UI.CreateFrame("Frame", name .. ".EndAnchor", frame)
-	local matcherButton = UI.CreateFrame("RiftButton", name .. ".MatcherButton", frame)
-	local matcherSelector = Yague.Dropdown(name .. ".MatcherSelector", frame)
+	local titleLabel = ShadowedText(name .. ".TitleLabel", frame)
+	local startAnchor = UICreateFrame("Frame", name .. ".StartAnchor", frame)
+	local endAnchor = UICreateFrame("Frame", name .. ".EndAnchor", frame)
+	local matcherButton = UICreateFrame("RiftButton", name .. ".MatcherButton", frame)
+	local matcherSelector = Dropdown(name .. ".MatcherSelector", frame)
 	
-	local allMatchers = LibPGCEx.Price.Matcher.List()
-	for matcherID in pairs(allMatchers) do
-		local detail = LibPGCEx.Price.Matcher.Get(matcherID)
-		allMatchers[matcherID] = detail and detail.name or nil
-	end
-	
+	local allMatchers = GetPriceMatchers()
 	local usedMatchers = {}
 	local matcherFrames = {}
 
@@ -320,15 +331,15 @@ local function BuildMatchersFrame(name, parent)
 		local matcherIndex = nil
 		for index, id in ipairs(usedMatchers) do
 			if id ~= matcherID then
-				newUsedMatchers[#newUsedMatchers + 1] = id
+				TInsert(newUsedMatchers, id)
 			else
 				matcherIndex = index
 			end
 		end
 		
 		if direction and matcherIndex then
-			matcherIndex = math.min(math.max(1, matcherIndex + direction), #usedMatchers)
-			table.insert(newUsedMatchers, matcherIndex, matcherID)
+			matcherIndex = MMin(MMax(1, matcherIndex + direction), #usedMatchers)
+			TInsert(newUsedMatchers, matcherIndex, matcherID)
 		end
 
 		usedMatchers = newUsedMatchers
@@ -340,7 +351,7 @@ local function BuildMatchersFrame(name, parent)
 		local matcherFrame = BuildMatcherFrame(name .. ".Matchers." .. matcherID, frame, matcherID, matcherName, MoveMatcher)
 		if matcherFrame then
 			matcherFrames[matcherID] = matcherFrame
-			matcherFrame:EventAttach(Event.UI.Layout.Size, ResetHeight, matcherFrame:GetName() .. ".OnSize")
+			matcherFrame.Event.Size = ResetHeight
 			matcherFrame:SetVisible(false)
 		end
 	end
@@ -364,12 +375,11 @@ local function BuildMatchersFrame(name, parent)
 	matcherSelector:SetTextSelector("displayName")
 	matcherSelector:SetOrderSelector("displayName")
 	
-	matcherButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			local matcherID = matcherSelector:GetSelectedValue()
-			usedMatchers[#usedMatchers + 1] = matcherID
-			RecalcMatchers()
-		end, matcherButton:GetName() .. ".OnLeftPress")
+	function matcherButton.Event:LeftPress()
+		local matcherID = matcherSelector:GetSelectedValue()
+		TInsert(usedMatchers, matcherID)
+		RecalcMatchers()
+	end
 
 	function frame:GetMatcherConfig()
 		local config = {}
@@ -377,7 +387,7 @@ local function BuildMatchersFrame(name, parent)
 		for _, matcherID in ipairs(usedMatchers) do
 			local matcherFrame = matcherFrames[matcherID]
 			local extra = matcherFrame:GetExtra()
-			config[#config + 1] = { id = matcherID, extra = extra, }
+			TInsert(config, { id = matcherID, extra = extra, })
 		end
 		
 		return config
@@ -391,7 +401,7 @@ local function BuildMatchersFrame(name, parent)
 			local matcherID = matcherConfig.id
 			if allMatchers[matcherID] then
 				local matcherFrame = matcherFrames[matcherID]
-				usedMatchers[#usedMatchers + 1] = matcherID
+				TInsert(usedMatchers, matcherID)
 				matcherFrame:SetExtra(matcherConfig.extra)
 			end
 		end
@@ -405,25 +415,16 @@ local function BuildMatchersFrame(name, parent)
 end
 
 local function BuildFilterFrame(name, parent, filterID, filterName, filterMove)
-	local filterFrame = UI.CreateFrame("Frame", name, parent)
+	local filterFrame = UICreateFrame("Frame", name, parent)
 	
-	local filterTitle = UI.CreateFrame("Text", name .. ".FilterTitle", filterFrame)
-	local filterUnfold = UI.CreateFrame("Texture", name .. ".FilterUnfold", filterFrame)
-	local filterDelete = UI.CreateFrame("Texture", name .. ".FilterDelete", filterFrame)
-	local filterUp = UI.CreateFrame("Texture", name .. ".FilterUp", filterFrame)
-	local filterDown = UI.CreateFrame("Texture", name .. ".FilterDown", filterFrame)
+	local filterTitle = UICreateFrame("Text", name .. ".FilterTitle", filterFrame)
+	local filterUnfold = UICreateFrame("Texture", name .. ".FilterUnfold", filterFrame)
+	local filterDelete = UICreateFrame("Texture", name .. ".FilterDelete", filterFrame)
+	local filterUp = UICreateFrame("Texture", name .. ".FilterUp", filterFrame)
+	local filterDown = UICreateFrame("Texture", name .. ".FilterDown", filterFrame)
 	
-	local detail = LibPGCEx.Price.Sampler.Get(filterID)
-	local configFrame = InternalInterface.UI.BuildConfigFrame(name .. ".ConfigFrame", filterFrame, detail and detail.definition)	
-
-	local function ToggleUnfold()
-		if configFrame then
-			local unfolded = configFrame:GetVisible()
-			configFrame:SetVisible(not unfolded)
-			filterUnfold:SetTextureAsync(addonID, unfolded and "Textures/ArrowDown.png" or "Textures/ArrowUp.png")
-			filterFrame:SetHeight(unfolded and 24 or configFrame:GetBottom() - filterFrame:GetTop())
-		end
-	end
+	local filterExtra = GetPriceSamplerExtraDescription(filterID)
+	local configFrame = BuildConfigFrame(name .. ".ConfigFrame", filterFrame, filterExtra)
 	
 	filterFrame:SetHeight(24)
 	
@@ -450,23 +451,27 @@ local function BuildFilterFrame(name, parent, filterID, filterName, filterMove)
 	else
 		filterUnfold:SetVisible(false)
 	end
-
-	filterUnfold:EventAttach(Event.UI.Input.Mouse.Left.Click, ToggleUnfold, filterUnfold:GetName() .. ".OnLeftClick")
 	
-	filterDelete:EventAttach(Event.UI.Input.Mouse.Left.Click, 
-		function()
-			filterMove(matcherID)
-		end, filterDelete:GetName() .. ".OnLeftClick")
+	function filterUnfold.Event:LeftClick()
+		if configFrame then
+			local unfolded = configFrame:GetVisible()
+			configFrame:SetVisible(not unfolded)
+			filterUnfold:SetTextureAsync(addonID, unfolded and "Textures/ArrowDown.png" or "Textures/ArrowUp.png")
+			filterFrame:SetHeight(unfolded and 24 or configFrame:GetBottom() - filterFrame:GetTop())
+		end
+	end
 	
-	filterUp:EventAttach(Event.UI.Input.Mouse.Left.Click, 
-		function()
-			filterMove(matcherID, -1)
-		end, filterUp:GetName() .. ".OnLeftClick")
+	function filterDelete.Event:LeftClick()
+		filterMove(filterID)
+	end
 	
-	filterDown:EventAttach(Event.UI.Input.Mouse.Left.Click, 
-		function()
-			filterMove(matcherID, 1)
-		end, filterDown:GetName() .. ".OnLeftClick")
+	function filterUp.Event:LeftClick()
+		filterMove(filterID, -1)
+	end
+	
+	function filterDown.Event:LeftClick()
+		filterMove(filterID, 1)
+	end
 	
 	function filterFrame:GetExtra()
 		if configFrame then
@@ -478,7 +483,7 @@ local function BuildFilterFrame(name, parent, filterID, filterName, filterMove)
 		if configFrame then
 			configFrame:SetExtra(extra)
 			if configFrame:GetVisible() then
-				ToggleUnfold()
+				filterUnfold.Event.LeftClick(filterUnfold) -- FIXME Event model
 			end
 		end
 	end
@@ -487,20 +492,15 @@ local function BuildFilterFrame(name, parent, filterID, filterName, filterMove)
 end
 
 local function BuildFiltersFrame(name, parent)
-	local frame = UI.CreateFrame("Frame", name, parent)
+	local frame = UICreateFrame("Frame", name, parent)
 
-	local titleLabel = Yague.ShadowedText(name .. ".TitleLabel", frame)
-	local startAnchor = UI.CreateFrame("Frame", name .. ".StartAnchor", frame)
-	local endAnchor = UI.CreateFrame("Frame", name .. ".EndAnchor", frame)
-	local filterButton = UI.CreateFrame("RiftButton", name .. ".FilterButton", frame)
-	local filterSelector = Yague.Dropdown(name .. ".FilterSelector", frame)
+	local titleLabel = ShadowedText(name .. ".TitleLabel", frame)
+	local startAnchor = UICreateFrame("Frame", name .. ".StartAnchor", frame)
+	local endAnchor = UICreateFrame("Frame", name .. ".EndAnchor", frame)
+	local filterButton = UICreateFrame("RiftButton", name .. ".FilterButton", frame)
+	local filterSelector = Dropdown(name .. ".FilterSelector", frame)
 	
-	local allFilters = LibPGCEx.Price.Sampler.List()
-	for filterID in pairs(allFilters) do
-		local detail = LibPGCEx.Price.Sampler.Get(filterID)
-		allFilters[filterID] = detail and detail.name or nil		
-	end
-	
+	local allFilters = GetPriceSamplers()
 	local usedFilters = {}
 	local filterFrames = {}
 
@@ -563,15 +563,15 @@ local function BuildFiltersFrame(name, parent)
 		local filterIndex = nil
 		for index, id in ipairs(usedFilters) do
 			if id ~= filterID then
-				newUsedFilters[#newUsedFilters + 1] = id
+				TInsert(newUsedFilters, id)
 			else
 				filterIndex = index
 			end
 		end
 		
 		if direction and filterIndex then
-			filterIndex = math.min(math.max(1, filterIndex + direction), #usedFilters)
-			table.insert(newUsedFilters, filterIndex, filterID)
+			filterIndex = MMin(MMax(1, filterIndex + direction), #usedFilters)
+			TInsert(newUsedFilters, filterIndex, filterID)
 		end
 
 		usedFilters = newUsedFilters
@@ -607,12 +607,11 @@ local function BuildFiltersFrame(name, parent)
 	filterSelector:SetTextSelector("displayName")
 	filterSelector:SetOrderSelector("displayName")
 	
-	filterButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			local filterID = filterSelector:GetSelectedValue()
-			usedFilters[#usedFilters + 1] = filterID
-			RecalcFilters()
-		end, filterButton:GetName() .. ".OnLeftPress")
+	function filterButton.Event:LeftPress()
+		local filterID = filterSelector:GetSelectedValue()
+		TInsert(usedFilters, filterID)
+		RecalcFilters()
+	end
 
 	function frame:GetFilterConfig()
 		local config = {}
@@ -620,7 +619,7 @@ local function BuildFiltersFrame(name, parent)
 		for _, filterID in ipairs(usedFilters) do
 			local filterFrame = filterFrames[filterID]
 			local extra = filterFrame:GetExtra()
-			config[#config + 1] = { id = filterID, extra = extra, }
+			TInsert(config, { id = filterID, extra = extra, })
 		end
 		
 		return config
@@ -634,7 +633,7 @@ local function BuildFiltersFrame(name, parent)
 			local filterID = filterConfig.id
 			if allFilters[filterID] then
 				local filterFrame = filterFrames[filterID]
-				usedFilters[#usedFilters + 1] = filterID
+				TInsert(usedFilters, filterID)
 				filterFrame:SetExtra(filterConfig.extra)
 			end
 		end
@@ -648,11 +647,11 @@ local function BuildFiltersFrame(name, parent)
 end
 
 local function BuildModelFrame(name, parent, modelID, modelName, modelDrop)
-	local frame = UI.CreateFrame("Frame", name, parent)
+	local frame = UICreateFrame("Frame", name, parent)
 
-	local modelDelete = UI.CreateFrame("Texture", name .. ".ModelDelete", frame)
-	local modelTitle = UI.CreateFrame("Text", name .. ".ModelTitle", frame)
-	local modelSlider = Yague.Slider(name .. ".ModelSlider", frame)
+	local modelDelete = UICreateFrame("Texture", name .. ".ModelDelete", frame)
+	local modelTitle = UICreateFrame("Text", name .. ".ModelTitle", frame)
+	local modelSlider = Slider(name .. ".ModelSlider", frame)
 	
 	frame:SetHeight(24)
 	
@@ -667,10 +666,9 @@ local function BuildModelFrame(name, parent, modelID, modelName, modelDrop)
 	modelSlider:SetPoint("CENTERLEFT", modelTitle, "CENTERLEFT", 200, -2)
 	modelSlider:SetRange(1, 20)
 
-	modelDelete:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			modelDrop(modelID)
-		end, modelDelete:GetName() .. ".OnLeftClick")
+	function modelDelete.Event:LeftClick()
+		modelDrop(modelID)
+	end	
 	
 	function frame:SetModelName(modelName)
 		modelTitle:SetText(modelName or "")
@@ -690,36 +688,32 @@ end
 local function SimplePriceModelPopup(parent)
 	local frame = Yague.Popup(parent:GetName() .. ".SimplePriceModelPopup", parent)
 	
-	local nameLabel = Yague.ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
-	local namePanel = Yague.Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
-	local nameField = UI.CreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
 	
-	local fallbackSelector = Yague.Dropdown(frame:GetName() .. ".FallbackSelector", frame:GetContent())
+	local fallbackSelector = Dropdown(frame:GetName() .. ".FallbackSelector", frame:GetContent())
 	
-	local usageFrame = UI.CreateFrame("Frame", frame:GetName() .. ".UsageFrame", frame:GetContent())
+	local usageFrame = UICreateFrame("Frame", frame:GetName() .. ".UsageFrame", frame:GetContent())
 	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
 	
-	local saveButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
-	local cancelButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
 	
 	local wasEnabled = false
-	local Save = nil
 	
-	local allFallbacks = LibPGCEx.Price.Fallback.List()
+	local allFallbacks = GetPriceFallbacks()
 	local fallbacks = {}
 	local fallbackFrames = {}
-	for fallbackID in pairs(allFallbacks) do
-		local detail = LibPGCEx.Price.Fallback.Get(fallbackID)
-		if detail and detail.name then
-			fallbacks[fallbackID] = { displayName = detail.name }
-			
-			local fallbackFrame = InternalInterface.UI.BuildConfigFrame(usageFrame:GetName() .. fallbackID, usageFrame, detail.definition)
-			fallbackFrame:SetPoint("TOPLEFT", usageFrame, "TOPLEFT")
-			fallbackFrame:SetPoint("TOPRIGHT", usageFrame, "TOPRIGHT")
-			fallbackFrame:SetVisible(false)
-			
-			fallbackFrames[fallbackID] = fallbackFrame
-		end
+	for fallbackID, fallbackName in pairs(allFallbacks) do
+		fallbacks[fallbackID] = { displayName = fallbackName }
+		
+		local fallbackFrame = BuildConfigFrame(usageFrame:GetName() .. fallbackID, usageFrame, GetPriceFallbackExtraDescription(fallbackID))
+		fallbackFrame:SetPoint("TOPLEFT", usageFrame, "TOPLEFT")
+		fallbackFrame:SetPoint("TOPRIGHT", usageFrame, "TOPRIGHT")
+		fallbackFrame:SetVisible(false)
+		
+		fallbackFrames[fallbackID] = fallbackFrame
 	end
 	
 	local function GetModelInfo()
@@ -791,59 +785,47 @@ local function SimplePriceModelPopup(parent)
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
 	cancelButton:SetText(L["SimpleModelPopup/ButtonCancel"])
 	
-	namePanel:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			nameField:SetKeyFocus(true)
-		end, namePanel:GetName() .. ".OnLeftClick")
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
 
-	nameField:EventAttach(Event.UI.Input.Key.Focus.Gain,
-		function()
-			local length = string.len(nameField:GetText())
-			if length > 0 then
-				nameField:SetSelection(0, length)
-			end
-		end, nameField:GetName() .. ".OnKeyFocusGain")
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
 
-	nameField:EventAttach(Event.UI.Textfield.Change,
-		function()
-			ResetSaveButton()
-		end, nameField:GetName() .. ".OnTextfieldChange")
+	function nameField.Event:TextfieldChange()
+		ResetSaveButton()
+	end
 	
 	function fallbackSelector.Event:SelectionChanged()
 		RecalcFallbacks()
 	end
 	
-	matcherFrame:EventAttach(Event.UI.Layout.Size,
-		function()
-			ResetHeight()
-		end, matcherFrame:GetName() .. ".OnSize")
-
-	saveButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			if type(Save) == "function" then
-				Save(GetModelInfo())
-			end
-			parent:HidePopup(addonID .. ".SimplePriceModel", frame)
-		end, saveButton:GetName() .. ".OnLeftPress")
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
 	
-	cancelButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			parent:HidePopup(addonID .. ".SimplePriceModel", frame)
-		end, cancelButton:GetName() .. ".OnLeftPress")
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".SimplePriceModel", frame)
+	end
 
 	function frame:SetData(modelInfo, onSave)
 		nameField:SetText(modelInfo.name or "")
-		
 		local usage = modelInfo.usage
 		if allFallbacks[usage.id] then
 			fallbackSelector:SetSelectedKey(usage.id)
 			fallbackFrames[usage.id]:SetExtra(usage.extra)
 		end
-		
 		matcherFrame:SetMatcherConfig(modelInfo.matchers)
 		wasEnabled = modelInfo.enabled
 
-		Save = onSave
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".SimplePriceModel", frame)
+		end
 		
 		ResetSaveButton()
 	end
@@ -852,42 +834,38 @@ local function SimplePriceModelPopup(parent)
 	
 	return frame
 end
-Yague.RegisterPopupConstructor(addonID .. ".SimplePriceModel", SimplePriceModelPopup)
+RegisterPopupConstructor(addonID .. ".SimplePriceModel", SimplePriceModelPopup)
 
 local function StatisticalPriceModelPopup(parent)
 	local frame = Yague.Popup(parent:GetName() .. ".StatisticalPriceModelPopup", parent)
 	
-	local nameLabel = Yague.ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
-	local namePanel = Yague.Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
-	local nameField = UI.CreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
 	
-	local statSelector = Yague.Dropdown(frame:GetName() .. ".StatSelector", frame:GetContent())
+	local statSelector = Dropdown(frame:GetName() .. ".StatSelector", frame:GetContent())
 
-	local usageFrame = UI.CreateFrame("Frame", frame:GetName() .. ".UsageFrame", frame:GetContent())
+	local usageFrame = UICreateFrame("Frame", frame:GetName() .. ".UsageFrame", frame:GetContent())
 	local filterFrame = BuildFiltersFrame(frame:GetName() .. ".FilterFrame", frame:GetContent())
 	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
 	
-	local saveButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
-	local cancelButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
 	
 	local wasEnabled = false
-	local Save = nil
 	
-	local allStats = LibPGCEx.Price.Stat.List()
+	local allStats = GetPriceStats()
 	local stats = {}
 	local statFrames = {}
-	for statID in pairs(allStats) do
-		local detail = LibPGCEx.Price.Stat.Get(statID)
-		if detail and detail.name then
-			stats[statID] = { displayName = detail.name }
-			
-			local statFrame = InternalInterface.UI.BuildConfigFrame(usageFrame:GetName() .. statID, usageFrame, detail.definition)
-			statFrame:SetPoint("TOPLEFT", usageFrame, "TOPLEFT")
-			statFrame:SetPoint("TOPRIGHT", usageFrame, "TOPRIGHT")
-			statFrame:SetVisible(false)
-			
-			statFrames[statID] = statFrame
-		end
+	for statID, statName in pairs(allStats) do
+		stats[statID] = { displayName = statName }
+		
+		local statFrame = BuildConfigFrame(usageFrame:GetName() .. statID, usageFrame, GetPriceStatExtraDescription(statID))
+		statFrame:SetPoint("TOPLEFT", usageFrame, "TOPLEFT")
+		statFrame:SetPoint("TOPRIGHT", usageFrame, "TOPRIGHT")
+		statFrame:SetVisible(false)
+		
+		statFrames[statID] = statFrame
 	end
 	
 	local function GetModelInfo()
@@ -962,51 +940,37 @@ local function StatisticalPriceModelPopup(parent)
 	
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
 	cancelButton:SetText(L["StatisticalModelPopup/ButtonCancel"])
+	
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
 
-	namePanel:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			nameField:SetKeyFocus(true)
-		end, namePanel:GetName() .. ".OnLeftClick")
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
 
-	nameField:EventAttach(Event.UI.Input.Key.Focus.Gain,
-		function()
-			local length = string.len(nameField:GetText())
-			if length > 0 then
-				nameField:SetSelection(0, length)
-			end
-		end, nameField:GetName() .. ".OnKeyFocusGain")
-
-	nameField:EventAttach(Event.UI.Textfield.Change,
-		function()
-			ResetSaveButton()
-		end, nameField:GetName() .. ".OnTextfieldChange")
+	function nameField.Event:TextfieldChange()
+		ResetSaveButton()
+	end
 	
 	function statSelector.Event:SelectionChanged()
 		RecalcStats()
 	end
 	
-	filterFrame:EventAttach(Event.UI.Layout.Size,
-		function()
-			ResetHeight()
-		end, filterFrame:GetName() .. ".OnSize")
-
-	matcherFrame:EventAttach(Event.UI.Layout.Size,
-		function()
-			ResetHeight()
-		end, matcherFrame:GetName() .. ".OnSize")
-
-	saveButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			if type(Save) == "function" then
-				Save(GetModelInfo())
-			end
-			parent:HidePopup(addonID .. ".StatisticalPriceModel", frame)
-		end, saveButton:GetName() .. ".OnLeftPress")
+	function filterFrame.Event:Size()
+		ResetHeight()
+	end
 	
-	cancelButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			parent:HidePopup(addonID .. ".StatisticalPriceModel", frame)
-		end, cancelButton:GetName() .. ".OnLeftPress")
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
+	
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".StatisticalPriceModel", frame)
+	end
 
 	function frame:SetData(modelInfo, onSave)
 		nameField:SetText(modelInfo.name or "")
@@ -1019,7 +983,10 @@ local function StatisticalPriceModelPopup(parent)
 		matcherFrame:SetMatcherConfig(modelInfo.matchers)
 		wasEnabled = modelInfo.enabled
 
-		Save = onSave
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".StatisticalPriceModel", frame)
+		end
 		
 		ResetSaveButton()
 	end
@@ -1028,24 +995,23 @@ local function StatisticalPriceModelPopup(parent)
 	
 	return frame
 end
-Yague.RegisterPopupConstructor(addonID .. ".StatisticalPriceModel", StatisticalPriceModelPopup)
+RegisterPopupConstructor(addonID .. ".StatisticalPriceModel", StatisticalPriceModelPopup)
 
 local function ComplexPriceModelPopup(parent)
 	local frame = Yague.Popup(parent:GetName() .. ".ComplexPriceModelPopup", parent)
 	
-	local nameLabel = Yague.ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
-	local namePanel = Yague.Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
-	local nameField = UI.CreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
 	
-	local complexSelector = Yague.Dropdown(frame:GetName() .. ".ComplexSelector", frame:GetContent())
+	local complexSelector = Dropdown(frame:GetName() .. ".ComplexSelector", frame:GetContent())
 	
 	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
 	
-	local saveButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
-	local cancelButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
 	
 	local wasEnabled = false
-	local Save = nil
 	
 	local function GetModelInfo()
 		local name = nameField:GetText()
@@ -1084,13 +1050,10 @@ local function ComplexPriceModelPopup(parent)
 	complexSelector:SetPoint("BOTTOMRIGHT", frame:GetContent(), "TOPRIGHT", -15, 80)
 	complexSelector:SetTextSelector("displayName")
 	complexSelector:SetOrderSelector("displayName")
-	local allComplex = LibPGCEx.Price.External.List()
+	local allComplex = GetPriceComplex()
 	local complex = {}
-	for complexID in pairs(allComplex) do
-		local detail = LibPGCEx.Price.External.Get(complexID)
-		if detail then
-			complex[complexID] = { displayName = detail.name }
-		end
+	for complexID, complexName in pairs(allComplex) do
+		complex[complexID] = { displayName = complexName }
 	end
 	complexSelector:SetValues(complex)
 	
@@ -1104,45 +1067,32 @@ local function ComplexPriceModelPopup(parent)
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
 	cancelButton:SetText(L["ComplexModelPopup/ButtonCancel"])
 	
-	namePanel:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			nameField:SetKeyFocus(true)
-		end, namePanel:GetName() .. ".OnLeftClick")
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
 
-	nameField:EventAttach(Event.UI.Input.Key.Focus.Gain,
-		function()
-			local length = string.len(nameField:GetText())
-			if length > 0 then
-				nameField:SetSelection(0, length)
-			end
-		end, nameField:GetName() .. ".OnKeyFocusGain")
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
 
-	nameField:EventAttach(Event.UI.Textfield.Change,
-		function()
-			ResetSaveButton()
-		end, nameField:GetName() .. ".OnTextfieldChange")
+	function nameField.Event:TextfieldChange()
+		ResetSaveButton()
+	end
 	
 	function complexSelector.Event:SelectionChanged()
 		ResetSaveButton()
 	end
 	
-	matcherFrame:EventAttach(Event.UI.Layout.Size,
-		function()
-			ResetHeight()
-		end, matcherFrame:GetName() .. ".OnSize")
-
-	saveButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			if type(Save) == "function" then
-				Save(GetModelInfo())
-			end
-			parent:HidePopup(addonID .. ".ComplexPriceModel", frame)
-		end, saveButton:GetName() .. ".OnLeftPress")
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
 	
-	cancelButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			parent:HidePopup(addonID .. ".ComplexPriceModel", frame)
-		end, cancelButton:GetName() .. ".OnLeftPress")
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".ComplexPriceModel", frame)
+	end
 
 	function frame:SetData(modelInfo, onSave)
 		nameField:SetText(modelInfo.name or "")
@@ -1151,7 +1101,10 @@ local function ComplexPriceModelPopup(parent)
 		matcherFrame:SetMatcherConfig(modelInfo.matchers)
 		wasEnabled = modelInfo.enabled
 
-		Save = onSave
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".ComplexPriceModel", frame)
+		end
 
 		ResetSaveButton()
 	end
@@ -1160,27 +1113,26 @@ local function ComplexPriceModelPopup(parent)
 	
 	return frame
 end
-Yague.RegisterPopupConstructor(addonID .. ".ComplexPriceModel", ComplexPriceModelPopup)
+RegisterPopupConstructor(addonID .. ".ComplexPriceModel", ComplexPriceModelPopup)
 
 local function CompositePriceModelPopup(parent)
 	local frame = Yague.Popup(parent:GetName() .. ".CompositePriceModelPopup", parent)
 	
-	local nameLabel = Yague.ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
-	local namePanel = Yague.Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
-	local nameField = UI.CreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
+	local nameLabel = ShadowedText(frame:GetName() .. ".NameLabel", frame:GetContent())
+	local namePanel = Panel(frame:GetName() .. ".NamePanel", frame:GetContent())
+	local nameField = UICreateFrame("RiftTextfield", frame:GetName() .. ".NameField", namePanel:GetContent())
 
-	local startAnchor = UI.CreateFrame("Frame", frame:GetName() .. ".StartAnchor", frame:GetContent())
-	local endAnchor = UI.CreateFrame("Frame", frame:GetName() .. ".EndAnchor", frame:GetContent())
-	local addButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".AddButton", frame:GetContent())	
-	local modelSelector = Yague.Dropdown(frame:GetName() .. ".ModelSelector", frame:GetContent())
+	local startAnchor = UICreateFrame("Frame", frame:GetName() .. ".StartAnchor", frame:GetContent())
+	local endAnchor = UICreateFrame("Frame", frame:GetName() .. ".EndAnchor", frame:GetContent())
+	local addButton = UICreateFrame("RiftButton", frame:GetName() .. ".AddButton", frame:GetContent())	
+	local modelSelector = Dropdown(frame:GetName() .. ".ModelSelector", frame:GetContent())
 	
 	local matcherFrame = BuildMatchersFrame(frame:GetName() .. ".MatcherFrame", frame:GetContent())
 	
-	local saveButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
-	local cancelButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame:GetContent())
+	local cancelButton = UICreateFrame("RiftButton", frame:GetName() .. ".CancelButton", frame:GetContent())
 	
 	local wasEnabled = false
-	local Save = nil
 	
 	local availableModels = {}
 	local usedModels = {}
@@ -1262,7 +1214,7 @@ local function CompositePriceModelPopup(parent)
 		
 		for _, id in ipairs(usedModels) do
 			if id ~= modelID then
-				newUsedModels[#newUsedModels + 1] = id
+				TInsert(newUsedModels, id)
 			end
 		end
 
@@ -1327,57 +1279,43 @@ local function CompositePriceModelPopup(parent)
 	cancelButton:SetPoint("TOPCENTER", matcherFrame, 2/3, 1, 0, 10)
 	cancelButton:SetText(L["CompositeModelPopup/ButtonCancel"])
 	
-	namePanel:EventAttach(Event.UI.Input.Mouse.Left.Click,
-		function()
-			nameField:SetKeyFocus(true)
-		end, namePanel:GetName() .. ".OnLeftClick")
+	function namePanel.Event:LeftClick()
+		nameField:SetKeyFocus(true)
+	end
 
-	nameField:EventAttach(Event.UI.Input.Key.Focus.Gain,
-		function()
-			local length = string.len(nameField:GetText())
-			if length > 0 then
-				nameField:SetSelection(0, length)
-			end
-		end, nameField:GetName() .. ".OnKeyFocusGain")
+	function nameField.Event:KeyFocusGain()
+		local length = SLen(self:GetText())
+		if length > 0 then
+			self:SetSelection(0, length)
+		end
+	end
 
-	nameField:EventAttach(Event.UI.Textfield.Change,
-		function()
-			ResetSaveButton()
-		end, nameField:GetName() .. ".OnTextfieldChange")
+	function nameField.Event:TextfieldChange()
+		ResetSaveButton()
+	end
 	
-	addButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			local modelID = modelSelector:GetSelectedValue()
-			usedModels[#usedModels + 1] = modelID
-			RecalcModels()
-		end, addButton:GetName() .. ".OnLeftPress")
+	function addButton.Event:LeftPress()
+		local modelID = modelSelector:GetSelectedValue()
+		TInsert(usedModels, modelID)
+		RecalcModels()
+	end
 	
-	matcherFrame:EventAttach(Event.UI.Layout.Size,
-		function()
-			ResetHeight()
-		end, matcherFrame:GetName() .. ".OnSize")
-
-	saveButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			if type(Save) == "function" then
-				Save(GetModelInfo())
-			end
-			parent:HidePopup(addonID .. ".CompositePriceModel", frame)
-		end, saveButton:GetName() .. ".OnLeftPress")
+	function matcherFrame.Event:Size()
+		ResetHeight()
+	end
 	
-	cancelButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			parent:HidePopup(addonID .. ".CompositePriceModel", frame)
-		end, cancelButton:GetName() .. ".OnLeftPress")
+	function cancelButton.Event:LeftPress()
+		parent:HidePopup(addonID .. ".CompositePriceModel", frame)
+	end
 
 	function frame:SetData(models, modelInfo, onSave)
 		SetModels(models)
-		
+
 		nameField:SetText(modelInfo.name or "")
 		local usage = modelInfo.usage
 		for modelID, modelValue in pairs(usage) do
 			if availableModels[modelID] then
-				usedModels[#usedModels + 1] = modelID
+				TInsert(usedModels, modelID)
 				local modelFrame = modelFrames[modelID]
 				modelFrame:SetValue(modelValue)
 			end
@@ -1386,29 +1324,29 @@ local function CompositePriceModelPopup(parent)
 
 		matcherFrame:SetMatcherConfig(modelInfo.matchers)
 		wasEnabled = modelInfo.enabled
-		
-		Save = onSave
-		
-		ResetSaveButton()
+		function saveButton.Event:LeftPress()
+			onSave(GetModelInfo())
+			parent:HidePopup(addonID .. ".CompositePriceModel", frame)
+		end
 	end
 	
 	RecalcModels()
 	
 	return frame
 end
-Yague.RegisterPopupConstructor(addonID .. ".CompositePriceModel", CompositePriceModelPopup)
+RegisterPopupConstructor(addonID .. ".CompositePriceModel", CompositePriceModelPopup)
 
 local function GeneralSettings(parent)
-	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".GeneralSettings", parent)
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".GeneralSettings", parent)
 	
-	local showMapIconCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".ShowMapIconCheck", frame)
-	local showMapIconText = UI.CreateFrame("Text", frame:GetName() .. ".ShowMapIconText", frame)
-	local autoOpenCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".AutoOpenCheck", frame)
-	local autoOpenText = UI.CreateFrame("Text", frame:GetName() .. ".AutoOpenText", frame)
-	local autoCloseCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".AutoCloseCheck", frame)
-	local autoCloseText = UI.CreateFrame("Text", frame:GetName() .. ".AutoCloseText", frame)
-	local pauseQueueCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".PauseQueueCheck", frame)
-	local pauseQueueText = UI.CreateFrame("Text", frame:GetName() .. ".PauseQueueText", frame)
+	local showMapIconCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".ShowMapIconCheck", frame)
+	local showMapIconText = UICreateFrame("Text", frame:GetName() .. ".ShowMapIconText", frame)
+	local autoOpenCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".AutoOpenCheck", frame)
+	local autoOpenText = UICreateFrame("Text", frame:GetName() .. ".AutoOpenText", frame)
+	local autoCloseCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".AutoCloseCheck", frame)
+	local autoCloseText = UICreateFrame("Text", frame:GetName() .. ".AutoCloseText", frame)
+	local pauseQueueCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".PauseQueueCheck", frame)
+	local pauseQueueText = UICreateFrame("Text", frame:GetName() .. ".PauseQueueText", frame)
 	
 	frame:SetVisible(false)
 	
@@ -1440,41 +1378,36 @@ local function GeneralSettings(parent)
 	pauseQueueText:SetFontSize(14)
 	pauseQueueText:SetText(L["ConfigGeneral/PausePostingQueue"])
 	
-	showMapIconCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.General.ShowMapIcon = showMapIconCheck:GetChecked()
-			if not MINIMAPDOCKER then
-				InternalInterface.UI.MapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon)
-			end
-		end, showMapIconCheck:GetName() .. ".OnCheckboxChange")
+	function showMapIconCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.General.ShowMapIcon = self:GetChecked()
+		if not MINIMAPDOCKER then
+			InternalInterface.UI.MapIcon:SetVisible(InternalInterface.AccountSettings.General.ShowMapIcon)
+		end
+	end
 	
-	autoOpenCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.General.AutoOpen = autoOpenCheck:GetChecked()
-		end, autoOpenCheck:GetName() .. ".OnCheckboxChange")
+	function autoOpenCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.General.AutoOpen = self:GetChecked()
+	end
 	
-	autoCloseCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.General.AutoClose = autoCloseCheck:GetChecked()
-		end, autoCloseCheck:GetName() .. ".OnCheckboxChange")
+	function autoCloseCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.General.AutoClose = self:GetChecked()
+	end
 	
-	pauseQueueCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.General.QueuePausedOnStart = pauseQueueCheck:GetChecked()
-		end, pauseQueueCheck:GetName() .. ".OnCheckboxChange")
+	function pauseQueueCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.General.QueuePausedOnStart = self:GetChecked()
+	end
 	
 	return frame
 end
 
 local function SearchSettings(parent)
-	do return nil end
-	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".GeneralSettings", parent)
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".GeneralSettings", parent)
 	
-	local defaultSearcherText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultSearcherText", frame)
-	local defaultSearcherDropdown = Yague.Dropdown(frame:GetName() .. ".DefaultSearcherDropdown", frame)
+	local defaultSearcherText = UICreateFrame("Text", frame:GetName() .. ".DefaultSearcherText", frame)
+	local defaultSearcherDropdown = Dropdown(frame:GetName() .. ".DefaultSearcherDropdown", frame)
 
-	local defaultSearchModeText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultSearchModeText", frame)
-	local defaultSearchModeDropdown = Yague.Dropdown(frame:GetName() .. ".DefaultSearchModeDropdown", frame)
+	local defaultSearchModeText = UICreateFrame("Text", frame:GetName() .. ".DefaultSearchModeText", frame)
+	local defaultSearchModeDropdown = Dropdown(frame:GetName() .. ".DefaultSearchModeDropdown", frame)
 
 	frame:SetVisible(false)
 	
@@ -1520,20 +1453,20 @@ local function SearchSettings(parent)
 end
 
 local function PostingSettings(parent)
-	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".PostingSettings", parent)
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".PostingSettings", parent)
 
-	local rarityFilterText = UI.CreateFrame("Text", frame:GetName() .. ".RarityFilterText", frame)
-	local rarityFilterDropdown = Yague.Dropdown(frame:GetName() .. ".RarityFilterDropdown", frame)
-	local defaultBidPercentageText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultBidPercentageText", frame)
-	local defaultBidPercentageSlider = Yague.Slider(frame:GetName() .. ".DefaultBidPercentageSlider", frame)
-	local defaultBindPricesCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".DefaultBindPricesCheck", frame)
-	local defaultBindPricesText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultBindPricesText", frame)
-	local undercutAbsoluteText = UI.CreateFrame("Text", frame:GetName() .. ".UndercutAbsoluteText", frame)
-	local undercutAbsoluteSelector = Yague.MoneySelector(frame:GetName() .. ".UndercutAbsoluteSelector", frame)
-	local undercutRelativeText = UI.CreateFrame("Text", frame:GetName() .. ".UndercutRelativeText", frame)
-	local undercutRelativeSlider = Yague.Slider(frame:GetName() .. ".UndercutRelativeSlider", frame)
-	local autoPauseCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".AutoPauseCheck", frame)
-	local autoPauseText = UI.CreateFrame("Text", frame:GetName() .. ".AutoPauseText", frame)
+	local rarityFilterText = UICreateFrame("Text", frame:GetName() .. ".RarityFilterText", frame)
+	local rarityFilterDropdown = Dropdown(frame:GetName() .. ".RarityFilterDropdown", frame)
+	local defaultBidPercentageText = UICreateFrame("Text", frame:GetName() .. ".DefaultBidPercentageText", frame)
+	local defaultBidPercentageSlider = Slider(frame:GetName() .. ".DefaultBidPercentageSlider", frame)
+	local defaultBindPricesCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".DefaultBindPricesCheck", frame)
+	local defaultBindPricesText = UICreateFrame("Text", frame:GetName() .. ".DefaultBindPricesText", frame)
+	local undercutAbsoluteText = UICreateFrame("Text", frame:GetName() .. ".UndercutAbsoluteText", frame)
+	local undercutAbsoluteSelector = MoneySelector(frame:GetName() .. ".UndercutAbsoluteSelector", frame)
+	local undercutRelativeText = UICreateFrame("Text", frame:GetName() .. ".UndercutRelativeText", frame)
+	local undercutRelativeSlider = Slider(frame:GetName() .. ".UndercutRelativeSlider", frame)
+	local autoPauseCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".AutoPauseCheck", frame)
+	local autoPauseText = UICreateFrame("Text", frame:GetName() .. ".AutoPauseText", frame)
 
 	frame:SetVisible(false)
 
@@ -1545,7 +1478,7 @@ local function PostingSettings(parent)
 	rarityFilterDropdown:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 5)
 	rarityFilterDropdown:SetTextSelector("displayName")
 	rarityFilterDropdown:SetOrderSelector("order")
-	rarityFilterDropdown:SetColorSelector(function(key, value) return { InternalInterface.Utility.GetRarityColor(value.rarity) } end)
+	rarityFilterDropdown:SetColorSelector(function(key, value) return { GetRarityColor(value.rarity) } end)
 	local defaultRarity = InternalInterface.AccountSettings.Posting.RarityFilter
 	rarityFilterDropdown:SetValues({
 		{ displayName = L["General/Rarity1"], order = 1, rarity = "sellable", },
@@ -1608,10 +1541,9 @@ local function PostingSettings(parent)
 		InternalInterface.AccountSettings.Posting.Config.BidPercentage = position
 	end
 	
-	defaultBindPricesCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Posting.Config.BindPrices = defaultBindPricesCheck:GetChecked()
-		end, defaultBindPricesCheck:GetName() .. ".OnCheckboxChange")
+	function defaultBindPricesCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Posting.Config.BindPrices = self:GetChecked()
+	end
 
 	function undercutAbsoluteSelector.Event:ValueChanged(newValue)
 		InternalInterface.AccountSettings.Posting.AbsoluteUndercut = newValue
@@ -1627,44 +1559,43 @@ local function PostingSettings(parent)
 		end
 	end
 	
-	autoPauseCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Posting.AutoPostPause = autoPauseCheck:GetChecked()
-		end, autoPauseCheck:GetName() .. ".OnCheckboxChange")
+	function autoPauseCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Posting.AutoPostPause = self:GetChecked()
+	end
 
 	return frame
 end
 
 local function AuctionsSettings(parent)
-	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".AuctionsSettings", parent)
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".AuctionsSettings", parent)
 
-	local allowLeftCancelCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".AllowLeftCancelCheck", frame)
-	local allowLeftCancelText = UI.CreateFrame("Text", frame:GetName() .. ".AllowLeftCancelText", frame)
+	local allowLeftCancelCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".AllowLeftCancelCheck", frame)
+	local allowLeftCancelText = UICreateFrame("Text", frame:GetName() .. ".AllowLeftCancelText", frame)
 
-	local filterCharacterCheck = UI.CreateFrame("RiftCheckbox", frame:GetName() .. ".FilterCharacterCheck", frame)
-	local filterCharacterText = UI.CreateFrame("Text", frame:GetName() .. ".FilterCharacterText", frame)
+	local filterCharacterCheck = UICreateFrame("RiftCheckbox", frame:GetName() .. ".FilterCharacterCheck", frame)
+	local filterCharacterText = UICreateFrame("Text", frame:GetName() .. ".FilterCharacterText", frame)
 	
 	local filterCompetitionText = UI.CreateFrame("Text", frame:GetName() .. ".FilterCompetitionText", frame)
-	local filterCompetitionSelector = Yague.Dropdown(frame:GetName() .. ".FilterCompetitionSelector", frame)
+	local filterCompetitionSelector = Dropdown(frame:GetName() .. ".FilterCompetitionSelector", frame)
 	
 	local filterBelowText = UI.CreateFrame("Text", frame:GetName() .. ".FilterBelowText", frame)
-	local filterBelowSlider = Yague.Slider(frame:GetName() .. ".FilterBelowSlider", frame)
+	local filterBelowSlider = Slider(frame:GetName() .. ".FilterBelowSlider", frame)
 
-	local filterScoreTitle = UI.CreateFrame("Text", frame:GetName() .. ".FilterScoreTitle", frame)
-	local filterFrame = UI.CreateFrame("Frame", frame:GetName() .. ".FilterFrame", frame)
+	local filterScoreTitle = UICreateFrame("Text", frame:GetName() .. ".FilterScoreTitle", frame)
+	local filterFrame = UICreateFrame("Frame", frame:GetName() .. ".FilterFrame", frame)
 	
-	local filterScoreNilCheck = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScoreNilCheck", filterFrame)
-	local filterScoreNilText = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScoreNilText", filterFrame)
-	local filterScore1Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore1Check", filterFrame)
-	local filterScore1Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore1Text", filterFrame)
-	local filterScore2Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore2Check", filterFrame)
-	local filterScore2Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore2Text", filterFrame)
-	local filterScore3Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore3Check", filterFrame)
-	local filterScore3Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore3Text", filterFrame)
-	local filterScore4Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore4Check", filterFrame)
-	local filterScore4Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore4Text", filterFrame)
-	local filterScore5Check = UI.CreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore5Check", filterFrame)
-	local filterScore5Text = UI.CreateFrame("Text", filterFrame:GetName() .. ".FilterScore5Text", filterFrame)
+	local filterScoreNilCheck = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScoreNilCheck", filterFrame)
+	local filterScoreNilText = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScoreNilText", filterFrame)
+	local filterScore1Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore1Check", filterFrame)
+	local filterScore1Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore1Text", filterFrame)
+	local filterScore2Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore2Check", filterFrame)
+	local filterScore2Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore2Text", filterFrame)
+	local filterScore3Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore3Check", filterFrame)
+	local filterScore3Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore3Text", filterFrame)
+	local filterScore4Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore4Check", filterFrame)
+	local filterScore4Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore4Text", filterFrame)
+	local filterScore5Check = UICreateFrame("RiftCheckbox", filterFrame:GetName() .. ".FilterScore5Check", filterFrame)
+	local filterScore5Text = UICreateFrame("Text", filterFrame:GetName() .. ".FilterScore5Text", filterFrame)
 	
 	frame:SetVisible(false)
 
@@ -1741,15 +1672,13 @@ local function AuctionsSettings(parent)
 	filterScore5Text:SetPoint("CENTERLEFT", filterScore5Check, "CENTERRIGHT", 5, 0)
 	filterScore5Text:SetText(L["General/ScoreName5"])
 	
-	allowLeftCancelCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.BypassCancelPopup = allowLeftCancelCheck:GetChecked()
-		end, allowLeftCancelCheck:GetName() .. ".OnCheckboxChange")
+	function allowLeftCancelCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.BypassCancelPopup = self:GetChecked()
+	end
 	
-	filterCharacterCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.RestrictCharacterFilter = filterCharacterCheck:GetChecked()
-		end, filterCharacterCheck:GetName() .. ".OnCheckboxChange")
+	function filterCharacterCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.RestrictCharacterFilter = self:GetChecked()
+	end
 	
 	function filterCompetitionSelector.Event:SelectionChanged()
 		InternalInterface.AccountSettings.Auctions.DefaultCompetitionFilter = (self:GetSelectedValue())
@@ -1759,84 +1688,69 @@ local function AuctionsSettings(parent)
 		InternalInterface.AccountSettings.Auctions.DefaultBelowFilter = position
 	end
 
-	filterScoreNilCheck:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[1] = filterScoreNilCheck:GetChecked()
-		end, filterScoreNilCheck:GetName() .. ".OnCheckboxChange")
+	function filterScoreNilCheck.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[1] = self:GetChecked()
+	end
 	
-	filterScore1Check:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[2] = filterScore1Check:GetChecked()
-		end, filterScore1Check:GetName() .. ".OnCheckboxChange")
+	function filterScore1Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[2] = self:GetChecked()
+	end
 	
-	filterScore2Check:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[3] = filterScore2Check:GetChecked()
-		end, filterScore2Check:GetName() .. ".OnCheckboxChange")
+	function filterScore2Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[3] = self:GetChecked()
+	end
 	
-	filterScore3Check:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[4] = filterScore3Check:GetChecked()
-		end, filterScore3Check:GetName() .. ".OnCheckboxChange")
+	function filterScore3Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[4] = self:GetChecked()
+	end
 	
-	filterScore4Check:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[5] = filterScore4Check:GetChecked()
-		end, filterScore4Check:GetName() .. ".OnCheckboxChange")
+	function filterScore4Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[5] = self:GetChecked()
+	end
 	
-	filterScore5Check:EventAttach(Event.UI.Checkbox.Change,
-		function()
-			InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[6] = filterScore5Check:GetChecked()
-		end, filterScore5Check:GetName() .. ".OnCheckboxChange")
+	function filterScore5Check.Event:CheckboxChange()
+		InternalInterface.AccountSettings.Auctions.DefaultScoreFilter[6] = self:GetChecked()
+	end
 	
 	return frame
 end
 
 local function ScoreSettings(parent)
-	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".PriceScoreSettings", parent)
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".PriceScoreSettings", parent)
 	
-	local defaultPriceScorerText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultPriceScorerText", frame)
-	local defaultPriceScorerDropdown = Yague.Dropdown(frame:GetName() .. ".DefaultPriceScorerDropdown", frame)
-	local colorNilSample = Yague.Panel(frame:GetName() .. ".ColorNilSample", frame)
-	local color1Sample = Yague.Panel(frame:GetName() .. ".Color1Sample", frame)
-	local color2Sample = Yague.Panel(frame:GetName() .. ".Color2Sample", frame)
-	local color3Sample = Yague.Panel(frame:GetName() .. ".Color3Sample", frame)
-	local color4Sample = Yague.Panel(frame:GetName() .. ".Color4Sample", frame)
-	local color5Sample = Yague.Panel(frame:GetName() .. ".Color5Sample", frame)
-	local colorNilText = UI.CreateFrame("Text", frame:GetName() .. ".ColorNilText", frame)
-	local color1Text = UI.CreateFrame("Text", frame:GetName() .. ".Color1Text", frame)
-	local color2Text = UI.CreateFrame("Text", frame:GetName() .. ".Color2Text", frame)
-	local color3Text = UI.CreateFrame("Text", frame:GetName() .. ".Color3Text", frame)
-	local color4Text = UI.CreateFrame("Text", frame:GetName() .. ".Color4Text", frame)
-	local color5Text = UI.CreateFrame("Text", frame:GetName() .. ".Color5Text", frame)
-	local color1Limit = Yague.Slider(frame:GetName() .. ".Color1Limit", frame)
-	local color2Limit = Yague.Slider(frame:GetName() .. ".Color2Limit", frame)
-	local color3Limit = Yague.Slider(frame:GetName() .. ".Color3Limit", frame)
-	local color4Limit = Yague.Slider(frame:GetName() .. ".Color4Limit", frame)
-	local samplePanel = Yague.Panel(frame:GetName() .. ".SamplePanel", frame)
-	local color1SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color1SamplePanel", samplePanel:GetContent())
-	local color2SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color2SamplePanel", samplePanel:GetContent())
-	local color3SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color3SamplePanel", samplePanel:GetContent())
-	local color4SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color4SamplePanel", samplePanel:GetContent())
-	local color5SamplePanel = UI.CreateFrame("Frame", frame:GetName() .. ".Color5SamplePanel", samplePanel:GetContent())
+	local defaultPriceScorerText = UICreateFrame("Text", frame:GetName() .. ".DefaultPriceScorerText", frame)
+	local defaultPriceScorerDropdown = Dropdown(frame:GetName() .. ".DefaultPriceScorerDropdown", frame)
+	local colorNilSample = Panel(frame:GetName() .. ".ColorNilSample", frame)
+	local color1Sample = Panel(frame:GetName() .. ".Color1Sample", frame)
+	local color2Sample = Panel(frame:GetName() .. ".Color2Sample", frame)
+	local color3Sample = Panel(frame:GetName() .. ".Color3Sample", frame)
+	local color4Sample = Panel(frame:GetName() .. ".Color4Sample", frame)
+	local color5Sample = Panel(frame:GetName() .. ".Color5Sample", frame)
+	local colorNilText = UICreateFrame("Text", frame:GetName() .. ".ColorNilText", frame)
+	local color1Text = UICreateFrame("Text", frame:GetName() .. ".Color1Text", frame)
+	local color2Text = UICreateFrame("Text", frame:GetName() .. ".Color2Text", frame)
+	local color3Text = UICreateFrame("Text", frame:GetName() .. ".Color3Text", frame)
+	local color4Text = UICreateFrame("Text", frame:GetName() .. ".Color4Text", frame)
+	local color5Text = UICreateFrame("Text", frame:GetName() .. ".Color5Text", frame)
+	local color1Limit = Slider(frame:GetName() .. ".Color1Limit", frame)
+	local color2Limit = Slider(frame:GetName() .. ".Color2Limit", frame)
+	local color3Limit = Slider(frame:GetName() .. ".Color3Limit", frame)
+	local color4Limit = Slider(frame:GetName() .. ".Color4Limit", frame)
+	local samplePanel = Panel(frame:GetName() .. ".SamplePanel", frame)
+	local color1SamplePanel = UICreateFrame("Frame", frame:GetName() .. ".Color1SamplePanel", samplePanel:GetContent())
+	local color2SamplePanel = UICreateFrame("Frame", frame:GetName() .. ".Color2SamplePanel", samplePanel:GetContent())
+	local color3SamplePanel = UICreateFrame("Frame", frame:GetName() .. ".Color3SamplePanel", samplePanel:GetContent())
+	local color4SamplePanel = UICreateFrame("Frame", frame:GetName() .. ".Color4SamplePanel", samplePanel:GetContent())
+	local color5SamplePanel = UICreateFrame("Frame", frame:GetName() .. ".Color5SamplePanel", samplePanel:GetContent())
 
 	local propagateFlag = false
 	
 	local function ResetDefaultPriceScorer()
-		local priceModels = LibPGCEx.Price.List() -- TODO Move to category config and use BananAH ones instead of LibPGCEx ones
-		for id in pairs(priceModels) do
-			local detail = LibPGCEx.Price.Get(id)
-			if detail and detail.name then
-				priceModels[id] = { displayName = detail.name }
-			else
-				priceModels[id] = nil
-			end
-		end
+		local priceModels = GetPriceModels() -- TODO Move to category config and use BananAH ones instead of LibPGCEx ones
+		for id, name in pairs(priceModels) do priceModels[id] = { displayName = name } end
 		local defaultScorer = InternalInterface.AccountSettings.Scoring.ReferencePrice
-		
 		defaultPriceScorerDropdown:SetValues(priceModels)
-		
-		if defaultScorer and priceModels[defaultScorer] then
+		if priceModels[defaultScorer] then
 			defaultPriceScorerDropdown:SetSelectedKey(defaultScorer)
 		end
 	end
@@ -1881,32 +1795,32 @@ local function ScoreSettings(parent)
 	
 	colorNilSample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 90)
 	colorNilSample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 120)
-	colorNilSample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(nil)))
+	colorNilSample:GetContent():SetBackgroundColor(unpack(ScoreColorByIndex(nil)))
 	colorNilSample:SetInvertedBorder(true)
 	
 	color1Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 140)
 	color1Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 170)
-	color1Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(1)))
+	color1Sample:GetContent():SetBackgroundColor(unpack(ScoreColorByIndex(1)))
 	color1Sample:SetInvertedBorder(true)
 	
 	color2Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 190)
 	color2Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 220)
-	color2Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(2)))
+	color2Sample:GetContent():SetBackgroundColor(unpack(ScoreColorByIndex(2)))
 	color2Sample:SetInvertedBorder(true)
 	
 	color3Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 240)
 	color3Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 270)
-	color3Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(3)))
+	color3Sample:GetContent():SetBackgroundColor(unpack(ScoreColorByIndex(3)))
 	color3Sample:SetInvertedBorder(true)
 	
 	color4Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 290)
 	color4Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 320)
-	color4Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(4)))
+	color4Sample:GetContent():SetBackgroundColor(unpack(ScoreColorByIndex(4)))
 	color4Sample:SetInvertedBorder(true)
 	
 	color5Sample:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 340)
 	color5Sample:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", 40, 370)
-	color5Sample:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(5)))
+	color5Sample:GetContent():SetBackgroundColor(unpack(ScoreColorByIndex(5)))
 	color5Sample:SetInvertedBorder(true)
 	
 	colorNilText:SetPoint("CENTERLEFT", colorNilSample, "CENTERRIGHT", 10, 0)
@@ -1955,13 +1869,13 @@ local function ScoreSettings(parent)
 	
 	samplePanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 390)
 	samplePanel:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -10, 420)
-	samplePanel:GetContent():SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(nil)))
+	samplePanel:GetContent():SetBackgroundColor(unpack(ScoreColorByIndex(nil)))
 	
-	color1SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(1)))
-	color2SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(2)))
-	color3SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(3)))
-	color4SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(4)))
-	color5SamplePanel:SetBackgroundColor(unpack(InternalInterface.UI.ScoreColorByIndex(5)))
+	color1SamplePanel:SetBackgroundColor(unpack(ScoreColorByIndex(1)))
+	color2SamplePanel:SetBackgroundColor(unpack(ScoreColorByIndex(2)))
+	color3SamplePanel:SetBackgroundColor(unpack(ScoreColorByIndex(3)))
+	color4SamplePanel:SetBackgroundColor(unpack(ScoreColorByIndex(4)))
+	color5SamplePanel:SetBackgroundColor(unpack(ScoreColorByIndex(5)))
 	
 	function defaultPriceScorerDropdown.Event:SelectionChanged()
 		local index = self:GetSelectedValue()
@@ -1972,9 +1886,9 @@ local function ScoreSettings(parent)
 	function color1Limit.Event:PositionChanged(position)
 		if not propagateFlag then
 			propagateFlag = true
-			color2Limit:SetPosition(math.max(position, color2Limit:GetPosition()))
-			color3Limit:SetPosition(math.max(color2Limit:GetPosition(), color3Limit:GetPosition()))
-			color4Limit:SetPosition(math.max(color3Limit:GetPosition(), color4Limit:GetPosition()))
+			color2Limit:SetPosition(MMax(position, color2Limit:GetPosition()))
+			color3Limit:SetPosition(MMax(color2Limit:GetPosition(), color3Limit:GetPosition()))
+			color4Limit:SetPosition(MMax(color3Limit:GetPosition(), color4Limit:GetPosition()))
 			propagateFlag = false
 			ResetColorSample()
 		end
@@ -1983,9 +1897,9 @@ local function ScoreSettings(parent)
 	function color2Limit.Event:PositionChanged(position)
 		if not propagateFlag then
 			propagateFlag = true
-			color1Limit:SetPosition(math.min(color1Limit:GetPosition(), position))
-			color3Limit:SetPosition(math.max(position, color3Limit:GetPosition()))
-			color4Limit:SetPosition(math.max(color3Limit:GetPosition(), color4Limit:GetPosition()))
+			color1Limit:SetPosition(MMin(color1Limit:GetPosition(), position))
+			color3Limit:SetPosition(MMax(position, color3Limit:GetPosition()))
+			color4Limit:SetPosition(MMax(color3Limit:GetPosition(), color4Limit:GetPosition()))
 			propagateFlag = false
 			ResetColorSample()
 		end
@@ -1994,9 +1908,9 @@ local function ScoreSettings(parent)
 	function color3Limit.Event:PositionChanged(position)
 		if not propagateFlag then
 			propagateFlag = true
-			color2Limit:SetPosition(math.min(color2Limit:GetPosition(), position))
-			color1Limit:SetPosition(math.min(color1Limit:GetPosition(), color2Limit:GetPosition()))
-			color4Limit:SetPosition(math.max(position, color4Limit:GetPosition()))
+			color2Limit:SetPosition(MMin(color2Limit:GetPosition(), position))
+			color1Limit:SetPosition(MMin(color1Limit:GetPosition(), color2Limit:GetPosition()))
+			color4Limit:SetPosition(MMax(position, color4Limit:GetPosition()))
 			propagateFlag = false
 			ResetColorSample()
 		end
@@ -2005,9 +1919,9 @@ local function ScoreSettings(parent)
 	function color4Limit.Event:PositionChanged(position)
 		if not propagateFlag then
 			propagateFlag = true
-			color3Limit:SetPosition(math.min(color3Limit:GetPosition(), position))
-			color2Limit:SetPosition(math.min(color2Limit:GetPosition(), color3Limit:GetPosition()))
-			color1Limit:SetPosition(math.min(color1Limit:GetPosition(), color2Limit:GetPosition()))
+			color3Limit:SetPosition(MMin(color3Limit:GetPosition(), position))
+			color2Limit:SetPosition(MMin(color2Limit:GetPosition(), color3Limit:GetPosition()))
+			color1Limit:SetPosition(MMin(color1Limit:GetPosition(), color2Limit:GetPosition()))
 			propagateFlag = false
 			ResetColorSample()
 		end
@@ -2020,9 +1934,9 @@ local function ScoreSettings(parent)
 end
 
 local function PriceSettings(parent)
-	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".PriceSettings", parent)
-
-	local topSelector, topControls = InternalInterface.UI.BuildConfigFrame(frame:GetName() .. ".TopSelector", frame, 
+	local frame = UICreateFrame("Frame", parent:GetName() .. ".PriceSettings", parent)
+	
+	local topSelector, topControls = BuildConfigFrame(frame:GetName() .. ".TopSelector", frame, 
 		{
 			category =
 			{
@@ -2052,10 +1966,10 @@ local function PriceSettings(parent)
 				columns = 1,
 			},		
 		})
-	local saveButton = UI.CreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame)
-
-	local postFrame = UI.CreateFrame("Frame", frame:GetName() .. ".PostFrame", frame)
-	local stackSelector, stackControls = InternalInterface.UI.BuildConfigFrame(postFrame:GetName() .. ".StackSelector", postFrame,
+	local saveButton = UICreateFrame("RiftButton", frame:GetName() .. ".SaveButton", frame)
+	
+	local postFrame = UICreateFrame("Frame", frame:GetName() .. ".PostFrame", frame)
+	local stackSelector, stackControls = BuildConfigFrame(postFrame:GetName() .. ".StackSelector", postFrame,
 		{
 			stackSize =
 			{
@@ -2082,8 +1996,7 @@ local function PriceSettings(parent)
 				columns = 1,
 			},
 		})
-	
-	local postSelector, postControls = InternalInterface.UI.BuildConfigFrame(postFrame:GetName() .. ".StackSelector", postFrame,
+	local postSelector, postControls = BuildConfigFrame(postFrame:GetName() .. ".StackSelector", postFrame,
 		{
 			duration =
 			{
@@ -2100,24 +2013,24 @@ local function PriceSettings(parent)
 				columns = 1,
 			},
 		})
-	local incompleteStackLabel = Yague.ShadowedText(postFrame:GetName() .. ".IncompleteStackLabel", postFrame)
-	local incompleteStackCheck = UI.CreateFrame("RiftCheckbox", postFrame:GetName() .. ".IncompleteStackCheck", postFrame)
-	local priceGrid = Yague.DataGrid(postFrame:GetName() .. ".PriceModelGrid", postFrame)
-	local controlFrame = UI.CreateFrame("Frame", postFrame:GetName() .. ".ControlFrame", priceGrid:GetContent())
-	local deleteButton = UI.CreateFrame("RiftButton", postFrame:GetName() .. ".DeleteButton", controlFrame)
-	local editButton = UI.CreateFrame("RiftButton", postFrame:GetName() .. ".EditButton", controlFrame)
-	local newButton = UI.CreateFrame("RiftButton", postFrame:GetName() .. ".NewButton", controlFrame)
-	local matchPanel = Yague.Panel(postFrame:GetName() .. ".MatchPanel", controlFrame)
-	local matchCheck = UI.CreateFrame("RiftCheckbox", postFrame:GetName() .. ".MatchCheck", matchPanel:GetContent())
-	local matchText = UI.CreateFrame("Text", postFrame:GetName() .. ".MatchLabel", matchPanel:GetContent())
-
+	local incompleteStackLabel = ShadowedText(postFrame:GetName() .. ".IncompleteStackLabel", postFrame)
+	local incompleteStackCheck = UICreateFrame("RiftCheckbox", postFrame:GetName() .. ".IncompleteStackCheck", postFrame)
+	local priceGrid = DataGrid(postFrame:GetName() .. ".PriceModelGrid", postFrame)
+	local controlFrame = UICreateFrame("Frame", postFrame:GetName() .. ".ControlFrame", priceGrid:GetContent())
+	local deleteButton = UICreateFrame("RiftButton", postFrame:GetName() .. ".DeleteButton", controlFrame)
+	local editButton = UICreateFrame("RiftButton", postFrame:GetName() .. ".EditButton", controlFrame)
+	local newButton = UICreateFrame("RiftButton", postFrame:GetName() .. ".NewButton", controlFrame)
+	local matchPanel = Panel(postFrame:GetName() .. ".MatchPanel", controlFrame)
+	local matchCheck = UICreateFrame("RiftCheckbox", postFrame:GetName() .. ".MatchCheck", matchPanel:GetContent())
+	local matchText = UICreateFrame("Text", postFrame:GetName() .. ".MatchLabel", matchPanel:GetContent())
+	
 	local currentCategory = topControls.category:GetSelectedValue()
 	local currentDefaultModel = nil
 	local currentFallbackModel = nil
 	local modelDeleted = false
 
 	local function CheckInheritEnabled()
-		local enable = currentCategory ~= InternalInterface.Category.BASE_CATEGORY
+		local enable = currentCategory ~= BASE_CATEGORY
 		
 		local models = priceGrid:GetData()
 		for modelID, modelInfo in pairs(models) do
@@ -2152,11 +2065,11 @@ local function PriceSettings(parent)
 					end
 				end
 			end
-			InternalInterface.PGCConfig.SaveCategoryModels(category, preserve, new)
+			SaveCategoryModels(category, preserve, new)
 			modelDeleted = false
 			priceGrid:RefreshFilter()
 		else
-			InternalInterface.PGCConfig.ClearCategoryModels(category)
+			ClearCategoryModels(category)
 		end
 	end
 	
@@ -2179,7 +2092,7 @@ local function PriceSettings(parent)
 			StackSize = stackControls.stackSize:GetPosition(),
 			AuctionLimit = stackControls.maxAuctions:GetPosition(),
 			PostIncomplete = incompleteStackCheck:GetChecked(),
-			Duration = math.min(postControls.duration:GetPosition() / 12, 3),
+			Duration = MMin(postControls.duration:GetPosition() / 12, 3),
 			BlackList = blackList,
 		}
 	end
@@ -2196,7 +2109,7 @@ local function PriceSettings(parent)
 		incompleteStackCheck:SetChecked(settings.PostIncomplete)
 		postControls.duration:SetPosition(45 + settings.Duration) -- HACK
 
-		local models = InternalInterface.PGCConfig.GetCategoryModels(currentCategory)
+		local models = GetCategoryModels(currentCategory)
 		local blackList = settings.BlackList or {}
 		for model, modelInfo in pairs(models) do
 			modelInfo.enabled = not blackList[model]
@@ -2237,7 +2150,7 @@ local function PriceSettings(parent)
 		
 		return true
 	end
-
+	
 	local function OpenEditor(manager, modelID, modelType, modelInfo, onSave)
 		if modelType == "simple" then
 			manager:ShowPopup(addonID .. ".SimplePriceModel", modelInfo, onSave)
@@ -2256,7 +2169,7 @@ local function PriceSettings(parent)
 			manager:ShowPopup(addonID .. ".CompositePriceModel", availableModels, modelInfo, onSave)
 		end
 	end
-
+	
 	local function UpdateButtons()
 		local modelID, modelInfo = priceGrid:GetSelectedData()
 		
@@ -2265,7 +2178,7 @@ local function PriceSettings(parent)
 		local deleteable = modelInfo and modelInfo.own and modelID:sub(1, 3) == "bah" and true or false
 		deleteable = deleteable and modelID ~= currentDefaultModel and modelID ~= currentFallbackModel
 		if deleteable then
-			local allCategories = InternalInterface.Category.List()
+			local allCategories = CList()
 			for category in pairs(allCategories) do
 				if category ~= currentCategory then
 					local categoryConfig = InternalInterface.AccountSettings.Posting.CategoryConfig[category] or {}
@@ -2320,10 +2233,9 @@ local function PriceSettings(parent)
 		priceGrid:RefreshFilter()
 	end
 
-	
 	saveButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 25)
 	saveButton:SetText(L["ConfigPrice/ButtonSave"])
-
+	
 	topSelector:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 5)
 	topSelector:SetPoint("RIGHT", saveButton, "LEFT")
 
@@ -2390,12 +2302,11 @@ local function PriceSettings(parent)
 	matchText:SetText(L["ConfigPrice/ApplyMatching"])
 	
 	topSelector:SetLayer(9999)
-
-	if currentCategory ~= InternalInterface.Category.BASE_CATEGORY then
-		currentCategory = InternalInterface.Category.BASE_CATEGORY
-		topControls.category:SetSelectedKey(InternalInterface.Category.BASE_CATEGORY)
+	
+	if currentCategory ~= BASE_CATEGORY then
+		currentCategory = BASE_CATEGORY
+		topControls.category:SetSelectedKey(BASE_CATEGORY)
 	end
-
 	SetEditSettings(GetSavedSettings(currentCategory))
 	
 	function topControls.category.Event:SelectionChanged(category)
@@ -2406,8 +2317,8 @@ local function PriceSettings(parent)
 				while not settings do
 					settings = GetSavedSettings(category)
 					if not settings then
-						local detail = InternalInterface.Category.Detail(category)
-						category = detail and detail.parent or InternalInterface.Category.BASE_CATEGORY
+						local detail = CDetail(category)
+						category = detail and detail.parent or BASE_CATEGORY
 					end
 				end
 				SetEditSettings(settings, category ~= currentCategory)
@@ -2419,7 +2330,7 @@ local function PriceSettings(parent)
 			end
 			
 			local equal = CompareSettings(GetEditSettings(), GetSavedSettings(currentCategory))
-			local manager = InternalInterface.Output.GetPopupManager()
+			local manager = GetPopupManager()
 			
 			if not equal and manager then
 				manager:ShowPopup(addonID .. ".UnsavedChanges", ContinueChange, CancelChange)
@@ -2433,52 +2344,48 @@ local function PriceSettings(parent)
 		postFrame:SetVisible(inheritance == "own")
 	end
 	
-	saveButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			SetSavedSettings(currentCategory, GetEditSettings())
-		end, saveButton:GetName() .. ".OnLeftPress")
+	function saveButton.Event:LeftPress()
+		SetSavedSettings(currentCategory, GetEditSettings())
+	end
 
 	function priceGrid.Event:SelectionChanged()
 		UpdateButtons()
 	end
 	
-	newButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			local manager = InternalInterface.Output.GetPopupManager()
-			if manager then
-				local modelID = "bah" .. os.time()
-				local onSave = function(info) ModifyModel(modelID, info) end
-				local modelInfo = { id = modelID, name = "", matchers = {}, enabled = true, original = false, own = true }
-				manager:ShowPopup(addonID .. ".NewModel", 
-					function(modelType)
-						modelInfo.modelType = modelType
-						modelInfo.usage = modelType == "complex" and "" or {}
-						OpenEditor(manager, modelID, modelType, modelInfo, onSave) 
-					end)
-			end
-		end, newButton:GetName() .. ".OnLeftPress")
+	function newButton.Event:LeftPress()
+		local manager = GetPopupManager()
+		if manager then
+			local modelID = "bah" .. OsTime()
+			local onSave = function(info) ModifyModel(modelID, info) end
+			local modelInfo = { id = modelID, name = "", matchers = {}, enabled = true, original = false, own = true }
+			manager:ShowPopup(addonID .. ".NewModel", 
+				function(modelType)
+					modelInfo.modelType = modelType
+					modelInfo.usage = modelType == "complex" and "" or {}
+					OpenEditor(manager, modelID, modelType, modelInfo, onSave) 
+				end)
+		end
+	end
 	
-	editButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			local manager = InternalInterface.Output.GetPopupManager()
-			local modelID, modelInfo = priceGrid:GetSelectedData()
-			if manager and modelID and modelInfo then
-				local modelType = modelInfo.modelType
-				local onSave = function(info) ModifyModel(modelID, info) end
-				OpenEditor(manager, modelID, modelType, modelInfo, onSave)
-			end
-		end, editButton:GetName() .. ".OnLeftPress")
+	function editButton.Event:LeftPress()
+		local manager = GetPopupManager()
+		local modelID, modelInfo = priceGrid:GetSelectedData()
+		if manager and modelID and modelInfo then
+			local modelType = modelInfo.modelType
+			local onSave = function(info) ModifyModel(modelID, info) end
+			OpenEditor(manager, modelID, modelType, modelInfo, onSave)
+		end
+	end
 	
-	deleteButton:EventAttach(Event.UI.Button.Left.Press,
-		function()
-			local modelID = priceGrid:GetSelectedData()
-			if modelID then
-				local allModels = priceGrid:GetData()
-				allModels[modelID] = nil
-				priceGrid:SetData(allModels, nil, CheckInheritEnabled)
-				modelDeleted = true
-			end
-		end, deleteButton:GetName() .. ".OnLeftPress")
+	function deleteButton.Event:LeftPress()
+		local modelID = priceGrid:GetSelectedData()
+		if modelID then
+			local allModels = priceGrid:GetData()
+			allModels[modelID] = nil
+			priceGrid:SetData(allModels, nil, CheckInheritEnabled)
+			modelDeleted = true
+		end
+	end
 
 	return frame
 end
@@ -2490,6 +2397,9 @@ local function LoadConfigScreens(parent)
 	screens["search"] = { title = L["ConfigFrame/CategorySearch"], frame = SearchSettings(parent), order = 100 }
 	screens["post"] = { title = L["ConfigFrame/CategoryPost"], frame = PostingSettings(parent), order = 200 }
 	screens["selling"] = { title = L["ConfigFrame/CategorySelling"], frame = AuctionsSettings(parent), order = 300 }
+	--screens["tracking"] = { title = L["ConfigFrame/CategoryTracking"], frame = nil, order = 400 }
+	screens["map"] = { title = L["ConfigFrame/CategoryMap"], frame = nil, order = 500 }
+	--screens["history"] = { title = L["ConfigFrame/CategoryHistory"], frame = nil, order = 600 }
 	screens["pricing"] = { title = L["ConfigFrame/CategoryPricing"], frame = PriceSettings(parent), order = 1000 }
 	screens["scoring"] = { title = L["ConfigFrame/CategoryScoring"], frame = ScoreSettings(parent), order = 2000 }
 	
@@ -2497,9 +2407,9 @@ local function LoadConfigScreens(parent)
 end
 
 function InternalInterface.UI.ConfigFrame(name, parent)
-	local configFrame = UI.CreateFrame("Frame", name, parent)
-	local configSelector = Yague.DataGrid(name .. ".ConfigSelector", configFrame)
-	local configDisplay = UI.CreateFrame("Mask", name .. ".ConfigDisplay", configFrame)
+	local configFrame = UICreateFrame("Frame", name, parent)
+	local configSelector = DataGrid(name .. ".ConfigSelector", configFrame)
+	local configDisplay = UICreateFrame("Mask", name .. ".ConfigDisplay", configFrame)
 	
 	local lastShownFrame = nil
 	

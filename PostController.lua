@@ -1,13 +1,35 @@
 -- ***************************************************************************************************************************************************
 -- * PostController.lua                                                                                                                              *
 -- ***************************************************************************************************************************************************
+-- * Post tab controller                                                                                                                             *
+-- ***************************************************************************************************************************************************
 -- * 0.4.4 / 2013.02.07 / Baanano: Extracted model logic from PostFrame                                                                              *
 -- ***************************************************************************************************************************************************
 
 local addonInfo, InternalInterface = ...
 local addonID = addonInfo.identifier
 
+local BASE_CATEGORY = InternalInterface.Category.BASE_CATEGORY
+local GetActiveAuctionsScored = InternalInterface.PGCExtensions.GetActiveAuctionsScored
+local GetCategoryModels = InternalInterface.PGCConfig.GetCategoryModels
+local GetPostingQueue = LibPGC.GetPostingQueue
+local GetPostingSettings = InternalInterface.Helper.GetPostingSettings
+local GetPriceModels = LibPGCEx.GetPriceModels
+local GetPrices = LibPGCEx.GetPrices
+local IIDetail = Inspect.Item.Detail
+local IIList = Inspect.Item.List
 local L = InternalInterface.Localization.L
+local MCeil = math.ceil
+local MFloor = math.floor
+local MMax = math.max
+local MMin = math.min
+local PostItem = LibPGC.PostItem
+local TInsert = table.insert
+local UISInventory = Utility.Item.Slot.Inventory
+local ipairs = ipairs
+local pairs = pairs
+local pcall = pcall
+local type = type
 
 local FIXED_MODEL_ID = "fixed"
 local FIXED_MODEL_NAME = L["PriceModels/Fixed"]
@@ -16,7 +38,7 @@ local active = false
 local itemList = {}
 local showHiddenItems = false
 local selectedItemType = nil
-local reloadTask = nil
+local lastLoadSeq = 0
 local lastAuctions = {}
 
 InternalInterface.Control = InternalInterface.Control or {}
@@ -36,10 +58,10 @@ local function RefreshItemList()
 	local changed = false
 	local newItemList = {}
 	
-	local items = Inspect.Item.List(Utility.Item.Slot.Inventory())
+	local items = IIList(UISInventory())
 	for _, itemID in pairs(items) do repeat
 		if type(itemID) ~= "string" then break end
-		local ok, itemDetail = pcall(Inspect.Item.Detail, itemID)
+		local ok, itemDetail = pcall(IIDetail, itemID)
 		if not ok or not itemDetail or itemDetail.bound then break end
 		
 		local itemType = itemDetail.type
@@ -53,7 +75,7 @@ local function RefreshItemList()
 			adjustedStack = 0,
 			stackMax = itemDetail.stackMax or 1,
 			sell = itemDetail.sell,
-			category = itemDetail.category or InternalInterface.Category.BASE_CATEGORY,
+			category = itemDetail.category or BASE_CATEGORY,
 			visibility = (InternalInterface.AccountSettings.Posting.HiddenItems[itemType] and "HideAll") or
 			             (InternalInterface.CharacterSettings.Posting.HiddenItems[itemType] and "HideChar") or
 						 "Show",
@@ -65,7 +87,7 @@ local function RefreshItemList()
 		changed = changed or not itemList[itemType]
 	until true end
 	
-	local postingQueue = LibPGC.Queue.Detail()
+	local postingQueue = GetPostingQueue()
 	for _, postOrder in ipairs(postingQueue) do
 		local itemData = newItemList[postOrder.itemType] or nil
 		if itemData then
@@ -107,9 +129,9 @@ local function OnInventoryChange()
 		RefreshItemList()
 	end
 end
-Command.Event.Attach(Event.Item.Slot, OnInventoryChange, addonID .. ".PostController.OnItemSlot")
-Command.Event.Attach(Event.Item.Update, OnInventoryChange, addonID .. ".PostController.OnItemUpdate")
-Command.Event.Attach(Event.LibPGC.Queue.Changed, OnInventoryChange, addonID .. ".PostController.OnPostingQueueChanged")	
+TInsert(Event.Item.Slot, { OnInventoryChange, addonID, addonID .. ".PostController.OnItemSlot" })
+TInsert(Event.Item.Update, { OnInventoryChange, addonID, addonID .. ".PostController.OnItemUpdate" })
+TInsert(Event.LibPGC.PostingQueueChanged, { OnInventoryChange, addonID, addonID .. ".PostController.OnPostingQueueChanged" })	
 
 local function SetActive(value)
 	value = value and true or false
@@ -123,56 +145,51 @@ end
 
 local function ReloadAuctions(itemType, itemInfo)
 	local category = itemInfo.category
-	local itemSettings = InternalInterface.Helper.GetPostingSettings(itemType, category)
+	local itemSettings = GetPostingSettings(itemType, category)
 
-	local models = InternalInterface.PGCConfig.GetCategoryModels(category)
+	local models = GetCategoryModels(category)
 	local blackList = itemSettings.blackList or {}
 	for modelID in pairs(blackList) do
 		models[modelID] = nil
 	end
+
+	lastLoadSeq = lastLoadSeq + 1
+	local loadSeq = lastLoadSeq
 	
-	if reloadTask and not reloadTask:Finished() then
-		reloadTask:Stop()
-	end
+	GetPrices(function(prices)
+		if lastLoadSeq == loadSeq then
+			local priceModels = GetPriceModels()
+			for priceID, priceData in pairs(prices) do
+				local priceModelName = priceModels[priceID]
+				if priceModelName then
+					priceData.displayName = priceModelName
+				else
+					prices[priceID] = nil
+				end
+			end
 	
+			prices[FIXED_MODEL_ID] = { displayName = FIXED_MODEL_NAME, bid = itemSettings.lastBid or 0, buy = itemSettings.lastBuy or 0 }
+		
+			FireEvent(InternalInterface.Control.PostController.PricesChanged, prices)
+		end
+	end, itemType, itemSettings.bidPercentage, models, false)		
+
 	lastAuctions = {}
 	
-	reloadTask = blTasks.Task.Create(
-		function(taskHandle)
-			local priceTask = blTasks.Task.Create(
-				function(taskHandle)
-					local prices = LibPGCEx.Price.Calculate(itemType, models, itemSettings.bidPercentage, false):Result()
-
-					for priceID, priceData in pairs(prices) do
-						local priceDefinition = LibPGCEx.Price.Get(priceID)
-						if priceDefinition then
-							priceData.displayName = priceDefinition.name
-						else
-							prices[priceID] = nil
-						end
-					end
-
-					prices[FIXED_MODEL_ID] = { displayName = FIXED_MODEL_NAME, bid = itemSettings.lastBid or 0, buy = itemSettings.lastBuy or 0 }
-	
-					FireEvent(InternalInterface.Control.PostController.PricesChanged, prices)
-				end):Start()
-
-			local auctionsTask = blTasks.Task.Create(
-				function(taskHandle)
-					lastAuctions = InternalInterface.PGCExtensions.GetActiveAuctionsScored(itemType):Result()
-					FireEvent(InternalInterface.Control.PostController.AuctionsChanged, lastAuctions)
-				end):Start()
-			
-			taskHandle:Wait(blTasks.Wait.Children())
-		end):Start():Abandon()
+	GetActiveAuctionsScored(function(auctions)
+		if lastLoadSeq == loadSeq then
+			lastAuctions = auctions
+			FireEvent(InternalInterface.Control.PostController.AuctionsChanged, auctions)
+		end
+	end, itemType)
 end
 
-local function OnAuctionData(h, criteria, timeElapsed, results)
-	if selectedItemType and results.itemTypes.list.all[selectedItemType] and itemList[selectedItemType] then
+local function OnAuctionData(scanType, totalAuctions, newAuctions, updatedAuctions, removedAuctions, beforeExpireAuctions, totalItemTypes, newItemTypes, updatedItemTypes, removedItemTypes, modifiedItemTypes)
+	if selectedItemType and totalItemTypes[selectedItemType] and itemList[selectedItemType] then
 		ReloadAuctions(selectedItemType, itemList[selectedItemType])
 	end
 end
-Command.Event.Attach(Event.LibPGC.Scan.End, OnAuctionData, addonID .. ".PostController.OnAuctionData")
+TInsert(Event.LibPGC.AuctionData, { OnAuctionData, addonID, addonID .. ".PostController.OnAuctionData" })
 
 InternalInterface.Control.PostController.ItemListChanged = {}
 InternalInterface.Control.PostController.ItemAdjustedStackChanged = {}
@@ -270,10 +287,10 @@ function InternalInterface.Control.PostController.PostItem(settings)
 		
 		stackSize = stackSize == "+" and itemInfo.stackMax or stackSize
 		if type(stackSize) ~= "number" then stackSize = 0 end
-		
+
 		if stackSize > 0 and itemInfo.adjustedStack then
 			local stacks = itemInfo.adjustedStack
-			local Round = settings.postIncomplete and math.ceil or math.floor
+			local Round = settings.postIncomplete and MCeil or MFloor
 			
 			if type(auctionLimit) == "number" then
 				for _, auctionData in pairs(lastAuctions) do
@@ -282,20 +299,20 @@ function InternalInterface.Control.PostController.PostItem(settings)
 					end
 				end
 				
-				for _, postData in pairs(LibPGC.Queue.Detail()) do
+				for _, postData in pairs(GetPostingQueue()) do
 					if postData.itemType == selectedItemType then
-						auctionLimit = auctionLimit - 1
+						auctionLimit = auctionLimit - MCeil(postData.amount / postData.stackSize)
 					end
 				end
 			
-				auctionLimit = math.max(math.min(auctionLimit, Round(stacks / stackSize)), 0)
+				auctionLimit = MMax(MMin(auctionLimit, Round(stacks / stackSize)), 0)
 			else
 				auctionLimit = stackSize > 0 and Round(stacks / stackSize) or 0
 			end
 		end
 
 		buyUnitPrice = buyUnitPrice > 0 and buyUnitPrice or nil
-		local amount = math.min(stackSize * auctionLimit, itemInfo.adjustedStack)
+		local amount = MMin(stackSize * auctionLimit, itemInfo.adjustedStack)
 
 		if stackSize <= 0 then
 			return L["PostFrame/ErrorPostStackSize"]
@@ -308,7 +325,7 @@ function InternalInterface.Control.PostController.PostItem(settings)
 		end
 		
 		local itemType = selectedItemType
-		if LibPGC.Queue.Post(itemType, stackSize, amount, bidUnitPrice, buyUnitPrice, duration) then
+		if PostItem(itemType, stackSize, amount, bidUnitPrice, buyUnitPrice, duration) then
 			InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] = settings
 			return true
 		end

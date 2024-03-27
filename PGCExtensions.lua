@@ -1,6 +1,8 @@
 -- ***************************************************************************************************************************************************
 -- * PGCExtensions.lua                                                                                                                               *
 -- ***************************************************************************************************************************************************
+-- * Extends LibPGC and LibPGCEx with functionality needed by BananAH                                                                                *
+-- ***************************************************************************************************************************************************
 -- * 0.4.1 / 2012.08.01 / Baanano: Updated for 0.4.1                                                                                                 *
 -- * 0.4.0 / 2012.05.31 / Baanano: Rewritten AHMonitoringService.lua                                                                                 *
 -- ***************************************************************************************************************************************************
@@ -11,120 +13,136 @@ local addonID = addonInfo.identifier
 local GetActiveAuctionData = LibPGC.GetActiveAuctionData
 local GetOwnAuctionData = LibPGC.GetOwnAuctionData
 local GetPrices = LibPGCEx.GetPrices
+local MFloor = math.floor
+local TInsert = table.insert
+local ipairs = ipairs
+local pairs = pairs
+local type = type
 
 InternalInterface.PGCExtensions = InternalInterface.PGCExtensions or {}
 
-function InternalInterface.PGCExtensions.GetActiveAuctionsScored(item)
-	return blTasks.Task.Create(
-		function(taskHandle)
-			local referencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice
-			local activeAuctions = LibPGC.Search.Active(item):Result()
-			
-			local itemTypes = {}
-			
-			for auctionID, auctionData in pairs(activeAuctions) do
-				local auctionItemType = auctionData.itemType
-				itemTypes[auctionItemType] = itemTypes[auctionItemType] or {}
-				itemTypes[auctionItemType][#itemTypes[auctionItemType] + 1] = auctionID
-			end
-
-			local priceTasks = {}
-			for itemType in pairs(itemTypes) do
-				priceTasks[itemType] = LibPGCEx.Price.Calculate(itemType, referencePrice, 1, true)
-			end
-
-			taskHandle:Wait(blTasks.Wait.Children())
-			
-			local prices = {}
-			for itemType, priceTask in pairs(priceTasks) do
-				local ok, price = pcall(priceTask.Result, priceTask)
-				if ok then
-					prices[itemType] = price and price[referencePrice] and price[referencePrice].buy and price[referencePrice].buy > 0 and price[referencePrice].buy or nil
-				end
-			end
-			
-			for auctionID, auctionData in pairs(activeAuctions) do
-				if auctionData.buyoutUnitPrice > 0 and prices[auctionData.itemType] then
-					auctionData.score = math.floor(auctionData.buyoutUnitPrice * 100 / prices[auctionData.itemType])
-				end
-			end
-			
-			return activeAuctions			
-		end):Start()
-end
-
-function InternalInterface.PGCExtensions.GetOwnAuctionsScoredCompetition()
-	return blTasks.Task.Create(
-		function(taskHandle)
-			local referencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice
-			local activeAuctions = LibPGC.Search.Active():Result()
-			
-			local itemTypes = {}
-			local ownItemTypes = {}
-			local ownAuctions = {}
-			
-			for auctionID, auctionData in pairs(activeAuctions) do
-				local auctionItemType = auctionData.itemType
-				
-				itemTypes[auctionItemType] = itemTypes[auctionItemType] or {}
-				itemTypes[auctionItemType][#itemTypes[auctionItemType] + 1] = auctionID
-				
-				if auctionData.own then
-					ownAuctions[auctionID] = auctionData
-					ownItemTypes[auctionItemType] = true
-				end
-				
-				taskHandle:BreathShort()
-			end
-			
-			local priceTasks = {}
-			for itemType in pairs(ownItemTypes) do
-				priceTasks[itemType] = LibPGCEx.Price.Calculate(itemType, referencePrice, 1, true)
-			end
-			
-			for auctionID, auctionData in pairs(ownAuctions) do
-				local auctionItemType = auctionData.itemType
-				local buy = auctionData.buyoutUnitPrice and auctionData.buyoutUnitPrice > 0 and auctionData.buyoutUnitPrice or nil
-				
-				local ok, price = pcall(priceTasks[auctionItemType].Result, priceTasks[auctionItemType])
-				local scorePrice = ok and price and price[referencePrice] and price[referencePrice].buy > 0 and price[referencePrice].buy or nil
-				
-				local below, above, total = 0, 0, 1
-				
-				auctionData.competition = {}
-				
-				for index = 1, #itemTypes[auctionItemType] do
-					local competitionID = itemTypes[auctionItemType][index]
-					local competitionData = activeAuctions[competitionID]
-					local competitionBuy = competitionData.buyoutUnitPrice
-					
-					competitionData.score = competitionBuy and scorePrice and math.floor(competitionBuy * 100 / scorePrice)
-					auctionData.competition[competitionID] = competitionData
-
-					if buy and competitionBuy and competitionBuy > 0 and not competitionData.own then
-						total = total + 1
-						
-						if buy < competitionBuy then
-							above = above + 1
-						elseif buy > competitionBuy then
-							below = below + 1
-						end
+function InternalInterface.PGCExtensions.GetActiveAuctionsScored(callback, item)
+	if type(callback) ~= "function" then return end
+	
+	local referencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice
+	
+	local function ProcessAuctions(auctions)
+		local remainingItemTypes = 1
+		local itemTypes = {}
+		
+		for auctionID, auctionData in pairs(auctions) do
+			local auctionItemType = auctionData.itemType
+			itemTypes[auctionItemType] = itemTypes[auctionItemType] or {}
+			TInsert(itemTypes[auctionItemType], auctionID)
+		end
+		
+		local function AssignScore(itemType, prices)
+			local price = prices and prices[referencePrice] or nil
+			if itemType and price and price.buy and price.buy > 0 then
+				for _, auctionID in ipairs(itemTypes[itemType]) do
+					local auctionData = auctions[auctionID]
+					if auctionData.buyoutUnitPrice then
+						auctionData.score = MFloor(auctionData.buyoutUnitPrice * 100 / price.buy)
 					end
 				end
-				
-				auctionData.competitionBelow = below
-				auctionData.competitionAbove = above
-				auctionData.competitionQuintile = math.floor(below * 5 / total) + 1
-				auctionData.competitionOrder = auctionData.competitionQuintile * 10000 + below
-				
-				taskHandle:BreathShort()
 			end
-			
-			return ownAuctions
-		end):Start()
+			remainingItemTypes = remainingItemTypes - 1
+			if remainingItemTypes <= 0 then
+				callback(auctions)
+			end
+		end
+		
+		for itemType in pairs(itemTypes) do
+			if GetPrices(function(prices) AssignScore(itemType, prices) end, itemType, 1, referencePrice, true) then
+				remainingItemTypes = remainingItemTypes + 1
+			end
+		end
+		AssignScore()
+	end
+	
+	GetActiveAuctionData(ProcessAuctions, item)
 end
 
---[[
+function InternalInterface.PGCExtensions.GetOwnAuctionsScoredCompetition(callback)
+	if type(callback) ~= "function" then return end
+	
+	local referencePrice = InternalInterface.AccountSettings.Scoring.ReferencePrice
+	
+	local function ProcessAuctions(auctions)
+		local scoreRemaining = 0
+		local competitionRemaining = 0
+		local auctionsByItemType = {}
+		
+		local function CheckEnd()
+			if scoreRemaining <= 0 and competitionRemaining <= 0 then
+				callback(auctions)
+			end
+		end
+		
+		local function AssignScore(itemType, prices)
+			local price = prices and prices[referencePrice] or nil
+			if itemType and price and price.buy and price.buy > 0 then
+				for _, auctionID in ipairs(auctionsByItemType[itemType]) do
+					local auctionData = auctions[auctionID]
+					if auctionData.buyoutUnitPrice then
+						auctionData.score = MFloor(auctionData.buyoutUnitPrice * 100 / price.buy)
+					end
+				end
+			end
+			scoreRemaining = scoreRemaining - 1
+			CheckEnd()
+		end
+		
+		local function AssignCompetition(itemType, competition)
+			if itemType then
+				for _, auctionID in ipairs(auctionsByItemType[itemType]) do
+					local auctionData = auctions[auctionID]
+					
+					local buy = auctionData.buyoutUnitPrice
+					local below, above, total = 0, 0, 1
+					
+					for competitionID, competitionData in pairs(competition) do
+						local competitionBuy = competitionData.buyoutUnitPrice
+						if competitionBuy and not competitionData.own then
+							if buy < competitionBuy then 
+								above = above + 1
+							elseif buy > competitionBuy then 
+								below = below + 1
+							end
+							total = total + 1
+						end
+					end
+					
+					auctionData.competitionBelow = below
+					auctionData.competitionAbove = above
+					auctionData.competitionQuintile = MFloor(below * 5 / total) + 1
+					auctionData.competitionOrder = auctionData.competitionQuintile * 10000 + below
+				end
+			end
+			competitionRemaining = competitionRemaining - 1
+			CheckEnd()
+		end
+		
+		for auctionID, auctionData in pairs(auctions) do
+			if auctionData.buyoutUnitPrice then
+				auctionsByItemType[auctionData.itemType] = auctionsByItemType[auctionData.itemType] or {}
+				TInsert(auctionsByItemType[auctionData.itemType], auctionID)
+			end
+		end
+		
+		for itemType, auctions in pairs(auctionsByItemType) do
+			competitionRemaining = competitionRemaining + 1
+			GetActiveAuctionData(function(competition) AssignCompetition(itemType, competition) end, itemType)
+			if GetPrices(function(prices) AssignScore(itemType, prices) end, itemType, 1, referencePrice, true) then
+				scoreRemaining = scoreRemaining + 1
+			end			
+		end
+		CheckEnd()	
+	end
+	
+	GetOwnAuctionData(ProcessAuctions)
+end
+
 function InternalInterface.PGCExtensions.ScoreAuctions(callback, auctions)
 	if type(callback) ~= "function" then return end
 	
@@ -136,7 +154,7 @@ function InternalInterface.PGCExtensions.ScoreAuctions(callback, auctions)
 	for auctionID, auctionData in pairs(auctions) do
 		local auctionItemType = auctionData.itemType
 		itemTypes[auctionItemType] = itemTypes[auctionItemType] or {}
-		table.insert(itemTypes[auctionItemType], auctionID)
+		TInsert(itemTypes[auctionItemType], auctionID)
 	end
 		
 	local function AssignScore(itemType, prices)
@@ -145,7 +163,7 @@ function InternalInterface.PGCExtensions.ScoreAuctions(callback, auctions)
 			for _, auctionID in ipairs(itemTypes[itemType]) do
 				local auctionData = auctions[auctionID]
 				if auctionData.buyoutUnitPrice then
-					auctionData.score = math.floor(auctionData.buyoutUnitPrice * 100 / price.buy)
+					auctionData.score = MFloor(auctionData.buyoutUnitPrice * 100 / price.buy)
 				end
 			end
 		end
@@ -162,4 +180,3 @@ function InternalInterface.PGCExtensions.ScoreAuctions(callback, auctions)
 	end
 	AssignScore()	
 end
-]]
