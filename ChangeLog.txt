@@ -1,8 +1,3 @@
-	Alpha 0.5.0 r88
-- Reenabled Search frame, except the Resell searcher and the Score column
-- Reposted auctions are now decorated with a specific icon (blue & white circle)
-- Should run faster and crash less often now	
-
 	Alpha 0.5.0 r87
 - Integrated LibPGC(Ex) 0.5.x changes
 - Temporarily disabled Search frame

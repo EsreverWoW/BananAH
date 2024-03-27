@@ -1467,10 +1467,14 @@ local function GeneralSettings(parent)
 end
 
 local function SearchSettings(parent)
+	do return nil end
 	local frame = UI.CreateFrame("Frame", parent:GetName() .. ".GeneralSettings", parent)
 	
 	local defaultSearcherText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultSearcherText", frame)
 	local defaultSearcherDropdown = Yague.Dropdown(frame:GetName() .. ".DefaultSearcherDropdown", frame)
+
+	local defaultSearchModeText = UI.CreateFrame("Text", frame:GetName() .. ".DefaultSearchModeText", frame)
+	local defaultSearchModeDropdown = Yague.Dropdown(frame:GetName() .. ".DefaultSearchModeDropdown", frame)
 
 	frame:SetVisible(false)
 	
@@ -1483,19 +1487,33 @@ local function SearchSettings(parent)
 	defaultSearcherDropdown:SetTextSelector("displayName")
 	defaultSearcherDropdown:SetOrderSelector("displayName")
 	
-	local searchers = LibPGCEx.Search.Filter.List()
-	for id in pairs(searchers) do
-		local detail = LibPGCEx.Search.Filter.Get(id)
-		if detail and detail.name then
-			searchers[id] = { displayName = detail.name }
-		end
-	end
+	local searchers = GetAuctionSearchers()
+	for id, name in pairs(searchers) do searchers[id] = { displayName = name } end
 	local defaultSearcher = InternalInterface.AccountSettings.Search.DefaultSearcher
 	defaultSearcherDropdown:SetValues(searchers)
 	if searchers[defaultSearcher] then defaultSearcherDropdown:SetSelectedKey(defaultSearcher) end
 	
+	defaultSearchModeText:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, 50)
+	defaultSearchModeText:SetFontSize(14)
+	defaultSearchModeText:SetText(L["ConfigSearch/DefaultSearchMode"])
+	
+	defaultSearchModeDropdown:SetPoint("CENTERLEFT", defaultSearchModeText, "CENTERLEFT", 200, 0)
+	defaultSearchModeDropdown:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 45)
+	defaultSearchModeDropdown:SetTextSelector("displayName")
+	defaultSearchModeDropdown:SetOrderSelector("order")
+	local defaultSearchMode = InternalInterface.AccountSettings.Search.DefaultOnline and "online" or "offline"
+	defaultSearchModeDropdown:SetValues({
+		["online"] = { displayName = L["Misc/SearchModeOnline"], order = 1, },
+		["offline"] = { displayName = L["Misc/SearchModeOffline"], order = 2, },
+	})
+	defaultSearchModeDropdown:SetSelectedKey(defaultSearchMode)
+	
 	function defaultSearcherDropdown.Event:SelectionChanged(searcher)
 		InternalInterface.AccountSettings.Search.DefaultSearcher = searcher
+	end
+	
+	function defaultSearchModeDropdown.Event:SelectionChanged(searchMode)
+		InternalInterface.AccountSettings.Search.DefaultOnline = searchMode == "online" and true or false
 	end
 	
 	return frame

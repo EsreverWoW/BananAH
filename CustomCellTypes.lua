@@ -8,15 +8,7 @@ local function AuctionCachedCellType(name, parent)
 	cachedCell:SetVisible(false)
 	
 	function cachedCell:SetValue(key, value, width, extra)
-		if not value.cached then
-			cachedCell:SetTextureAsync(addonID, "Textures/AuctionUnavailable.png")
-			cachedCell:SetVisible(true)
-		elseif value.reposted then
-			cachedCell:SetTextureAsync("Rift", "btn_video_encode.png.dds")
-			cachedCell:SetVisible(true)
-		else
-			cachedCell:SetVisible(false)
-		end
+		self:SetVisible(not value.cached)
 	end
 	
 	return cachedCell

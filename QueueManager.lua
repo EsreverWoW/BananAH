@@ -255,18 +255,14 @@ function InternalInterface.UI.QueueManager(name, parent)
 					for itemType, itemInfo in pairs(itemTypeTable) do
 						local preferredPrice = itemInfo.settings.referencePrice
 						if preferredPrice == FIXED_MODEL_ID then
-							priceTasks[itemType] = blTasks.Task.Create(function() return { [FIXED_MODEL_ID] = { bid = itemInfo.settings.lastBid or 0, buy = itemInfo.settings.lastBuy or 0, } } end):Start():Suspend()
+							priceTasks[itemType] = blTasks.Task.Create(function() return { [FIXED_MODEL_ID] = { bid = itemInfo.settings.lastBid or 0, buy = itemInfo.settings.lastBuy or 0, } } end):Start()
 						else
-							priceTasks[itemType] = LibPGCEx.Price.Calculate(itemType, preferredPrice, itemInfo.settings.bidPercentage, false):Suspend()
+							priceTasks[itemType] = LibPGCEx.Price.Calculate(itemType, preferredPrice, itemInfo.settings.bidPercentage, false)
 						end
 					end
 					
 					-- 9. Apply posting settings
 					for itemType, priceTask in pairs(priceTasks) do
-						if not priceTask:Finished() then
-							priceTask:Resume()
-						end
-						
 						local ok, prices = pcall(priceTask.Result, priceTask)
 						if ok then
 							local itemInfo = itemTypeTable[itemType]
