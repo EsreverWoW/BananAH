@@ -1,6 +1,14 @@
+	Release 0.4.18
+- Updated various categories
+- Added support for the Primalist calling
+- Increased maximum level to 70
+- Will now take advantage of exact time left on auctions instead of estimating
+- Updated to account for the new 12h, 48h, and 7d durations when posting auctions
+- Updated to RIFT 4.5
+
 	Release 0.4.17
 - Updated artifact categories
-- Updated to RIFT 2.7	
+- Updated to RIFT 2.7
 	
 	Release 0.4.16
 - Fixed typo that caused scans to fail when transcendent items were found
