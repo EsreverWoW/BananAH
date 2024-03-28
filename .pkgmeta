@@ -3,10 +3,10 @@ manual-changelog: ChangeLog.txt
 enable-nolib-creation: no
 externals:
 	LibPGCEx:
-		url: svn://svn.curseforge.net/rift/libpgcex/mainline/trunk
+		https://github.com/EsreverWoW/LibPGCEx
 	LibPGCEx/LibPGC:
-		url: svn://svn.curseforge.net/rift/libpgc/mainline/trunk
+		https://github.com/EsreverWoW/LibPGC
 	Yague:
-		url: svn://svn.curseforge.net/rift/yague/mainline/trunk
+		https://github.com/EsreverWoW/Yague
 	Yague/LibAsyncTextures:
-		git://git.curseforge.net/rift/lib-async-textures/mainline.git
+		https://github.com/EsreverWoW/LibAsyncTextures

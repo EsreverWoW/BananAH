@@ -96,8 +96,7 @@ InternalInterface.Localization.RegisterLocale("French",
 	["ItemAuctionsGrid/ColumnBidPerUnit"] = "Enchère unitaire",
 	["ItemAuctionsGrid/ColumnBuy"] = "Acheter",
 	["ItemAuctionsGrid/ColumnBuyPerUnit"] = "Achat unitaire",
-	["ItemAuctionsGrid/ColumnMaxExpire"] = "Expiration Max.",
-	["ItemAuctionsGrid/ColumnMinExpire"] = "Expiration Min.",
+	["ItemAuctionsGrid/ColumnRemaining"] = "Time", -- Needs review
 	["ItemAuctionsGrid/ColumnScore"] = "Score",
 	["ItemAuctionsGrid/ColumnSeller"] = "Vendeur",
 	["ItemAuctionsGrid/ColumnStack"] = "Quantité",
@@ -134,10 +133,12 @@ InternalInterface.Localization.RegisterLocale("French",
 	["Misc/DateMonthNames"] = "Janvier,Février,Mars,Avril,Mai,Juin,Juillet,Août,Septembre,Octobre,Novembre,Décembre",
 	["Misc/DateWeekdayAbbreviatedNames"] = "Dim,Lun,Mar,Mer,Jeu,Ven,Sam",
 	["Misc/DateWeekdayNames"] = "Dimanche,Lundi,Mardi,Mercredi,Jeudi,Vendredi,Samedi",
-	["Misc/DurationFormat"] = "%d heures",
-	["Misc/RemainingTimeHours"] = "%d h %d m",
-	["Misc/RemainingTimeMinutes"] = "%d m %d s",
-	["Misc/RemainingTimeSeconds"] = "%d secs",
+	["Misc/DurationFormatHours"] = "%d heures",
+	["Misc/DurationFormatDays"] = "%d jours",
+	["Misc/RemainingTimeDays"] = "%dj, %dh",
+	["Misc/RemainingTimeHours"] = "%dh, %dm",
+	["Misc/RemainingTimeMinutes"] = "%dm, %ds",
+	["Misc/RemainingTimeSeconds"] = "%ds",
 	["Misc/SearchModeOffline"] = "hors ligne", -- Needs review
 	["Misc/SearchModeOnline"] = "en ligne", -- Needs review
 	["Misc/StackSizeMax"] = "Max",
@@ -189,8 +190,7 @@ InternalInterface.Localization.RegisterLocale("French",
 	["SearchFrame/ColumnBuy"] = "Racheter",
 	["SearchFrame/ColumnBuyPerUnit"] = "Rachat unitaire",
 	["SearchFrame/ColumnItem"] = "Objet",
-	["SearchFrame/ColumnMaxExpire"] = "Expir. maxi.", -- Needs review
-	["SearchFrame/ColumnMinExpire"] = "Expir. mini.", -- Needs review
+	["SearchFrame/ColumnRemaining"] = "Time", -- Needs review
 	["SearchFrame/ColumnScore"] = "Score",
 	["SearchFrame/ColumnSeller"] = "Vendeur",
 	["SearchFrame/ErrorBidEqualBuy"] = "Offre & Prix d'achat égaux", -- Needs review
@@ -205,8 +205,7 @@ InternalInterface.Localization.RegisterLocale("French",
 	["SellingFrame/ColumnBuyPerUnit"] = "Rachat unitaire", -- Needs review
 	["SellingFrame/ColumnCompetition"] = "Concurrence",
 	["SellingFrame/ColumnItem"] = "Objet",
-	["SellingFrame/ColumnMaxExpire"] = "Expiration Max.",
-	["SellingFrame/ColumnMinExpire"] = "Expiration Mini.",
+	["SellingFrame/ColumnRemaining"] = "Time", -- Needs review
 	["SellingFrame/ColumnScore"] = "Score",
 	["SellingFrame/FilterBelow"] = "Mini Dessous:", -- Needs review
 	["SellingFrame/FilterCompetition"] = "Concurrence mini.:",

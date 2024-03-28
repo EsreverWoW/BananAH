@@ -2004,9 +2004,9 @@ local function PriceSettings(parent)
 				name = L["ConfigPrice/DefaultDuration"],
 				nameFontSize = 14,
 				value = "integer",
-				minValue = 48,
-				maxValue = 48,
-				defaultValue = 48,
+				minValue = 168,
+				maxValue = 168,
+				defaultValue = 168,
 			},
 			Layout =
 			{
@@ -2093,7 +2093,7 @@ local function PriceSettings(parent)
 			StackSize = stackControls.stackSize:GetPosition(),
 			AuctionLimit = stackControls.maxAuctions:GetPosition(),
 			PostIncomplete = incompleteStackCheck:GetChecked(),
-			Duration = MMin(postControls.duration:GetPosition() / 12, 3),
+			Duration = postControls.duration:GetPosition(),
 			BlackList = blackList,
 		}
 	end
@@ -2254,7 +2254,7 @@ local function PriceSettings(parent)
 	postSelector:SetPoint("BOTTOMRIGHT", postFrame, "BOTTOMRIGHT")
 
 	postControls.duration:AddPreValue("1", 12, "12")
-	postControls.duration:AddPreValue("2", 24, "24")
+	postControls.duration:AddPreValue("2", 48, "48")
 	
 	incompleteStackLabel:SetPoint("TOPRIGHT", stackSelector, "BOTTOMRIGHT", -5, 2)
 	incompleteStackLabel:SetFontSize(13)

@@ -300,8 +300,14 @@ function InternalInterface.UI.QueueManager(name, parent)
 				if InternalInterface.AccountSettings.Posting.AutoPostPause then
 					SetPostingQueuePaused(true)
 				end
+
+				local hours = {
+					[1] = 12,
+					[2] = 48,
+					[3] = 168,
+				}
 				
-				if PostItem(itemType, itemInfo.settings.stackSize, MMin(itemInfo.stack, itemInfo.settings.stackSize * itemInfo.settings.auctionLimit), itemInfo.bid, itemInfo.buy, 6 * 2 ^ itemInfo.settings.duration) then
+				if PostItem(itemType, itemInfo.settings.stackSize, MMin(itemInfo.stack, itemInfo.settings.stackSize * itemInfo.settings.auctionLimit), itemInfo.bid, itemInfo.buy, hours[itemInfo.settings.duration]) then
 					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] = InternalInterface.CharacterSettings.Posting.ItemConfig[itemType] or {}
 					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBid = itemInfo.bid or 0
 					InternalInterface.CharacterSettings.Posting.ItemConfig[itemType].lastBuy = itemInfo.buy or 0

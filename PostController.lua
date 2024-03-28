@@ -283,7 +283,14 @@ function InternalInterface.Control.PostController.PostItem(settings)
 		local auctionLimit = settings.auctionLimit
 		local bidUnitPrice = settings.lastBid
 		local buyUnitPrice = settings.lastBuy
-		local duration = 6 * 2 ^ settings.duration
+
+		local hours = {
+			[1] = 12,
+			[2] = 48,
+			[3] = 168,
+		}
+
+		local duration = hours[settings.duration]
 		
 		stackSize = stackSize == "+" and itemInfo.stackMax or stackSize
 		if type(stackSize) ~= "number" then stackSize = 0 end

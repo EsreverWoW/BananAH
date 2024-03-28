@@ -425,7 +425,7 @@ function InternalInterface.UI.PostFrame(name, parent)
 	incompleteStackCheck:SetEnabled(false)
 
 	durationTimeLabel:SetPoint("TOPRIGHT", postFrame, "TOPRIGHT", -490, 225)
-	durationTimeLabel:SetText(L["Misc/DurationFormat"]:format(48))
+	durationTimeLabel:SetText(L["Misc/DurationFormatDays"]:format(7))
 
 	durationSlider:SetPoint("CENTERLEFT", durationLabel, "CENTERLEFT", maxLeftLabelWidth + 10, 5)
 	durationSlider:SetPoint("CENTERRIGHT", durationTimeLabel, "CENTERLEFT", -15, 5)
@@ -653,7 +653,13 @@ function InternalInterface.UI.PostFrame(name, parent)
 	
 	function durationSlider.Event:SliderChange()
 		local position = self:GetPosition()
-		durationTimeLabel:SetText(L["Misc/DurationFormat"]:format(6 * 2 ^ position))
+		if position == 1 then
+			durationTimeLabel:SetText(L["Misc/DurationFormatHours"]:format(12))
+		elseif position == 2 then
+			durationTimeLabel:SetText(L["Misc/DurationFormatHours"]:format(48))
+		elseif position == 3 then
+			durationTimeLabel:SetText(L["Misc/DurationFormatDays"]:format(7))
+		end
 		local itemType, itemInfo = GetSelectedItemType()
 		if not noPropagateAuto and itemInfo.auto then
 			ClearItemAuto(itemType)

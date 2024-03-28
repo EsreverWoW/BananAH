@@ -26,9 +26,9 @@ local Write = InternalInterface.Output.Write
 local pcall = pcall
 local tostring = tostring
 
-local MIN_WIDTH = 1370
+local MIN_WIDTH = 1422
 local MIN_HEIGHT = 800
-local DEFAULT_WIDTH = 1370
+local DEFAULT_WIDTH = 1422
 local DEFAULT_HEIGHT = 800
 
 local function InitializeLayout()

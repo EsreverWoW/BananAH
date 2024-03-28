@@ -53,7 +53,13 @@ function InternalInterface.Utility.RemainingTimeFormatter(value)
 	local hours, minutes, seconds = MFloor(timeDelta / 3600), MFloor(MFloor(timeDelta % 3600) / 60), MFloor(timeDelta % 60)
 	
 	if hours > 0 then
-		return SFormat(L["Misc/RemainingTimeHours"], hours, minutes)
+		if hours >= 24 then
+			local days = MFloor(hours / 24)
+			local hours = MFloor(hours % 24)
+			return SFormat(L["Misc/RemainingTimeDays"], days, hours)
+		else
+			return SFormat(L["Misc/RemainingTimeHours"], hours, minutes)
+		end
 	elseif minutes > 0 then
 		return SFormat(L["Misc/RemainingTimeMinutes"], minutes, seconds)
 	else
